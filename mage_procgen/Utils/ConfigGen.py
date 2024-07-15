@@ -52,6 +52,11 @@ def generate_config(new_file_name: str, **kwargs):
         building_render_config_geometry_node_name (str): Name of the geometry node setup for normal buildings
         building_render_config_tagging_index (int): Index using which normal buildings will be tagged in the semantic map
 
+    Other parameters: Assets for Houses:
+        house_render_config_geometry_node_file (str): Name of the asset file for houses
+        house_render_config_geometry_node_name (str): Name of the geometry node setup for houses
+        house_render_config_tagging_index (int): Index using which houses will be tagged in the semantic map
+
     Other parameters: Assets for Churches:
         church_render_config_geometry_node_file (str): Name of the asset file for churches
         church_render_config_geometry_node_name (str): Name of the geometry node setup for churches
@@ -157,6 +162,20 @@ def generate_config(new_file_name: str, **kwargs):
     new_config.building_render_config.tagging_index = kwargs.get(
         "building_render_config_tagging_index",
         base_config.building_render_config.tagging_index,
+    )
+
+    # Houses
+    new_config.house_render_config.geometry_node_file = kwargs.get(
+        "house_render_config_geometry_node_file",
+        base_config.house_render_config.geometry_node_file,
+    )
+    new_config.house_render_config.geometry_node_name = kwargs.get(
+        "house_render_config_geometry_node_name",
+        base_config.house_render_config.geometry_node_name,
+    )
+    new_config.house_render_config.tagging_index = kwargs.get(
+        "house_render_config_tagging_index",
+        base_config.house_render_config.tagging_index,
     )
 
     # Churches
@@ -388,6 +407,7 @@ def set_geometry_node(
         new_file_name: Name of the new configuration file
         object_type: Type of object affected by the change. Can only be one of:
             "BUILDING",
+            "HOUSE",
             "CHURCH",
             "FACTORY",
             "MALL",
@@ -415,6 +435,20 @@ def set_geometry_node(
                     new_file_name,
                     building_render_config_geometry_node_file=geometry_node_file,
                     building_render_config_geometry_node_name=geometry_node_name,
+                )
+        case "HOUSE":
+            if from_file is not None:
+                generate_config(
+                    new_file_name,
+                    from_file=from_file,
+                    house_render_config_geometry_node_file=geometry_node_file,
+                    house_render_config_geometry_node_name=geometry_node_name,
+                )
+            else:
+                generate_config(
+                    new_file_name,
+                    house_render_config_geometry_node_file=geometry_node_file,
+                    house_render_config_geometry_node_name=geometry_node_name,
                 )
         case "CHURCH":
             if from_file is not None:

@@ -39,6 +39,7 @@ class Config:
     out_img_resolution: int
     out_img_pixel_size: float
     building_render_config: RenderObjectConfig
+    house_render_config: RenderObjectConfig
     church_render_config: RenderObjectConfig
     factory_render_config: RenderObjectConfig
     mall_render_config: RenderObjectConfig

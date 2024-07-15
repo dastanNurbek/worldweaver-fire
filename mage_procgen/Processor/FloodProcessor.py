@@ -140,8 +140,11 @@ class FloodProcessor:
         # Read the three color channels as 32-bit floats
         FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
 
+        # In Blender 3.6, EXR file had 3 channels (RGB), and in 4.1, it has only one (V).
+        channel_name = "V" if "V" in depth_map_file.header()["channels"].keys() else "R"
+
         depth_map = np.array(
-            array.array("f", depth_map_file.channel("R", FLOAT))
+            array.array("f", depth_map_file.channel(channel_name, FLOAT))
         ).reshape(depth_map_size[1], depth_map_size[0])
 
         height_map = camera_z - depth_map

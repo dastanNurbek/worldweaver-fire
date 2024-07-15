@@ -73,6 +73,12 @@ class ObjectMageProcgen(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
+
+        # HACK: Required for ease of modification during dev. Needs to be removed for release.
+        import sys
+
+        sys.path.append("/home/AVerstraete/Work/worldweaver")
+
         from mage_procgen import main as mpm
 
         preferences = context.preferences

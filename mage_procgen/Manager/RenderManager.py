@@ -15,6 +15,7 @@ from mage_procgen.Utils.Rendering import (
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
+    BoxBuildingRenderer,
     ForestRenderer,
     RoadRenderer,
     WaterRenderer,
@@ -44,6 +45,9 @@ class RenderManager:
         )
         self.building_renderer = BuildingRenderer.BuildingRenderer(
             self.terrain_data, self.config.building_render_config
+        )
+        self.houses_renderer = BoxBuildingRenderer.BoxBuildingRenderer(
+            self.terrain_data, self.config.house_render_config
         )
         self.malls_renderer = BuildingRenderer.MallRenderer(
             self.terrain_data, self.config.mall_render_config
@@ -209,6 +213,14 @@ class RenderManager:
             buildings, self.window.center, buildings_collection_name
         )
 
+        houses_zone = self.rendering_data.houses.overlay(
+            zone_window.dataframe, how="intersection", keep_geom_type=True
+        )
+        houses = self.__extract_houses_data(houses_zone)
+        self.houses_renderer.render(
+            houses, self.window.center, buildings_collection_name
+        )
+
         churches_zone = self.rendering_data.churches.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
@@ -267,6 +279,8 @@ class RenderManager:
 
         self.building_renderer.clear_object()
 
+        self.houses_renderer.clear_object()
+
         self.churches_renderer.clear_object()
 
         self.malls_renderer.clear_object()
@@ -321,6 +335,22 @@ class RenderManager:
         data = [
             (x[0], x[1])
             for x in buildings[["NB_ETAGES", "geometry"]].to_numpy().tolist()
+        ]
+        for x in data:
+            # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later
+            if type(x[1]) == MultiPolygon:
+                for y in x[1].geoms:
+                    to_return.append((x[0], y))
+            else:
+                to_return.append(x)
+
+        return to_return
+
+    def __extract_houses_data(self, buildings: g.GeoDataFrame) -> PolygonList:
+        to_return = []
+
+        data = [
+            (x[0], x[1]) for x in buildings[["HAUTEUR", "geometry"]].to_numpy().tolist()
         ]
         for x in data:
             # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later

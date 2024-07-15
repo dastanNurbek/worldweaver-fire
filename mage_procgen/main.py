@@ -1,8 +1,5 @@
 # Need to import dependencies of packages, and this folder is not in blender's pythonpath
 import shutil
-import sys
-
-sys.path.append("/usr/lib/python3/dist-packages/")
 
 import os
 from numpy import arange

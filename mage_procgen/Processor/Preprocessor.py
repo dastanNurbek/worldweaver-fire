@@ -120,13 +120,16 @@ class Preprocessor:
         non_malls = non_churches.query("USAGE1 not in @malls_tags")
         factories_tags = ["Industriel"]
         factories = non_malls.query("USAGE1 in @factories_tags")
-        default_buildings = non_malls.query("USAGE1 not in @factories_tags")
+        non_factories = non_malls.query("USAGE1 not in @factories_tags")
+        houses = non_factories.query("NB_LOGTS < 4")
+        default_buildings = non_factories.query("ID not in @houses.ID")
 
         rendering_data = RenderingData(
             cleaned_forests,
             churches,
             malls,
             factories,
+            houses,
             default_buildings,
             roads_polygonised,
             roads_lanes,

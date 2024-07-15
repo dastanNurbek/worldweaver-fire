@@ -84,6 +84,7 @@ class RenderingData:
     churches: g.GeoDataFrame
     malls: g.GeoDataFrame
     factories: g.GeoDataFrame
+    houses: g.GeoDataFrame
     default_buildings: g.GeoDataFrame
     roads: g.GeoDataFrame
     lanes: LineStringList

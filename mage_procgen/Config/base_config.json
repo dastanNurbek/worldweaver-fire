@@ -28,6 +28,12 @@
   "geometry_node_name": "Buildings",
   "tagging_index": 6
  },
+ "house_render_config": {
+  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
+  "geometry_node_file": "Houses.blend",
+  "geometry_node_name": "(PBG) Swedish cottage Preset",
+  "tagging_index": 6
+ },
  "church_render_config": {
   "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
   "geometry_node_file": "Churches.blend",
