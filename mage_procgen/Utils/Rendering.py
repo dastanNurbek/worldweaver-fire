@@ -13,6 +13,7 @@ terrain_collection_name = "Terrain"
 cars_collection_name = "Cars"
 buildings_collection_name = "Buildings"
 base_collection_name = "Collection"
+mockup_collection_name = "Mockups"
 
 
 def check_is_sun_activated():
@@ -88,6 +89,9 @@ def configure_render(geo_center_deg):
 
     buildings_collection = D.collections.new(buildings_collection_name)
     D.collections[rendering_collection_name].children.link(buildings_collection)
+
+    mockup_collection = D.collections.new(mockup_collection_name)
+    D.collections[base_collection_name].children.link(mockup_collection)
 
 
 def setup_export_folder(base_folder, departement):

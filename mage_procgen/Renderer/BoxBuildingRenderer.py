@@ -9,7 +9,11 @@ from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
 import os
 import bpy
 
-# from mage_procgen.Renderer.StraightSkeletonRenderer import straightSkeletonOfPolygon
+from mage_procgen.Utils.Geometry import (
+    point_2d_almost_equal,
+    point_2d_in_collection,
+    point_2d_value_in_dict,
+)
 from ladybug_geometry.geometry2d.polygon import Polygon2D
 from ladybug_geometry.geometry2d.pointvector import Point2D
 from ladybug_geometry.geometry2d.line import LineSegment2D
@@ -163,35 +167,27 @@ class BoxBuildingRenderer(BaseRenderer):
 
             for line in straight_skel:
 
-                if not BoxBuildingRenderer.__point_2d_in_collection(
-                    line.p1, points_3d.keys(), tolerance
-                ):
+                if not point_2d_in_collection(line.p1, points_3d.keys(), tolerance):
                     points_3d[line.p1] = (
                         line.p1.x,
                         line.p1.y,
                         base_height + building_height,
                     )
-                if not BoxBuildingRenderer.__point_2d_in_collection(
-                    line.p2, points_3d.keys(), tolerance
-                ):
+                if not point_2d_in_collection(line.p2, points_3d.keys(), tolerance):
                     points_3d[line.p2] = (
                         line.p2.x,
                         line.p2.y,
                         base_height + building_height,
                     )
-                if not BoxBuildingRenderer.__point_2d_in_collection(
+                if not point_2d_in_collection(
                     line.p1, polygon.vertices, tolerance
-                ) and not BoxBuildingRenderer.__point_2d_in_collection(
-                    line.p1, interior_pts, tolerance
-                ):
+                ) and not point_2d_in_collection(line.p1, interior_pts, tolerance):
                     interior_pts[line.p1] = self.__compute_shortest_path_tree(
                         line.p1, polygon.vertices, roof_lines, tolerance
                     )
-                if not BoxBuildingRenderer.__point_2d_in_collection(
+                if not point_2d_in_collection(
                     line.p2, polygon.vertices, tolerance
-                ) and not BoxBuildingRenderer.__point_2d_in_collection(
-                    line.p2, interior_pts, tolerance
-                ):
+                ) and not point_2d_in_collection(line.p2, interior_pts, tolerance):
                     interior_pts[line.p2] = self.__compute_shortest_path_tree(
                         line.p2, polygon.vertices, roof_lines, tolerance
                     )
@@ -203,7 +199,7 @@ class BoxBuildingRenderer(BaseRenderer):
             for pt in orderer_pts:
                 # Last point is the origin, point before that is the other point of the line in the shortest path
                 line_other_point = interior_pts[pt][1][-2]
-                point_parent_3d = BoxBuildingRenderer.__point_2d_value_in_dict(
+                point_parent_3d = point_2d_value_in_dict(
                     line_other_point, points_3d, tolerance
                 )
                 line_length = pt.distance_to_point(line_other_point)
@@ -221,29 +217,11 @@ class BoxBuildingRenderer(BaseRenderer):
                 for graph_line in roof_lines:
                     if graph_line != line:
                         graph.append(graph_line)
-                try:
-                    face_path = []
-                    face_path = self.__compute_shortest_path_tree(
-                        line.p1, [line.p2], graph, tolerance
-                    )[1]
-                except Exception as e:
-                    # print("Error trying to add face inside roof " + roof_mesh_data.name)
-                    print("Error during face construction in " + roof_mesh_data.name)
-                    print(str(e))
-                    print("Line is " + str(line) + " of length " + str(line.length))
-                    print("Roof graph is " + str(roof_lines))
-                    print("")
-                    print("")
-                    print("Points are " + str(points_3d))
-                    print("")
-                    print("")
-                    print("Interior points are " + str(interior_pts))
-                    print("")
-                    print("")
-                    print("Face path is " + str(face_path))
-                    print("")
-                    print("")
-                    quit_after_loop = True
+
+                face_path = []
+                face_path = self.__compute_shortest_path_tree(
+                    line.p1, [line.p2], graph, tolerance
+                )[1]
 
                 # PBGen does not work for faces that are not perfectly flat, meaning we have to triangulate our faces.
                 path_flat_array = []
@@ -264,29 +242,13 @@ class BoxBuildingRenderer(BaseRenderer):
                         triangle_pts = [face_path[x] for x in triangle]
                         triangle_face = roof_mesh.faces.new(
                             [
-                                BoxBuildingRenderer.__point_2d_value_in_dict(
-                                    x, verts_dict, tolerance
-                                )
+                                point_2d_value_in_dict(x, verts_dict, tolerance)
                                 for x in triangle_pts
                             ]
                         )
                 except Exception as e:
                     print("Error trying to add face inside roof " + roof_mesh_data.name)
                     print(str(e))
-                #     # print("Line is " + str(line) + " of length " + str(line.length))
-                #     # print("Roof graph is " + str(roof_lines))
-                #     # print("")
-                #     # print("")
-                #     # print("Points are " + str(points_3d))
-                #     # print("")
-                #     # print("")
-                #     # print("Interior points are " + str(interior_pts))
-                #     # print("")
-                #     # print("")
-                #     print("Face path is " + str(face_path))
-                #     # print("")
-                #     # print("")
-                #     # quit_after_loop = True
 
             roof_mesh.to_mesh(roof_mesh_data)
             roof_mesh.free()
@@ -335,8 +297,6 @@ class BoxBuildingRenderer(BaseRenderer):
             m = mesh_obj.modifiers.new("", "NODES")
             m.node_group = D.node_groups[self.geometry_node_name]
 
-            if quit_after_loop:
-                raise Exception("KABOOM")
 
     def adapt_coords(
         self, points_coords: list[Point], geo_center: Point
@@ -390,7 +350,7 @@ class BoxBuildingRenderer(BaseRenderer):
                     v = pt
             trace_msg.append("Exploring node " + str(v))
             exploration_queue.remove(v)
-            if BoxBuildingRenderer.__point_2d_in_collection(v, destinations, tolerance):
+            if point_2d_in_collection(v, destinations, tolerance):
                 trace_msg.append("Found point in destination: " + str(v))
                 path = []
                 current_point = v
@@ -402,18 +362,14 @@ class BoxBuildingRenderer(BaseRenderer):
                 return nodes_status[v][1], path
             possibles_edges = []
             for line in graph:
-                if BoxBuildingRenderer.__point_2d_almost_equal(
+                if point_2d_almost_equal(
                     line.p1, v, tolerance
-                ) or BoxBuildingRenderer.__point_2d_almost_equal(line.p2, v, tolerance):
+                ) or point_2d_almost_equal(line.p2, v, tolerance):
                     trace_msg.append("Adding line " + str(line))
                     possibles_edges.append(line)
             for line in possibles_edges:
                 new_point = (
-                    line.p2
-                    if BoxBuildingRenderer.__point_2d_almost_equal(
-                        line.p1, v, tolerance
-                    )
-                    else line.p1
+                    line.p2 if point_2d_almost_equal(line.p1, v, tolerance) else line.p1
                 )
                 trace_msg.append("Evaluating new point " + str(new_point))
                 if new_point in nodes_status:
@@ -440,23 +396,3 @@ class BoxBuildingRenderer(BaseRenderer):
             print(msg)
         print()
         print()
-
-    @staticmethod
-    def __point_2d_almost_equal(a, b, tolerance):
-        return math.isclose(a.x, b.x, abs_tol=tolerance) and math.isclose(
-            a.y, b.y, abs_tol=tolerance
-        )
-
-    @staticmethod
-    def __point_2d_in_collection(a, col, tolerance):
-        for point in col:
-            if BoxBuildingRenderer.__point_2d_almost_equal(a, point, tolerance):
-                return True
-        return False
-
-    @staticmethod
-    def __point_2d_value_in_dict(a, col, tolerance):
-        for point in col.keys():
-            if BoxBuildingRenderer.__point_2d_almost_equal(a, point, tolerance):
-                return col[point]
-        raise KeyError("Point2D not in collection: " + str(a))

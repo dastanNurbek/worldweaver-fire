@@ -14,6 +14,7 @@ class TerrainRenderer:
 
     _mesh_name = "Terrain"
 
+    _TerrainAdaptationGN = "TerrainMove"
     _BaseMaterialName = "Base_Terrain"
     _MaterialFile = "Terrain.blend"
     _AssetsFolder = "Assets"
@@ -40,8 +41,10 @@ class TerrainRenderer:
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
                 data_to.materials = data_from.materials
+                data_to.node_groups = [self._TerrainAdaptationGN]
 
             self._base_material = data_to.materials[0]
+            self.geometry_node_name = data_to.node_groups[0].name
         except Exception as _:
             raise Exception(
                 "Unable to load the terrain material " + "from the file " + filepath
@@ -285,6 +288,18 @@ class TerrainRenderer:
             terrain_obj.select_set(True)
 
         O.object.join()
+
+        self.terrain_object = D.collections[parent_collection_name].objects[0]
+
+        m = self.terrain_object.modifiers.new("", "NODES")
+        m.name = self.geometry_node_name
+        m.node_group = D.node_groups[self.geometry_node_name]
+
+    def config_geometry_node(self, road_object, water_object, building_object):
+        node = self.terrain_object.modifiers[self.geometry_node_name]
+        node["Socket_2"] = road_object
+        node["Socket_4"] = water_object
+        node["Socket_6"] = building_object
 
     @staticmethod
     def __check_boundaries(point, terrain_mesh_info):

@@ -73,6 +73,8 @@ class Preprocessor:
         for index, row in roads_with_cars.iterrows():
             for geometry in roads_elements[or_row_index][0]:
                 new_row = row.to_dict()
+                # Saving the original line in another field to allow use of generators that work on lines
+                # new_row["line"] = new_row["geometry"]
                 new_row["geometry"] = geometry
 
                 for key, value in new_row.items():
@@ -91,9 +93,13 @@ class Preprocessor:
             self.window.dataframe, how="intersection", keep_geom_type=True
         )
 
+        roads_selected = roads_with_cars.query("ID in @roads_polygonised.ID")
+
+        roads_selected.to_file("/home/AVerstraete/Work/scraps/roads_poly.shp")
+
         # Removing roads from forests so we don't have trees on the road
         new_forests = new_forests.overlay(
-            roads_with_cars, how="difference", keep_geom_type=True
+            roads_polygonised, how="difference", keep_geom_type=True
         )
 
         # Forests can intersect buildings, which we don't want
@@ -131,7 +137,7 @@ class Preprocessor:
             factories,
             houses,
             default_buildings,
-            roads_polygonised,
+            roads_selected,
             roads_lanes,
             still_water,
             flowing_water,

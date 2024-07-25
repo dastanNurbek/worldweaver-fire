@@ -2,7 +2,7 @@ from bpy import data as D
 import math
 import geopandas as g
 from shapely.geometry import MultiPolygon, Polygon, mapping, LineString
-from mage_procgen.Utils.Utils import PolygonList, TerrainData
+from mage_procgen.Utils.Utils import PolygonList, TerrainData, LineStringList
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Rendering import (
@@ -11,13 +11,16 @@ from mage_procgen.Utils.Rendering import (
     cars_collection_name,
     terrain_collection_name,
     buildings_collection_name,
+    mockup_collection_name,
 )
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
+    MockupBuildingRenderer,
     ForestRenderer,
     RoadRenderer,
+    PrettyRoadRenderer,
     WaterRenderer,
     TerrainRenderer,
     FloodRenderer,
@@ -67,13 +70,16 @@ class RenderManager:
         self.forests_renderer = ForestRenderer.ForestRenderer(
             self.terrain_data, self.config.forest_render_config
         )
-        self.road_renderer = RoadRenderer.RoadRenderer(
+        self.road_renderer = PrettyRoadRenderer.PrettyRoadRenderer(
             self.terrain_data,
             self.config.road_render_config,
             self.config.car_render_config,
         )
         self.still_water_renderer = WaterRenderer.StillWaterRenderer(
             self.terrain_data, self.config.water_render_config
+        )
+        self.mockup_building_renderer = MockupBuildingRenderer.MockupBuildingRenderer(
+            self.terrain_data
         )
 
     def draw_flood_interactors(self):
@@ -98,6 +104,42 @@ class RenderManager:
             flowing_water, self.window.center, rendering_collection_name
         )
         print("Objects that interact with flood rendered")
+
+        # TODO:
+        # Draw roads.
+        # Bind terrain to roads
+        # TODO: fix windowing
+        road_zone = RenderManager.__window_lines(
+            self.rendering_data.roads.geometry, self.window
+        )
+        # roads = self.__extract_geom(road_zone.geometry)
+        # lanes_zone = self.__window_lanes(zone_window)
+        self.road_renderer.render(
+            road_zone,
+            self.window.center,
+            rendering_collection_name,
+            # lanes_zone,
+            # cars_collection_name,
+        )
+
+        buildings = self.__extract_geom(self.rendering_data.default_buildings.geometry)
+        houses = self.__extract_geom(self.rendering_data.houses.geometry)
+        churches = self.__extract_geom(self.rendering_data.churches.geometry)
+        factories = self.__extract_geom(self.rendering_data.factories.geometry)
+        malls = self.__extract_geom(self.rendering_data.malls.geometry)
+        buildings.extend(houses)
+        buildings.extend(churches)
+        buildings.extend(factories)
+        buildings.extend(malls)
+        self.mockup_building_renderer.render(
+            buildings, self.window.center, mockup_collection_name
+        )
+
+        self.terrain_renderer.config_geometry_node(
+            self.road_renderer.get_mesh_obj(),
+            self.flowing_water_renderer.get_mesh_obj(),
+            self.mockup_building_renderer.get_mesh_obj(),
+        )
 
     def draw_flood(self, flood_data):
         self.flood_renderer.render(flood_data, rendering_collection_name)
@@ -251,19 +293,20 @@ class RenderManager:
             forests, self.window.center, rendering_collection_name
         )
 
-        road_zone = self.rendering_data.roads.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
-        )
-
-        road = self.__extract_geom(road_zone.geometry)
-        lanes_zone = self.__window_lanes(zone_window)
-        self.road_renderer.render(
-            road,
-            self.window.center,
-            rendering_collection_name,
-            lanes_zone,
-            cars_collection_name,
-        )
+        # TODO: evaluate if anything should be there
+        # TODO: fix windowing
+        # road_zone = RenderManager.__window_lines(
+        #     self.rendering_data.roads.geometry, zone_window
+        # )
+        # # roads = self.__extract_geom(road_zone.geometry)
+        # # lanes_zone = self.__window_lanes(zone_window)
+        # self.road_renderer.render(
+        #     road_zone,
+        #     self.window.center,
+        #     rendering_collection_name,
+        #     # lanes_zone,
+        #     # cars_collection_name,
+        # )
 
         still_water_zone = self.rendering_data.still_water.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
@@ -289,7 +332,7 @@ class RenderManager:
 
         self.forests_renderer.clear_object()
 
-        self.road_renderer.clear_object()
+        # self.road_renderer.clear_object()
 
         self.still_water_renderer.clear_object()
 
@@ -299,6 +342,13 @@ class RenderManager:
         for terrain in terrain_collection:
             terrain.hide_viewport = not is_terrain_visible
             terrain.hide_render = not is_terrain_visible
+
+    def change_road_visibility(self, is_road_visible):
+
+        road_object = self.road_renderer.get_mesh_obj()
+
+        road_object.hide_viewport = not is_road_visible
+        road_object.hide_render = not is_road_visible
 
     def __corner_coord(self, ray_direction, max_distance, origin):
 
@@ -328,6 +378,18 @@ class RenderManager:
                 to_return.append(x)
 
         return to_return
+
+    # def __extract_road_geom(self, geometry_list: g.GeoSeries) -> LineStringList:
+    #     to_return = []
+    #     for x in geometry_list:
+    #         # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later
+    #         if type(x) == MultiPolygon:
+    #             for y in x.geoms:
+    #                 to_return.append(y)
+    #         else:
+    #             to_return.append(x)
+    #
+    #     return to_return
 
     def __extract_buildings_data(self, buildings: g.GeoDataFrame) -> PolygonList:
         to_return = []
@@ -362,22 +424,26 @@ class RenderManager:
 
         return to_return
 
-    def __window_lanes(self, zone_window):
+    @staticmethod
+    def __window_lines(line_collection, zone_window):
+        windowed_lines = []
 
-        windowed_lanes = []
+        for line in line_collection:
 
-        for lane in self.rendering_data.lanes:
-
-            windowed_lane = []
-            for point in lane.coords:
+            windowed_line = []
+            for point in line.coords:
 
                 if (
                     zone_window.bounds[0] < point[0] < zone_window.bounds[2]
                     and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
                 ):
-                    windowed_lane.append(point)
+                    windowed_line.append(point)
 
-            if len(windowed_lane) > 1:
-                windowed_lanes.append(LineString(windowed_lane))
+            if len(windowed_line) > 1:
+                windowed_lines.append(LineString(windowed_line))
 
-        return windowed_lanes
+        return windowed_lines
+
+    def __window_lanes(self, zone_window):
+
+        return RenderManager.__window_lines(self.rendering_data.lanes, zone_window)

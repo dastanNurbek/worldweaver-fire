@@ -124,6 +124,9 @@ def main(filepath):
 
     if config.flood:
 
+        # TODO: hide roads so that they don't count for height map and render pass
+        render_manager.change_road_visibility(False)
+
         # First render: writing a height map
         print("Computing height map")
         FloodProcessor.generate_height_map(
@@ -156,6 +159,9 @@ def main(filepath):
         )
 
         render_manager.draw_flood(flood_data)
+
+        # TODO: re-enable roads
+        render_manager.change_road_visibility(True)
 
         if not config.export_img:
             first_dpt_code = geo_data.departements["INSEE_DEP"][0]
