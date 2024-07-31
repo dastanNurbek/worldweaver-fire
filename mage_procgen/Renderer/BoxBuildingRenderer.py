@@ -74,11 +74,24 @@ class BoxBuildingRenderer(BaseRenderer):
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
+
         # TODO: Cleanup
         self._mesh_names = []
 
         for building in tqdm(buildings):
+
             mesh = bmesh.new()
+
+            # TODO: make those parametric
+            building_height = random.uniform(2.5, 6)
+            # If we have the info in the database, use it here
+            if not math.isnan(building[0]):
+                building_height = float(building[0])
+
+            # TODO: Have to create the mesh data here because of the "face already exists" traces.
+            #   Correct behavior and move the init of mesh data lower
+            mesh_name = self._mesh_name
+            mesh_data = D.meshes.new(mesh_name)
             # Kind of hack because Polygon.coords is not implemented
 
             polygon_geometry = mapping(building[1])["coordinates"]
@@ -104,12 +117,6 @@ class BoxBuildingRenderer(BaseRenderer):
                 mesh.verts.new(x) for x in centered_points_coords[:-1]
             )
 
-            # TODO: make those parametric
-            building_height = random.uniform(2.5, 6)
-            # If we have the info in the database, use it here
-            if not math.isnan(building[0]):
-                building_height = float(building[0])
-
             # 45° is a slope of 1, we want a max slope of 25°
             max_slope = 25 / 45
 
@@ -129,24 +136,6 @@ class BoxBuildingRenderer(BaseRenderer):
             ]
             polygon = Polygon2D(polygon_points)
             straight_skel = skeleton_as_edge_list(polygon)
-            # straight_skel_rounded = []
-            # for line in straight_skel:
-            #     new_line = LineSegment2D.from_end_points(
-            #         Point2D(
-            #             round(line.p1.x, digit_precision),
-            #             round(line.p1.y, digit_precision),
-            #         ),
-            #         Point2D(
-            #             round(line.p2.x, digit_precision),
-            #             round(line.p2.y, digit_precision),
-            #         ),
-            #     )
-            #     straight_skel_rounded.append(new_line)
-            #
-            # straight_skel = straight_skel_rounded
-            roof_mesh = bmesh.new()
-            roof_mesh_name = "Roof"
-            roof_mesh_data = bpy.data.meshes.new(roof_mesh_name)
 
             base_height = centered_points_coords[0][2]
             # Dict whose key is the point in 2d and the value is the point in 3d
@@ -209,7 +198,7 @@ class BoxBuildingRenderer(BaseRenderer):
 
             verts_dict = {}
             for p2d, p3d in points_3d.items():
-                vert = roof_mesh.verts.new((p3d[0], p3d[1], p3d[2]))
+                vert = mesh.verts.new((p3d[0], p3d[1], p3d[2]))
                 verts_dict[p2d] = vert
 
             for line in polygon.segments:
@@ -240,20 +229,15 @@ class BoxBuildingRenderer(BaseRenderer):
                     # TODO: Test more and decide what to do of this case
                     for triangle in triangles:
                         triangle_pts = [face_path[x] for x in triangle]
-                        triangle_face = roof_mesh.faces.new(
+                        triangle_face = mesh.faces.new(
                             [
                                 point_2d_value_in_dict(x, verts_dict, tolerance)
                                 for x in triangle_pts
                             ]
                         )
                 except Exception as e:
-                    print("Error trying to add face inside roof " + roof_mesh_data.name)
+                    print("Error trying to add face inside roof " + mesh_data.name)
                     print(str(e))
-
-            roof_mesh.to_mesh(roof_mesh_data)
-            roof_mesh.free()
-            roof_mesh_obj = bpy.data.objects.new(roof_mesh_data.name, roof_mesh_data)
-            bpy.data.collections[parent_collection_name].objects.link(roof_mesh_obj)
 
             # Building the walls
             previous_point = None
@@ -276,8 +260,6 @@ class BoxBuildingRenderer(BaseRenderer):
                     wall_face = mesh.faces.new(mesh.verts.new(x) for x in wall_points)
                     previous_point = point
 
-            mesh_name = self._mesh_name
-            mesh_data = D.meshes.new(mesh_name)
             mesh.to_mesh(mesh_data)
             mesh.free()
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
@@ -286,17 +268,8 @@ class BoxBuildingRenderer(BaseRenderer):
 
             self._mesh_names.append(mesh_obj.name)
 
-            # Fuse roof and walls
-            bpy.ops.object.select_all(action="DESELECT")
-            mesh_obj.select_set(True)
-            C.view_layer.objects.active = mesh_obj
-            roof_mesh_obj.select_set(True)
-            bpy.ops.object.join()
-            bpy.ops.object.select_all(action="DESELECT")
-
             m = mesh_obj.modifiers.new("", "NODES")
             m.node_group = D.node_groups[self.geometry_node_name]
-
 
     def adapt_coords(
         self, points_coords: list[Point], geo_center: Point

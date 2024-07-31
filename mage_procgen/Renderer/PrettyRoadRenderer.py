@@ -48,7 +48,12 @@ class PrettyRoadRenderer:
 
         self._terrain_data = terrain_data
 
-        cars_collection = D.node_groups[self.geometry_node_name].nodes[self._car_collection_info_node_name].inputs[0].default_value
+        cars_collection = (
+            D.node_groups[self.geometry_node_name]
+            .nodes[self._car_collection_info_node_name]
+            .inputs[0]
+            .default_value
+        )
         for obj in cars_collection.objects:
             obj.pass_index = car_object_config.tagging_index
 
