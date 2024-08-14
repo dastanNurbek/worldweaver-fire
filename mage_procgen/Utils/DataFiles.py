@@ -38,6 +38,10 @@ dpt_file = "ARRONDISSEMENT.shp"
 town_file = "COMMUNE.shp"
 building_folder = "BATI"
 building_file = "BATIMENT.shp"
+residential_folder = "LIEUX_NOMMES"
+residential_file = "ZONE_D_HABITATION.shp"
+interest_zone_folder = "SERVICES_ET_ACTIVITES"
+interest_zone_file = "ZONE_D_ACTIVITE_OU_D_INTERET.shp"
 
 shore_file = "LIMITE_TERRE_MER.shp"
 

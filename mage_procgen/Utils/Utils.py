@@ -124,5 +124,7 @@ class GeoData:
     roads: g.GeoDataFrame
     water: g.GeoDataFrame
     ocean: g.GeoDataFrame
+    residentials: g.GeoDataFrame
+    interest_zones: g.GeoDataFrame
     departements: g.GeoDataFrame
     terrain: TerrainDataList

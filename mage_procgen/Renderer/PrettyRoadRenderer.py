@@ -1,12 +1,19 @@
 import os
 import bpy
+import geopandas as g
 from bpy import data as D, ops as O, context as C
 import bmesh
+import math
 
 from tqdm import tqdm
-from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData, LineStringList
+from mage_procgen.Utils.Utils import (
+    PolygonList,
+    Point,
+    TerrainData,
+    LineStringList,
+    GeoWindow,
+)
 from ladybug_geometry.geometry2d.pointvector import Point2D
-
 
 # TODO: find common paths with BaseRenderer
 class PrettyRoadRenderer:
@@ -14,9 +21,20 @@ class PrettyRoadRenderer:
     _mesh_name = "Roads"
     _car_mesh_name = "Cars"
 
-    _Asset_File = "Roads_pretty_cars.blend"
+    _Asset_File = "Roads_pretty_3.blend"
     _GN_Name = "Next_Streets_V3_custom_cars"
     _car_collection_info_node_name = "Cars Collection Info"
+
+    _Largeur = "LARGEUR"
+    _NB_Voies = "NB_VOIES"
+    _Sens = "SENS"
+    _Pos_Sol = "POS_SOL"
+    _has_sidewalks = "has_sidewalks"
+    _has_guardrails = "has_guardrails"
+    _Directions = ["Double sens", "Sens direct", "Sens inverse"]
+
+    _default_road_thickness = 3
+    _default_road_lanes = 1
 
     def __init__(
         self, terrain_data: list[TerrainData], object_config, car_object_config
@@ -48,6 +66,7 @@ class PrettyRoadRenderer:
 
         self._terrain_data = terrain_data
 
+        # Setting pass index of cars
         cars_collection = (
             D.node_groups[self.geometry_node_name]
             .nodes[self._car_collection_info_node_name]
@@ -59,20 +78,39 @@ class PrettyRoadRenderer:
 
     def render(
         self,
-        roads: LineStringList,
-        geo_center: tuple[float, float, float],
+        roads: g.GeoDataFrame,
+        geo_window: GeoWindow,
         parent_collection_name: str,
     ):
         mesh = bmesh.new()
+
+        geo_center = geo_window.center
 
         # Storing the points inside a dict to avoid point duplication, which messes up crossroads
         # TODO: check that this method works and does not need "fuzzy matching"
         points_dict = {}
 
-        for road in tqdm(roads):
+        edges_config = {}
+        edge_index = 0
+        for road_index in tqdm(roads.index):
+
+            road_geom = roads.geometry[road_index]
+
+            # Windowing
+            windowed_line = []
+            for point in road_geom.coords:
+
+                if (
+                    geo_window.bounds[0] < point[0] < geo_window.bounds[2]
+                    and geo_window.bounds[1] < point[1] < geo_window.bounds[3]
+                ):
+                    windowed_line.append(point)
+
+            if len(windowed_line) == 0:
+                continue
 
             points_coords = [
-                (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in road.coords
+                (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in windowed_line
             ]
 
             # Adapting the coordinates for rendering purposes
@@ -98,7 +136,15 @@ class PrettyRoadRenderer:
                     new_point = points_dict[new_point_2d]
 
                 edge = mesh.edges.new([previous_point, new_point])
+
+                edges_config[edge_index] = (
+                    roads[self._has_sidewalks][road_index],
+                    roads[self._has_guardrails][road_index],
+                    roads[self._NB_Voies][road_index],
+                )
+
                 previous_point = new_point
+                edge_index += 1
 
         mesh_name = self._mesh_name
         mesh_data = D.meshes.new(mesh_name)
@@ -111,35 +157,66 @@ class PrettyRoadRenderer:
         m = mesh_obj.modifiers.new("", "NODES")
         m.node_group = D.node_groups[self.geometry_node_name]
 
-        # Disabling sidewalks
-        bpy.data.node_groups["Switch <sidewalk>"].nodes["Compare.004"].inputs[
-            2
-        ].default_value = 2
-
         # Setting up named attributes used to pilot the geometryNode.
         # Everything has to be done in edit mode otherwise attribute names get mixed up
         # TODO: improve these settings to have finer control of the geometrynodes
         mesh_obj.select_set(True)
         C.view_layer.objects.active = mesh_obj
         O.object.mode_set(mode="EDIT")
-        mesh = D.objects[mesh_name].data
-        attribute = mesh.attributes.new(name="street type", type="INT", domain="EDGE")
-        attribute2 = mesh.attributes.new(
-            name="side walks type", type="INT", domain="EDGE"
+        mesh_data = D.objects[mesh_name].data
+        attribute_lane_nbr = mesh_data.attributes.new(
+            name="street type", type="INT", domain="EDGE"
         )
-
-        bm = bmesh.from_edit_mesh(mesh)
-        layer = bm.edges.layers.int.get(attribute.name)
-        layer2 = bm.edges.layers.int.get(attribute2.name)
+        attribute_sidewalk_type = mesh_data.attributes.new(
+            name="switch side walk", type="INT", domain="EDGE"
+        )
+        attribute_intersection_type = mesh_data.attributes.new(
+            name="intersection type", type="INT", domain="POINT"
+        )
+        bm = bmesh.from_edit_mesh(mesh_data)
+        layer_lane_nbr = bm.edges.layers.int.get(attribute_lane_nbr.name)
+        layer_sidewalk_type = bm.edges.layers.int.get(attribute_sidewalk_type.name)
+        layer_intersection_type = bm.verts.layers.int.get(
+            attribute_intersection_type.name
+        )
         for ed in bm.edges:
-            ed[layer] = 0
-            ed[layer2] = 0
-        bmesh.update_edit_mesh(mesh)
+
+            edge_config = edges_config[ed.index]
+
+            lane_nbr = (
+                self._default_road_lanes
+                if math.isnan(edge_config[2])
+                else int(edge_config[2])
+            )
+
+            # Not a very good name but it's there to separate 1*1 roads vs 2*2
+            # TODO: currently, nextstreet cannt handle single way roads.
+            #  If we find out a way to make it work, change this by taking road direction into account
+            total_lane_nbr = max(lane_nbr // 2, self._default_road_lanes)
+
+            # TODO: correlate lane_nbr and road_width to "street type"
+            ed[layer_lane_nbr] = total_lane_nbr
+
+            sidewalk_type = 2
+            if edge_config[0]:
+                sidewalk_type = 0
+            elif edge_config[1]:
+                sidewalk_type = 1
+
+            ed[layer_sidewalk_type] = sidewalk_type
+
+            # For intersections, no sidewalk has priority over guardrails, who has priority over sidewalks
+            for vert in ed.verts:
+                vert[layer_intersection_type] = max(
+                    vert[layer_intersection_type], sidewalk_type
+                )
+
+        bmesh.update_edit_mesh(mesh_data)
 
         O.object.mode_set(mode="OBJECT")
         O.object.select_all(action="DESELECT")
 
-        # Disabling lights (no need if sidewalks are off)
+        # Disabling lights
         # bpy.data.node_groups["Next_Streets_V3"].nodes["Switch.004"].inputs[0].default_value = False
 
     def interpolate_z(self, x, y):

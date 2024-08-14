@@ -30,6 +30,8 @@ class Loader:
         forest_data = None
         road_data = None
         water_data = None
+        residential_data = None
+        interest_zone_data = None
         oceans_data = None
         departements_data = None
         terrain_data = []
@@ -140,6 +142,45 @@ class Loader:
             else:
                 water_data = current_water_data
 
+            current_residential_data = ShapeFileParser.load(
+                os.path.join(
+                    base_folder,
+                    df.departements,
+                    current_departement,
+                    df.bdtopo_folder,
+                    df.delivery,
+                    df.residential_folder,
+                    df.residential_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if residential_data is not None:
+                residential_data = p.concat([residential_data, current_residential_data])
+            else:
+                residential_data = current_residential_data
+
+            current_interest_zone_data = ShapeFileParser.load(
+                os.path.join(
+                    base_folder,
+                    df.departements,
+                    current_departement,
+                    df.bdtopo_folder,
+                    df.delivery,
+                    df.interest_zone_folder,
+                    df.interest_zone_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if interest_zone_data is not None:
+                interest_zone_data = p.concat([interest_zone_data, current_interest_zone_data])
+            else:
+                interest_zone_data = current_interest_zone_data
+
+
             current_departement_data = ShapeFileParser.load(
                 os.path.join(
                     base_folder,
@@ -185,13 +226,15 @@ class Loader:
             )
 
         geo_data = GeoData(
-            building_data,
-            forest_data,
-            road_data,
-            water_data,
-            oceans_data,
-            departements_data,
-            terrain_data,
+            buildings=building_data,
+            forests=forest_data,
+            roads=road_data,
+            water=water_data,
+            ocean=oceans_data,
+            residentials=residential_data,
+            interest_zones=interest_zone_data,
+            departements=departements_data,
+            terrain=terrain_data,
         )
 
         return geo_data

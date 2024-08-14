@@ -115,11 +115,9 @@ class RenderManager:
         # roads = self.__extract_geom(road_zone.geometry)
         # lanes_zone = self.__window_lanes(zone_window)
         self.road_renderer.render(
-            road_zone,
-            self.window.center,
+            self.rendering_data.roads,
+            self.window,
             rendering_collection_name,
-            # lanes_zone,
-            # cars_collection_name,
         )
 
         buildings = self.__extract_geom(self.rendering_data.default_buildings.geometry)
