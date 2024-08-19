@@ -28,6 +28,22 @@ class BoxBuildingRenderer(BaseRenderer):
     _mesh_name = "Houses"
 
     _top_material_name = "Top_Layer_Material"
+    _roof_colors = [
+        (0.454, 0.260, 0.092, 1),
+        (0.454, 0.337, 0.347, 1),
+        (0.056, 0.043, 0.044, 1),
+        (0.616, 0.182, 0.023, 1),
+        (0, 0, 0, 0),
+        (0, 0, 0, 0),
+    ]
+
+    _wall_colors = [
+        (1, 0.510, 0.157, 1),
+        (1, 1, 1, 1),
+        (1, 0.242, 0.028, 1),
+        (0.429, 0.067, 0.030, 1),
+        (0.429, 0.067, 0.030, 1),
+    ]
 
     def __init__(self, terrain_data: list[TerrainData], object_config):
         self.config = object_config
@@ -278,6 +294,19 @@ class BoxBuildingRenderer(BaseRenderer):
 
             m = mesh_obj.modifiers.new("", "NODES")
             m.node_group = D.node_groups[self.geometry_node_name]
+
+            # Changing colors of house
+            wall_color_index = random.randint(0, len(self._wall_colors) - 1)
+            m["Input_11"][0] = self._wall_colors[wall_color_index][0]
+            m["Input_11"][1] = self._wall_colors[wall_color_index][1]
+            m["Input_11"][2] = self._wall_colors[wall_color_index][2]
+            m["Input_11"][3] = self._wall_colors[wall_color_index][3]
+
+            roof_color_index = random.randint(0, len(self._roof_colors) - 1)
+            m["Input_13"][0] = self._roof_colors[roof_color_index][0]
+            m["Input_13"][1] = self._roof_colors[roof_color_index][1]
+            m["Input_13"][2] = self._roof_colors[roof_color_index][2]
+            m["Input_13"][3] = self._roof_colors[roof_color_index][3]
 
             # Mockup object used to fix PBGen's issue with complex roofs.
             # Currently PBGen often introduces "holes" in the roof with are seen in the resulting tagging image
