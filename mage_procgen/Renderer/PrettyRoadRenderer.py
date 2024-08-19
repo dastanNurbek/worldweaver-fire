@@ -13,17 +13,22 @@ from mage_procgen.Utils.Utils import (
     LineStringList,
     GeoWindow,
 )
+from mage_procgen.Utils.Rendering import terrain_collection_name
 from ladybug_geometry.geometry2d.pointvector import Point2D
 
 # TODO: find common paths with BaseRenderer
 class PrettyRoadRenderer:
     _AssetsFolder = "Assets"
     _mesh_name = "Roads"
+    _bridge_mesh_name = "Bridges"
     _car_mesh_name = "Cars"
 
     _Asset_File = "Roads_pretty_3.blend"
     _GN_Name = "Next_Streets_V3_custom_cars"
     _car_collection_info_node_name = "Cars Collection Info"
+
+    _Bridge_Asset_File = "Bridges.blend"
+    _Bridge_GN_Name = "Bridges"
 
     _Largeur = "LARGEUR"
     _NB_Voies = "NB_VOIES"
@@ -53,11 +58,29 @@ class PrettyRoadRenderer:
 
             # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
             self.geometry_node_name = data_to.node_groups[0].name
-
         except Exception as _:
             raise Exception(
                 'Unable to load the Geometry Nodes setup with the name "'
                 + self._GN_Name
+                + '"'
+                + "from the file "
+                + filepath
+                + " . Please check that the name is correct."
+            )
+
+        filepath_bridge = os.path.realpath(
+            os.path.join(_location, "..", self._AssetsFolder, self._Bridge_Asset_File)
+        )
+        try:
+            with bpy.data.libraries.load(filepath_bridge) as (data_from, data_to):
+                data_to.node_groups = [self._Bridge_GN_Name]
+
+            # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
+            self.bridge_geometry_node_name = data_to.node_groups[0].name
+        except Exception as _:
+            raise Exception(
+                'Unable to load the Geometry Nodes setup with the name "'
+                + self._Bridge_GN_Name
                 + '"'
                 + "from the file "
                 + filepath
@@ -83,6 +106,8 @@ class PrettyRoadRenderer:
         parent_collection_name: str,
     ):
         mesh = bmesh.new()
+
+        bridge_mesh = bmesh.new()
 
         geo_center = geo_window.center
 
@@ -113,8 +138,13 @@ class PrettyRoadRenderer:
                 (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in windowed_line
             ]
 
+            is_bridge = int(roads[self._Pos_Sol][road_index]) == 1
+            is_tunnel = int(roads[self._Pos_Sol][road_index]) == -1
+
             # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(points_coords, geo_center)
+            centered_points_coords = self.adapt_coords(
+                points_coords, geo_center, is_bridge, is_tunnel
+            )
 
             previous_point_2d = Point2D(
                 centered_points_coords[0][0], centered_points_coords[0][1]
@@ -124,6 +154,12 @@ class PrettyRoadRenderer:
                 points_dict[previous_point_2d] = previous_point
             else:
                 previous_point = points_dict[previous_point_2d]
+                if is_bridge or is_tunnel:
+                    previous_point.co[2] = centered_points_coords[0][2]
+
+            if is_bridge:
+                previous_point_bridge = bridge_mesh.verts.new(centered_points_coords[0])
+
             for i in range(1, len(points_coords)):
 
                 new_point_2d = Point2D(
@@ -134,8 +170,16 @@ class PrettyRoadRenderer:
                     points_dict[new_point_2d] = new_point
                 else:
                     new_point = points_dict[new_point_2d]
+                    if is_bridge or is_tunnel:
+                        new_point.co[2] = centered_points_coords[i][2]
 
                 edge = mesh.edges.new([previous_point, new_point])
+
+                if is_bridge:
+                    new_point_bridge = bridge_mesh.verts.new(centered_points_coords[i])
+                    edge_bridge = bridge_mesh.edges.new(
+                        [previous_point_bridge, new_point_bridge]
+                    )
 
                 edges_config[edge_index] = (
                     roads[self._has_sidewalks][road_index],
@@ -144,6 +188,8 @@ class PrettyRoadRenderer:
                 )
 
                 previous_point = new_point
+                if is_bridge:
+                    previous_point_bridge = new_point_bridge
                 edge_index += 1
 
         mesh_name = self._mesh_name
@@ -216,8 +262,21 @@ class PrettyRoadRenderer:
         O.object.mode_set(mode="OBJECT")
         O.object.select_all(action="DESELECT")
 
-        # Disabling lights
-        # bpy.data.node_groups["Next_Streets_V3"].nodes["Switch.004"].inputs[0].default_value = False
+        bridge_mesh_name = self._bridge_mesh_name
+        bridge_mesh_data = D.meshes.new(bridge_mesh_name)
+        bridge_mesh.to_mesh(bridge_mesh_data)
+        bridge_mesh.free()
+        bridge_mesh_obj = D.objects.new(bridge_mesh_data.name, bridge_mesh_data)
+        bridge_mesh_obj.pass_index = self.config.tagging_index
+        D.collections[parent_collection_name].objects.link(bridge_mesh_obj)
+
+        mb = bridge_mesh_obj.modifiers.new("", "NODES")
+        mb.node_group = D.node_groups[self.bridge_geometry_node_name]
+
+        # Pluging terrain to make bridge supports
+        D.node_groups[self.bridge_geometry_node_name].nodes["Group.001"].inputs[
+            1
+        ].default_value = D.collections[terrain_collection_name].objects[0]
 
     def interpolate_z(self, x, y):
         """
@@ -297,14 +356,29 @@ class PrettyRoadRenderer:
             ) / current_terrain.resolution
 
     def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
+        self, points_coords: list[Point], geo_center: Point, is_bridge, is_tunnel
     ) -> list[Point]:
 
         # Centering the coordinates so that Blender's internal precision is less impactful
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], x[2] - geo_center[2])
-            for x in points_coords
-        ]
+        # Also, for bridges and tunnels we put them at a constant z
+        z_max = max([x[2] for x in points_coords])
+        z_min = min([x[2] for x in points_coords])
+
+        if is_bridge:
+            centered_points_coords = [
+                (x[0] - geo_center[0], x[1] - geo_center[1], z_max - geo_center[2])
+                for x in points_coords
+            ]
+        elif is_tunnel:
+            centered_points_coords = [
+                (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
+                for x in points_coords
+            ]
+        else:
+            centered_points_coords = [
+                (x[0] - geo_center[0], x[1] - geo_center[1], x[2] - geo_center[2])
+                for x in points_coords
+            ]
 
         return centered_points_coords
 
