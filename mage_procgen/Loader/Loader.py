@@ -157,7 +157,9 @@ class Loader:
                 force_2d=True,
             )
             if residential_data is not None:
-                residential_data = p.concat([residential_data, current_residential_data])
+                residential_data = p.concat(
+                    [residential_data, current_residential_data]
+                )
             else:
                 residential_data = current_residential_data
 
@@ -176,10 +178,11 @@ class Loader:
                 force_2d=True,
             )
             if interest_zone_data is not None:
-                interest_zone_data = p.concat([interest_zone_data, current_interest_zone_data])
+                interest_zone_data = p.concat(
+                    [interest_zone_data, current_interest_zone_data]
+                )
             else:
                 interest_zone_data = current_interest_zone_data
-
 
             current_departement_data = ShapeFileParser.load(
                 os.path.join(

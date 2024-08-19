@@ -6,6 +6,7 @@ import bmesh
 from shapely.geometry import mapping
 from tqdm import tqdm
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.Rendering import mockup_collection_name
 import os
 import bpy
 
@@ -25,6 +26,8 @@ import random
 
 class BoxBuildingRenderer(BaseRenderer):
     _mesh_name = "Houses"
+
+    _top_material_name = "Top_Layer_Material"
 
     def __init__(self, terrain_data: list[TerrainData], object_config):
         self.config = object_config
@@ -113,9 +116,32 @@ class BoxBuildingRenderer(BaseRenderer):
             centered_points_coords = self.adapt_coords(points_coords, geo_center)
 
             # Need to remove the last point so that it's not repeated and creates a segment of 0 length
-            face_bot = mesh.faces.new(
-                mesh.verts.new(x) for x in centered_points_coords[:-1]
-            )
+            pts_3d_bot = {
+                Point2D(x[0], x[1]): mesh.verts.new(x)
+                for x in centered_points_coords[:-1]
+            }
+            face_bot = mesh.faces.new(pts_3d_bot.values())
+            top_face_points_coords = [
+                (pt[0], pt[1], pt[2] + building_height) for pt in centered_points_coords
+            ]
+            pts_3d_top = {
+                Point2D(x[0], x[1]): mesh.verts.new(x)
+                for x in top_face_points_coords[:-1]
+            }
+            face_top = mesh.faces.new(pts_3d_top.values())
+
+            # Building the walls
+            previous_point = list(pts_3d_bot.keys())[-1]
+            for point in pts_3d_bot.keys():
+                wall_points = [
+                    pts_3d_bot[previous_point],
+                    pts_3d_bot[point],
+                    pts_3d_top[point],
+                    pts_3d_top[previous_point],
+                ]
+
+                wall_face = mesh.faces.new(wall_points)
+                previous_point = point
 
             # 45° is a slope of 1, we want a max slope of 25°
             max_slope = 25 / 45
@@ -198,7 +224,10 @@ class BoxBuildingRenderer(BaseRenderer):
 
             verts_dict = {}
             for p2d, p3d in points_3d.items():
-                vert = mesh.verts.new((p3d[0], p3d[1], p3d[2]))
+                if p2d not in pts_3d_top:
+                    vert = mesh.verts.new((p3d[0], p3d[1], p3d[2]))
+                else:
+                    vert = pts_3d_top[p2d]
                 verts_dict[p2d] = vert
 
             for line in polygon.segments:
@@ -239,27 +268,6 @@ class BoxBuildingRenderer(BaseRenderer):
                     print("Error trying to add face inside roof " + mesh_data.name)
                     print(str(e))
 
-            # Building the walls
-            previous_point = None
-            for point in centered_points_coords:
-                if previous_point is None:
-                    previous_point = point
-                else:
-
-                    wall_points = [
-                        previous_point,
-                        point,
-                        (point[0], point[1], point[2] + building_height),
-                        (
-                            previous_point[0],
-                            previous_point[1],
-                            previous_point[2] + building_height,
-                        ),
-                    ]
-
-                    wall_face = mesh.faces.new(mesh.verts.new(x) for x in wall_points)
-                    previous_point = point
-
             mesh.to_mesh(mesh_data)
             mesh.free()
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
@@ -270,6 +278,32 @@ class BoxBuildingRenderer(BaseRenderer):
 
             m = mesh_obj.modifiers.new("", "NODES")
             m.node_group = D.node_groups[self.geometry_node_name]
+
+            # Mockup object used to fix PBGen's issue with complex roofs.
+            # Currently PBGen often introduces "holes" in the roof with are seen in the resulting tagging image
+            # Simply trying to add another polygon below the roof doesn't work since pbgen deletes it.
+            # Instead, we create another mesh and pass it the correct tagging index.
+            mesh_top = bmesh.new()
+            face_top_2 = mesh_top.faces.new(
+                mesh_top.verts.new(x) for x in top_face_points_coords[:-1]
+            )
+            mesh_data_top = D.meshes.new(mesh_name + "_Top")
+            mesh_top.to_mesh(mesh_data_top)
+            mesh_top.free()
+            mesh_obj_top = D.objects.new(mesh_data_top.name, mesh_data_top)
+            mesh_obj_top.pass_index = self.config.tagging_index
+            D.collections[mockup_collection_name].objects.link(mesh_obj_top)
+
+            # Dark grey material so that the top layer is not very visible
+            if self._top_material_name not in D.materials:
+                top_material = D.materials.new(self._top_material_name)
+                top_material.diffuse_color[0] = 0.05
+                top_material.diffuse_color[1] = 0.05
+                top_material.diffuse_color[2] = 0.05
+
+            mesh_obj_top.data.materials.append(D.materials[self._top_material_name])
+
+            self._mesh_names.append(mesh_obj_top.name)
 
     def adapt_coords(
         self, points_coords: list[Point], geo_center: Point
