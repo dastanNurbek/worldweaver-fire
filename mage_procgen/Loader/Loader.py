@@ -1,6 +1,7 @@
 import os
 
 import pandas as p
+import geopandas as g
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser, RoadShapeFileParser
 from mage_procgen.Parser.ASCParser import ASCParser
@@ -8,6 +9,12 @@ from mage_procgen.Parser.JP2Parser import JP2Parser
 
 from mage_procgen.Utils.Utils import GeoWindow, GeoData, CRS_fr, CRS_degrees
 import mage_procgen.Utils.DataFiles as df
+from mage_procgen.Utils.DataFrames import (
+    BuildingDataFrame,
+    RoadDataFrame,
+    ZoneInterestDataFrame,
+    WaterDataFrame,
+)
 
 
 class Loader:
@@ -227,6 +234,56 @@ class Loader:
                 CRS_fr,
                 force_2d=True,
             )
+
+        # Treat the data to remove the particularities of files
+        building_data_dict = {
+            BuildingDataFrame.ID: building_data[BuildingDataFrame.File.ID],
+            BuildingDataFrame.nature: building_data[BuildingDataFrame.File.nature],
+            BuildingDataFrame.usage_1: building_data[BuildingDataFrame.File.usage_1],
+            BuildingDataFrame.usage_2: building_data[BuildingDataFrame.File.usage_2],
+            BuildingDataFrame.number_housings: building_data[
+                BuildingDataFrame.File.number_housings
+            ],
+            BuildingDataFrame.number_floors: building_data[
+                BuildingDataFrame.File.number_floors
+            ],
+            BuildingDataFrame.height: building_data[BuildingDataFrame.File.height],
+            BuildingDataFrame.geometry: building_data[BuildingDataFrame.File.geometry],
+        }
+        building_data = g.GeoDataFrame(building_data_dict)
+
+        road_data_dict = {
+            RoadDataFrame.ID: road_data[RoadDataFrame.File.ID],
+            RoadDataFrame.nature: road_data[RoadDataFrame.File.nature],
+            RoadDataFrame.importance: road_data[RoadDataFrame.File.importance],
+            RoadDataFrame.number_lanes: road_data[RoadDataFrame.File.number_lanes],
+            RoadDataFrame.direction: road_data[RoadDataFrame.File.direction],
+            RoadDataFrame.position_rel_to_ground: road_data[
+                RoadDataFrame.File.position_rel_to_ground
+            ],
+            RoadDataFrame.width: road_data[RoadDataFrame.File.width],
+            RoadDataFrame.urban: road_data[RoadDataFrame.File.urban],
+            RoadDataFrame.geometry: road_data[RoadDataFrame.File.geometry],
+        }
+        road_data = g.GeoDataFrame(road_data_dict)
+
+        interest_zone_data_dict = {
+            ZoneInterestDataFrame.ID: interest_zone_data[ZoneInterestDataFrame.File.ID],
+            ZoneInterestDataFrame.detail_nature: interest_zone_data[
+                ZoneInterestDataFrame.File.detail_nature
+            ],
+            ZoneInterestDataFrame.geometry: interest_zone_data[
+                ZoneInterestDataFrame.File.geometry
+            ],
+        }
+        interest_zone_data = g.GeoDataFrame(interest_zone_data_dict)
+
+        water_data_dict = {
+            WaterDataFrame.ID: water_data[WaterDataFrame.File.ID],
+            WaterDataFrame.nature: water_data[WaterDataFrame.File.nature],
+            WaterDataFrame.geometry: water_data[WaterDataFrame.File.geometry],
+        }
+        water_data = g.GeoDataFrame(water_data_dict)
 
         geo_data = GeoData(
             buildings=building_data,

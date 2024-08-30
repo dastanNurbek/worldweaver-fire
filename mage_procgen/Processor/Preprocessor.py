@@ -8,6 +8,12 @@ from shapely.geometry import MultiPolygon, Polygon, mapping
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
 from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Utils.DataFrames import (
+    BuildingDataFrame,
+    RoadDataFrame,
+    ZoneInterestDataFrame,
+    WaterDataFrame,
+)
 
 
 class Preprocessor:
@@ -47,13 +53,11 @@ class Preprocessor:
                     self.geo_data.departements, how="difference", keep_geom_type=True
                 )
 
-        industrial_commercial_tags = [
-            "Zone artisanale",
-            "Zone commerciale",
-            "Zone d'activités",
-        ]
+        industrial_commercial_tags = ZoneInterestDataFrame.industrial_commercial_tags
         industrial_and_commercial_zones = self.geo_data.interest_zones.query(
-            "NAT_DETAIL in @industrial_commercial_tags"
+            "{} in @industrial_commercial_tags".format(
+                ZoneInterestDataFrame.detail_nature
+            )
         )
 
         sidewalks_zone_list = list(
@@ -68,18 +72,22 @@ class Preprocessor:
 
         # TODO For now just pass the lists of geom, tagging will be handled later
 
-        non_car_natures = ["Chemin", "Escalier", "Sentier"]
-        roads_with_cars = new_roads.query("NATURE not in @non_car_natures")
+        non_car_natures = RoadDataFrame.non_car_natures
+        roads_with_cars = new_roads.query(
+            "{} not in @non_car_natures".format(RoadDataFrame.nature)
+        )
 
         road_has_sidewalk = {}
         road_has_guardrails = {}
 
         for road_index in roads_with_cars.index:
             road_geom = roads_with_cars.geometry[road_index]
-            road_importance = int(roads_with_cars["IMPORTANCE"][road_index])
+            road_importance = int(roads_with_cars[RoadDataFrame.importance][road_index])
             road_lane_nbr = (
-                int(roads_with_cars["NB_VOIES"][road_index])
-                if not math.isnan((roads_with_cars["NB_VOIES"][road_index]))
+                int(roads_with_cars[RoadDataFrame.number_lanes][road_index])
+                if not math.isnan(
+                    (roads_with_cars[RoadDataFrame.number_lanes][road_index])
+                )
                 else 1
             )
 
@@ -111,7 +119,14 @@ class Preprocessor:
                 self.config.window_type == window_type_town,
                 self.window,
             )
-            for x in roads_with_cars[["geometry", "LARGEUR", "NB_VOIES", "SENS"]]
+            for x in roads_with_cars[
+                [
+                    RoadDataFrame.geometry,
+                    RoadDataFrame.width,
+                    RoadDataFrame.number_lanes,
+                    RoadDataFrame.direction,
+                ]
+            ]
             .to_numpy()
             .tolist()
         ]
@@ -124,7 +139,7 @@ class Preprocessor:
                 new_row = row.to_dict()
                 # Saving the original line in another field to allow use of generators that work on lines
                 # new_row["line"] = new_row["geometry"]
-                new_row["geometry"] = geometry
+                new_row[RoadDataFrame.geometry] = geometry
 
                 for key, value in new_row.items():
                     if key not in roads_content.keys():
@@ -142,7 +157,10 @@ class Preprocessor:
             self.window.dataframe, how="intersection", keep_geom_type=True
         )
 
-        roads_selected = roads_with_cars.query("ID in @roads_polygonised.ID")
+        roads_polygonised_ids = roads_polygonised[RoadDataFrame.ID]
+        roads_selected = roads_with_cars.query(
+            "{} in @roads_polygonised_ids".format(RoadDataFrame.ID)
+        )
 
         # Removing roads from forests so we don't have trees on the road
         new_forests = new_forests.overlay(
@@ -160,22 +178,39 @@ class Preprocessor:
         )
 
         # Splitting water between "still" and "flowing"
-        # TODO: check this tag list/update it
-        flowing_water_tags = ["Ecoulement naturel", "Ecoulement canalisé", "Canal"]
-        flowing_water = new_water.query("NATURE in @flowing_water_tags")
-        still_water = new_water.query("NATURE not in @flowing_water_tags")
+        flowing_water_tags = WaterDataFrame.flowing_water_tags
+        flowing_water = new_water.query(
+            "{} in @flowing_water_tags".format(WaterDataFrame.nature)
+        )
+        still_water = new_water.query(
+            "{} not in @flowing_water_tags".format(WaterDataFrame.nature)
+        )
 
-        churches_tags = ["Religieux"]
-        churches = new_buildings.query("USAGE1 in @churches_tags")
-        non_churches = new_buildings.query("USAGE1 not in @churches_tags")
-        malls_tags = ["Commercial et services"]
-        malls = non_churches.query("USAGE1 in @malls_tags")
-        non_malls = non_churches.query("USAGE1 not in @malls_tags")
-        factories_tags = ["Industriel"]
-        factories = non_malls.query("USAGE1 in @factories_tags")
-        non_factories = non_malls.query("USAGE1 not in @factories_tags")
-        houses = non_factories.query("NB_LOGTS < 4")
-        default_buildings = non_factories.query("ID not in @houses.ID")
+        churches_tags = BuildingDataFrame.churches_tags
+        churches = new_buildings.query(
+            "{} in @churches_tags".format(BuildingDataFrame.usage_1)
+        )
+        non_churches = new_buildings.query(
+            "{} not in @churches_tags".format(BuildingDataFrame.usage_1)
+        )
+        malls_tags = BuildingDataFrame.malls_tags
+        malls = non_churches.query(
+            "{} in @malls_tags".format(BuildingDataFrame.usage_1)
+        )
+        non_malls = non_churches.query(
+            "{} not in @malls_tags".format(BuildingDataFrame.usage_1)
+        )
+        factories_tags = BuildingDataFrame.factories_tags
+        factories = non_malls.query(
+            "{} in @factories_tags".format(BuildingDataFrame.usage_1)
+        )
+        non_factories = non_malls.query(
+            "{} not in @factories_tags".format(BuildingDataFrame.usage_1)
+        )
+        houses = non_factories.query("{} < 4".format(BuildingDataFrame.number_housings))
+        default_buildings = non_factories.query(
+            "{} not in @houses.ID".format(BuildingDataFrame.ID)
+        )
 
         rendering_data = RenderingData(
             cleaned_forests,

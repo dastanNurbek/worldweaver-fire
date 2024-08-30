@@ -14,6 +14,7 @@ from mage_procgen.Utils.Utils import (
     GeoWindow,
 )
 from mage_procgen.Utils.Rendering import terrain_collection_name
+from mage_procgen.Utils.DataFrames import RoadDataFrame
 from ladybug_geometry.geometry2d.pointvector import Point2D
 
 # TODO: find common paths with BaseRenderer
@@ -29,14 +30,6 @@ class PrettyRoadRenderer:
 
     _Bridge_Asset_File = "Bridges.blend"
     _Bridge_GN_Name = "Bridges"
-
-    _Largeur = "LARGEUR"
-    _NB_Voies = "NB_VOIES"
-    _Sens = "SENS"
-    _Pos_Sol = "POS_SOL"
-    _has_sidewalks = "has_sidewalks"
-    _has_guardrails = "has_guardrails"
-    _Directions = ["Double sens", "Sens direct", "Sens inverse"]
 
     _default_road_thickness = 3
     _default_road_lanes = 1
@@ -138,8 +131,12 @@ class PrettyRoadRenderer:
                 (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in windowed_line
             ]
 
-            is_bridge = int(roads[self._Pos_Sol][road_index]) == 1
-            is_tunnel = int(roads[self._Pos_Sol][road_index]) == -1
+            is_bridge = (
+                int(roads[RoadDataFrame.position_rel_to_ground][road_index]) == 1
+            )
+            is_tunnel = (
+                int(roads[RoadDataFrame.position_rel_to_ground][road_index]) == -1
+            )
 
             # Adapting the coordinates for rendering purposes
             centered_points_coords = self.adapt_coords(
@@ -182,9 +179,9 @@ class PrettyRoadRenderer:
                     )
 
                 edges_config[edge_index] = (
-                    roads[self._has_sidewalks][road_index],
-                    roads[self._has_guardrails][road_index],
-                    roads[self._NB_Voies][road_index],
+                    roads[RoadDataFrame.has_sidewalks][road_index],
+                    roads[RoadDataFrame.has_guardrails][road_index],
+                    roads[RoadDataFrame.number_lanes][road_index],
                 )
 
                 previous_point = new_point

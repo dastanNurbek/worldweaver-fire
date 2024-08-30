@@ -13,6 +13,7 @@ from mage_procgen.Utils.Rendering import (
     buildings_collection_name,
     mockup_collection_name,
 )
+from mage_procgen.Utils.DataFrames import BuildingDataFrame
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
@@ -394,7 +395,11 @@ class RenderManager:
 
         data = [
             (x[0], x[1])
-            for x in buildings[["NB_ETAGES", "geometry"]].to_numpy().tolist()
+            for x in buildings[
+                [BuildingDataFrame.number_floors, BuildingDataFrame.geometry]
+            ]
+            .to_numpy()
+            .tolist()
         ]
         for x in data:
             # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later
@@ -410,7 +415,10 @@ class RenderManager:
         to_return = []
 
         data = [
-            (x[0], x[1]) for x in buildings[["HAUTEUR", "geometry"]].to_numpy().tolist()
+            (x[0], x[1])
+            for x in buildings[[BuildingDataFrame.height, BuildingDataFrame.geometry]]
+            .to_numpy()
+            .tolist()
         ]
         for x in data:
             # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later
