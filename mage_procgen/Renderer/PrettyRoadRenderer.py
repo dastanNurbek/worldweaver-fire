@@ -31,6 +31,7 @@ class PrettyRoadRenderer:
 
     _Bridge_Asset_File = "Bridges.blend"
     _Bridge_GN_Name = "Bridges"
+    _Bridge_Group_Name = "Group.001"
 
     _default_road_thickness = 3
     _default_road_lanes = 1
@@ -92,6 +93,16 @@ class PrettyRoadRenderer:
         )
         for obj in cars_collection.objects:
             obj.pass_index = car_object_config.tagging_index
+
+        # Setting pass index of bridge pillar
+        bridge_pillar = (
+            D.node_groups[self.bridge_geometry_node_name]
+            .nodes[self._Bridge_Group_Name]
+            .inputs[2]
+            .default_value
+        )
+
+        bridge_pillar.pass_index = car_object_config.tagging_index
 
     def render(
         self,
@@ -313,6 +324,12 @@ class PrettyRoadRenderer:
 
         D.objects.remove(D.objects[self._mesh_name], do_unlink=True)
         D.meshes.remove(D.meshes[self._mesh_name], do_unlink=True)
+
+        D.objects.remove(D.objects[self._bridge_mesh_name], do_unlink=True)
+        D.meshes.remove(D.meshes[self._bridge_mesh_name], do_unlink=True)
+
+    def get_meshes_objs(self):
+        return [D.objects[self._mesh_name], D.objects[self._bridge_mesh_name]]
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]

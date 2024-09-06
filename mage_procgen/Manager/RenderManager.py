@@ -337,8 +337,6 @@ class RenderManager:
 
         self.forests_renderer.clear_object()
 
-        # self.road_renderer.clear_object()
-
         self.still_water_renderer.clear_object()
 
     def change_terrain_visibility(self, is_terrain_visible):
@@ -350,10 +348,9 @@ class RenderManager:
 
     def change_road_visibility(self, is_road_visible):
 
-        road_object = self.road_renderer.get_mesh_obj()
-
-        road_object.hide_viewport = not is_road_visible
-        road_object.hide_render = not is_road_visible
+        for road_object in self.road_renderer.get_meshes_objs():
+            road_object.hide_viewport = not is_road_visible
+            road_object.hide_render = not is_road_visible
 
     def __corner_coord(self, ray_direction, max_distance, origin):
 
