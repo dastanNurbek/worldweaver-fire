@@ -1,0 +1,370 @@
+import os
+
+import pandas as p
+import geopandas as g
+from PIL import Image
+import numpy as np
+import math
+
+from mage_procgen.Loader.Loader import Loader
+
+from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
+
+from mage_procgen.Parser.WFSParser import WFSParser
+
+from mage_procgen.Utils.Utils import GeoWindow, GeoData, CRS_fr, CRS_degrees
+from mage_procgen.Utils.Utils import TerrainData
+
+import mage_procgen.Utils.DataFiles as df
+import mage_procgen.Utils.DataStream as ds
+from mage_procgen.Utils.DataFrames import (
+    BuildingDataFrame,
+    RoadDataFrame,
+    ZoneInterestDataFrame,
+    WaterDataFrame,
+    DefaultDataFrame,
+)
+
+from owslib.wms import WebMapService
+from owslib.wfs import WebFeatureService
+
+import requests
+
+class StreamLoader(Loader):
+    def __init__(self, base_folder: str, project_folder: str):
+        self.base_folder = base_folder
+        self.project_folder = project_folder
+
+    def load(self, geo_window: GeoWindow) -> GeoData:
+
+        bbox = geo_window.bounds
+
+        # TODO: check if this one is necessary because the window should already be in lambert93
+        geo_window_lamb93 = geo_window.to_crs(CRS_fr)
+        bbox_lamb93 = geo_window_lamb93.bounds
+
+        geo_window_wgs84 = geo_window.to_crs(CRS_degrees)
+        bbox_wgs84 = geo_window_wgs84.bounds
+
+        bbox_lamb93_rounded = (
+            math.floor(bbox_lamb93[0]) - 0.5,
+            math.floor(bbox_lamb93[1]) - 0.5,
+            math.ceil(bbox_lamb93[2]) + 0.5,
+            math.ceil(bbox_lamb93[3]) + 0.5,
+        )
+
+        # Requesting terrain at .5m because there are weird artifacts when you do it at 1m
+        terrain_resolution = 0.5
+        terrain_max_slab_size = 1000
+        # TODO: check this value
+        no_data = -9999
+        print("Loading data from stream")
+
+        input_folder = os.path.join(self.project_folder, df.input_data_folder)
+
+        if not os.path.isdir(input_folder):
+            os.makedirs(input_folder, exist_ok=True)
+
+        oceans_data = None
+        terrain_data = []
+
+        load_oceans = False
+
+        # Specifically for terrain, we have to make sure it loads a complete rectangle
+        # terrain_window = geo_window = GeoWindow.from_square(
+        #     bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
+        # )
+
+        wms = WebMapService(ds.wms_alti_url, version=ds.wms_alti_version)
+
+        terrain_box_ll = (bbox_lamb93_rounded[0], bbox_lamb93_rounded[1])
+        terrain_box_ur = (bbox_lamb93_rounded[2], bbox_lamb93_rounded[3])
+
+        terrain_index = 0
+
+        for x_ll in np.arange(
+            terrain_box_ll[0], terrain_box_ur[0], terrain_max_slab_size
+        ):
+            for y_ll in np.arange(
+                terrain_box_ll[1], terrain_box_ur[1], terrain_max_slab_size
+            ):
+                current_box_ll = (x_ll, y_ll)
+
+                x_ur = (
+                    x_ll + terrain_max_slab_size
+                    if (terrain_box_ur[0] - x_ll) > terrain_max_slab_size
+                    else terrain_box_ur[0]
+                )
+                y_ur = (
+                    y_ll + terrain_max_slab_size
+                    if (terrain_box_ur[1] - x_ll) > terrain_max_slab_size
+                    else terrain_box_ur[1]
+                )
+
+                current_box_ur = (x_ur, y_ur)
+
+                # Request slab
+                current_box = (
+                    current_box_ll[0],
+                    current_box_ll[1],
+                    current_box_ur[0],
+                    current_box_ur[1],
+                )
+
+                img_size = (
+                    int((current_box_ur[0] - current_box_ll[0]) / terrain_resolution),
+                    int((current_box_ur[1] - current_box_ll[1]) / terrain_resolution),
+                )
+
+                terrain_img = wms.getmap(
+                    layers=[ds.rge_key_name],
+                    styles=["normal"],
+                    srs="EPSG:" + str(CRS_fr),
+                    bbox=current_box,
+                    size=img_size,
+                    format="image/geotiff",
+                )
+                terrain_file_name = "terrain" + str(terrain_index) + ".tif"
+                with open(
+                    os.path.join(input_folder, terrain_file_name), "wb"
+                ) as terrain_file:
+                    bytes_written = terrain_file.write(terrain_img.read())
+
+                terrain_image = Image.open(
+                    os.path.join(input_folder, terrain_file_name)
+                )
+
+                terrain_im_array = np.array(terrain_image)
+                terrain_df = p.DataFrame(terrain_im_array)
+
+                terrain_data.append(
+                    TerrainData(
+                        current_box[0],
+                        current_box[1],
+                        current_box[2],
+                        current_box[3],
+                        terrain_resolution,
+                        terrain_df.shape[1],
+                        terrain_df.shape[0],
+                        no_data,
+                        terrain_df,
+                    )
+                )
+
+                terrain_index += 1
+
+        wfs = WebFeatureService(url=ds.wfs_url, version=ds.wfs_version)
+
+        building_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.buildings_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            BuildingDataFrame.WFS.get_columns(),
+        )
+
+        forest_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.forests_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            DefaultDataFrame.get_columns(),
+        )
+
+        road_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.road_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            RoadDataFrame.WFS.get_columns(),
+        )
+
+        water_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.water_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            WaterDataFrame.WFS.get_columns(),
+        )
+
+        residential_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.residential_zone_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            DefaultDataFrame.get_columns(),
+        )
+
+        interest_zone_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.activity_zone_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            ZoneInterestDataFrame.WFS.get_columns(),
+        )
+
+        departements_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.departement_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            DefaultDataFrame.get_columns(),
+        )
+
+        shore_data = WFSParser.load(
+            wfs,
+            input_folder,
+            ds.shore_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            DefaultDataFrame.get_columns(),
+        )
+
+        if len(shore_data) > 0:
+            load_oceans = True
+
+        if load_oceans:
+            # Ocean file is in degrees so we have to convert the box back to this csr
+            ocean_box = geo_window.dataframe.to_crs(CRS_degrees).geometry[0].bounds
+            oceans_data = ShapeFileParser.load(
+                os.path.join(self.base_folder, df.ocean_file),
+                ocean_box,
+                CRS_fr,
+                force_2d=True,
+            )
+
+        # Treat the data to remove the particularities of files
+        building_data_dict = {
+            BuildingDataFrame.ID: building_data[BuildingDataFrame.WFS.ID],
+            BuildingDataFrame.nature: building_data[BuildingDataFrame.WFS.nature],
+            BuildingDataFrame.usage_1: building_data[BuildingDataFrame.WFS.usage_1],
+            BuildingDataFrame.usage_2: building_data[BuildingDataFrame.WFS.usage_2],
+            BuildingDataFrame.number_housings: building_data[
+                BuildingDataFrame.WFS.number_housings
+            ],
+            BuildingDataFrame.number_floors: building_data[
+                BuildingDataFrame.WFS.number_floors
+            ],
+            BuildingDataFrame.height: building_data[BuildingDataFrame.WFS.height],
+            BuildingDataFrame.geometry: building_data[BuildingDataFrame.WFS.geometry],
+        }
+        building_data = g.GeoDataFrame(building_data_dict)
+
+        road_data_dict = {
+            RoadDataFrame.ID: road_data[RoadDataFrame.WFS.ID],
+            RoadDataFrame.nature: road_data[RoadDataFrame.WFS.nature],
+            RoadDataFrame.importance: road_data[RoadDataFrame.WFS.importance],
+            RoadDataFrame.number_lanes: road_data[RoadDataFrame.WFS.number_lanes],
+            RoadDataFrame.direction: road_data[RoadDataFrame.WFS.direction],
+            RoadDataFrame.position_rel_to_ground: road_data[
+                RoadDataFrame.WFS.position_rel_to_ground
+            ],
+            RoadDataFrame.width: road_data[RoadDataFrame.WFS.width],
+            RoadDataFrame.urban: road_data[RoadDataFrame.WFS.urban],
+            RoadDataFrame.geometry: road_data[RoadDataFrame.WFS.geometry],
+        }
+        road_data = g.GeoDataFrame(road_data_dict)
+
+        interest_zone_data_dict = {
+            ZoneInterestDataFrame.ID: interest_zone_data[ZoneInterestDataFrame.WFS.ID],
+            ZoneInterestDataFrame.detail_nature: interest_zone_data[
+                ZoneInterestDataFrame.WFS.detail_nature
+            ],
+            ZoneInterestDataFrame.geometry: interest_zone_data[
+                ZoneInterestDataFrame.WFS.geometry
+            ],
+        }
+        interest_zone_data = g.GeoDataFrame(interest_zone_data_dict)
+
+        water_data_dict = {
+            WaterDataFrame.ID: water_data[WaterDataFrame.WFS.ID],
+            WaterDataFrame.nature: water_data[WaterDataFrame.WFS.nature],
+            WaterDataFrame.geometry: water_data[WaterDataFrame.WFS.geometry],
+        }
+        water_data = g.GeoDataFrame(water_data_dict)
+
+        geo_data = GeoData(
+            buildings=building_data,
+            forests=forest_data,
+            roads=road_data,
+            water=water_data,
+            ocean=oceans_data,
+            residentials=residential_data,
+            interest_zones=interest_zone_data,
+            departements=departements_data,
+            terrain=terrain_data,
+        )
+
+        return geo_data
+
+    def load_town_shape(self, departement_nbr: int, town_name: str):
+
+        town_request_response = requests.get(
+            ds.get_town_request_url(town_name, str(departement_nbr))
+        )
+
+        input_folder = os.path.join(self.project_folder, df.input_data_folder)
+
+        if not os.path.isdir(input_folder):
+            os.makedirs(input_folder, exist_ok=True)
+
+        with open(os.path.join(input_folder, town_name + ".json"), "wb") as town_file:
+            town_file.write(town_request_response.content)
+
+        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
+            CRS_fr
+        )
+
+        return town
+
+    def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
+
+        bdortho_wms = WebMapService(ds.bdortho_url, version=ds.bdortho_version)
+
+        bdortho_resolution = 0.2
+
+        img_size = (
+            int((mesh_box[2] - mesh_box[0]) / bdortho_resolution),
+            int((mesh_box[3] - mesh_box[1]) / bdortho_resolution),
+        )
+
+        img = bdortho_wms.getmap(
+            layers=[ds.bdortho_key_name],
+            styles=["normal"],
+            srs="EPSG:" + str(CRS_fr),
+            bbox=mesh_box,
+            size=img_size,
+            format="image/geotiff",
+        )
+
+        texture_file_name = (
+            "Texture_"
+            + str(int(mesh_box[0]))
+            + "_"
+            + str(int(mesh_box[1]))
+            + "_"
+            + str(int(mesh_box[2]))
+            + "_"
+            + str(int(mesh_box[3]))
+            + "_"
+            + ".tif"
+        )
+
+        texture_folder = os.path.join(self.project_folder, df.texture_folder)
+
+        if not os.path.isdir(texture_folder):
+            os.makedirs(texture_folder, exist_ok=True)
+
+        texture_full_path = os.path.join(texture_folder, texture_file_name)
+
+        with open(texture_full_path, "wb") as out_file:
+            out_file.write(img.read())
+
+        return texture_full_path

@@ -7,7 +7,7 @@ import math
 
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
-from mage_procgen.Loader import Loader
+from mage_procgen.Loader.Loader import Loader
 
 
 class TerrainRenderer:
@@ -20,13 +20,17 @@ class TerrainRenderer:
     _AssetsFolder = "Assets"
 
     def __init__(
-        self, base_folder: str, render_resolution: float, file_resolution: float
+        self,
+        base_folder: str,
+        render_resolution: float,
+        file_resolution: float,
+        loader: Loader,
     ):
 
         self.base_folder = base_folder
         self.render_resolution = render_resolution
         self.file_resolution = file_resolution
-
+        self.loader = loader
         if render_resolution / file_resolution != render_resolution // file_resolution:
             raise ValueError(
                 "terrain render resolution has to be a multiple of file resolution"
@@ -119,7 +123,7 @@ class TerrainRenderer:
                     current_point_x - current_terrain.x_min
                 ) / self.file_resolution
                 # Y axis is pointing north so the index needs to be inversed
-                current_point_index_y = 999 - (
+                current_point_index_y = (current_terrain.nbrow - 1) - (
                     (current_point_y - current_terrain.y_min) / self.file_resolution
                 )
 
@@ -151,6 +155,10 @@ class TerrainRenderer:
                         int(current_point_index_y)
                     ][int(current_point_index_x)]
 
+                    if current_point_z <= current_terrain.no_data:
+                        # "No Data" usually means out at sea
+                        current_point_z = 0
+
                 current_point_coords = [
                     current_point_x,
                     current_point_y,
@@ -160,24 +168,6 @@ class TerrainRenderer:
                 current_terrain_line.append(current_point_coords)
 
                 if previous_terrain_line is not None and x > 0:
-
-                    new_face_verts = [
-                        center_point(current_terrain_line[x], center),
-                        center_point(current_terrain_line[x - 1], center),
-                        center_point(previous_terrain_line[x - 1], center),
-                        center_point(previous_terrain_line[x], center),
-                    ]
-
-                    new_face_mesh_verts = []
-                    for pt in new_face_verts:
-                        if pt not in meshes_points[previous_point_terrain_index]:
-                            meshes_points[previous_point_terrain_index][pt] = meshes[
-                                previous_point_terrain_index
-                            ].mesh.verts.new(pt)
-                        new_face_mesh_verts.append(
-                            meshes_points[previous_point_terrain_index][pt]
-                        )
-
                     # Checking if the point is inside the window
                     is_point_in_window = True
                     is_point_in_window &= current_point_x >= box[0] - 1
@@ -186,6 +176,25 @@ class TerrainRenderer:
                     is_point_in_window &= current_point_y < box[3] + 1
 
                     if is_point_in_window:
+                        new_face_verts = [
+                            center_point(current_terrain_line[x], center),
+                            center_point(current_terrain_line[x - 1], center),
+                            center_point(previous_terrain_line[x - 1], center),
+                            center_point(previous_terrain_line[x], center),
+                        ]
+
+                        new_face_mesh_verts = []
+                        for pt in new_face_verts:
+                            if pt not in meshes_points[previous_point_terrain_index]:
+                                meshes_points[previous_point_terrain_index][
+                                    pt
+                                ] = meshes[previous_point_terrain_index].mesh.verts.new(
+                                    pt
+                                )
+                            new_face_mesh_verts.append(
+                                meshes_points[previous_point_terrain_index][pt]
+                            )
+
                         # Some checks will be superfluous, but better be safe than sorry
                         TerrainRenderer.__check_boundaries(
                             current_terrain_line[x],
@@ -232,8 +241,7 @@ class TerrainRenderer:
             if use_sat_img:
 
                 try:
-                    texture_file_path = Loader.Loader.load_texture(
-                        self.base_folder,
+                    texture_file_path = self.loader.load_texture(
                         (
                             mesh_info.x_min,
                             mesh_info.y_min,
@@ -281,13 +289,16 @@ class TerrainRenderer:
                         start_coord[1] + cur_coord[1],
                     )
 
-        # Merging all slabs of terrain into one object to enable shrinkwrap of road later
-        bpy.ops.object.select_all(action="DESELECT")
-        C.view_layer.objects.active = D.collections[parent_collection_name].objects[0]
-        for terrain_obj in D.collections[parent_collection_name].objects:
-            terrain_obj.select_set(True)
+        if len(D.collections[parent_collection_name].objects) > 1:
+            # Merging all slabs of terrain into one object to enable shrinkwrap of road later
+            bpy.ops.object.select_all(action="DESELECT")
+            C.view_layer.objects.active = D.collections[parent_collection_name].objects[
+                0
+            ]
+            for terrain_obj in D.collections[parent_collection_name].objects:
+                terrain_obj.select_set(True)
 
-        O.object.join()
+            O.object.join()
 
         self.terrain_object = D.collections[parent_collection_name].objects[0]
 

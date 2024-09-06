@@ -4,6 +4,9 @@ window_type_coords = "COORDS"
 window_type_town = "TOWN"
 window_type_file = "FILE"
 
+data_source_stream = "STREAM"
+data_source_file = "FILE"
+
 
 @dataclass
 class RenderObjectConfig:
@@ -24,6 +27,7 @@ class GeoWindowConfig:
 @dataclass
 class Config:
     base_folder: str
+    data_source: str
     window_type: str
     geo_window: GeoWindowConfig
     town_dpt: int

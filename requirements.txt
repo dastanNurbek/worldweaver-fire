@@ -9,3 +9,5 @@ OpenEXR>=1.3.9
 Pillow>=9.5.0
 scikit-image>=0.21.0
 fiona>=1.9.6
+owslib==0.31.0
+funkybob

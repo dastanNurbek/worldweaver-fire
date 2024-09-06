@@ -4,6 +4,7 @@ import bmesh
 from shapely.geometry import mapping
 from tqdm import tqdm
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.Geometry import interpolate_z
 
 
 class MockupBuildingRenderer(BaseRenderer):
@@ -27,7 +28,7 @@ class MockupBuildingRenderer(BaseRenderer):
             # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(building)["coordinates"]
             points_coords = [
-                (x[0], x[1], self.interpolate_z(x[0], x[1]))
+                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
             ]
 
@@ -35,7 +36,8 @@ class MockupBuildingRenderer(BaseRenderer):
                 # If there are holes
                 for hole in polygon_geometry[1:]:
                     points_coords_hole = [
-                        (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in hole
+                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                        for x in hole
                     ]
 
                     points_coords = self.insert_hole(points_coords, points_coords_hole)

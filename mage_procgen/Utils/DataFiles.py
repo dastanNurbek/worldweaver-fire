@@ -2,7 +2,9 @@ import subprocess
 import os
 import re
 
-rendering = "rendering"
+import funkybob
+
+rendering = "Rendering"
 
 temp_folder = "TMP"
 
@@ -60,6 +62,10 @@ default_config_file = "config.json"
 hash_file_extenstion = ".md5"
 
 assets_folder = "Assets"
+
+projects_folder = "Projects"
+input_data_folder = "Inputs"
+
 
 file_coords_regex = re.compile("_[0-9]{4}_[0-9]{4}_")
 
@@ -396,3 +402,22 @@ def get_installed_7z():
     raise Exception(
         "Neither 7zip nor py7zip-full are installed. Please install of one those."
     )
+
+
+def setup_project_folder(base_folder: str):
+
+    project_name = funkybob.UniqueRandomNameGenerator(members=4)[0]
+
+    base_path = os.path.join(base_folder, projects_folder, project_name)
+    os.makedirs(base_path, exist_ok=True)
+    return base_path
+
+
+def setup_export_folder(project_folder: str):
+
+    export_folder = os.path.join(project_folder, rendering)
+
+    if not os.path.isdir(export_folder):
+        os.makedirs(export_folder, exist_ok=True)
+
+    return export_folder

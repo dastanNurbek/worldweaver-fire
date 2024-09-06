@@ -94,15 +94,6 @@ def configure_render(geo_center_deg):
     D.collections[base_collection_name].children.link(mockup_collection)
 
 
-def setup_export_folder(base_folder, departement):
-    now = datetime.now()
-    now_str = now.strftime("%Y_%m_%d:%H:%M")
-
-    base_path = os.path.join(base_folder, df.rendering, departement, now_str)
-    os.makedirs(base_path, exist_ok=True)
-    return base_path
-
-
 # TODO: move out of here when we know better what it should do
 def export_rendered_img(base_path, base_name):
     sc = C.scene

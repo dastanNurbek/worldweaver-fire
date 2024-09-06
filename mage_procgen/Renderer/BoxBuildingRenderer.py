@@ -14,12 +14,14 @@ from mage_procgen.Utils.Geometry import (
     point_2d_almost_equal,
     point_2d_in_collection,
     point_2d_value_in_dict,
+    interpolate_z,
 )
 from ladybug_geometry.geometry2d.polygon import Polygon2D
 from ladybug_geometry.geometry2d.pointvector import Point2D
 from ladybug_geometry.geometry2d.line import LineSegment2D
 from ladybug_geometry_polyskel.polyskel import skeleton_as_edge_list
 from ladybug_geometry.triangulation import earcut
+
 
 import random
 
@@ -115,7 +117,7 @@ class BoxBuildingRenderer(BaseRenderer):
 
             polygon_geometry = mapping(building[1])["coordinates"]
             points_coords = [
-                (x[0], x[1], self.interpolate_z(x[0], x[1]))
+                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
             ]
 
@@ -123,7 +125,8 @@ class BoxBuildingRenderer(BaseRenderer):
                 # If there are holes
                 for hole in polygon_geometry[1:]:
                     points_coords_hole = [
-                        (x[0], x[1], self.interpolate_z(x[0], x[1])) for x in hole
+                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                        for x in hole
                     ]
 
                     points_coords = self.insert_hole(points_coords, points_coords_hole)

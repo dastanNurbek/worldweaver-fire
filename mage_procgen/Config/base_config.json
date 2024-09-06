@@ -1,6 +1,7 @@
 {
  "py/object": "mage_procgen.Utils.Config.Config",
  "base_folder": "../../maps",
+ "data_source": "STREAM",
  "window_type": "COORDS",
  "geo_window": {
   "py/object": "mage_procgen.Utils.Config.GeoWindowConfig",

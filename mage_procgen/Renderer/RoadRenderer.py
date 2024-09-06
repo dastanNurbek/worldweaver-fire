@@ -5,7 +5,7 @@ import bmesh
 from shapely.geometry import mapping
 from tqdm import tqdm
 from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData, LineStringList
-from mage_procgen.Utils.Geometry import norm2d
+from mage_procgen.Utils.Geometry import norm2d, interpolate_z
 from mage_procgen.Utils.Rendering import terrain_collection_name
 from random import random
 
@@ -81,7 +81,7 @@ class RoadRenderer:
             # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(polygon)["coordinates"]
             points_coords = [
-                (x[0], x[1], self.interpolate_z(x[0], x[1]))
+                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
             ]
 
@@ -164,7 +164,7 @@ class RoadRenderer:
                         )
 
                         points_coords = [
-                            (x[0], x[1], self.interpolate_z(x[0], x[1]))
+                            (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                             for x in [car_point, car_point_2]
                         ]
 
@@ -201,83 +201,6 @@ class RoadRenderer:
 
         m = car_mesh_obj.modifiers.new("", "NODES")
         m.node_group = D.node_groups[self.car_geometry_node_name]
-
-    def interpolate_z(self, x, y):
-        """
-        Finds the z coordinate corresponding to the (x,y) point in the input using bilinear interpolation
-        :param x: the x coordinate of the point
-        :param y: the y coordinate of the point
-        :return: the corresponding z coordinate of the point
-        """
-
-        current_terrain = None
-
-        for terrain in self._terrain_data:
-            is_point_in_terrain = True
-            is_point_in_terrain &= x >= terrain.x_min
-            is_point_in_terrain &= x < terrain.x_max
-            is_point_in_terrain &= y >= terrain.y_min
-            is_point_in_terrain &= y < terrain.y_max
-
-            if is_point_in_terrain:
-                current_terrain = terrain
-                break
-
-        if current_terrain is None:
-            # Should never happen
-            return 0
-            # raise ValueError(
-            #    "Point is outside of terrain: x=" + str(x) + ", y=" + str(y)
-            # )
-
-        point_offset_x = x - current_terrain.x_min
-        point_offset_y = y - current_terrain.y_min
-
-        # Index of the point in the grid to the lower left of the current point
-        ll_index_x = int(point_offset_x / current_terrain.resolution)
-        ll_index_y = 999 - int(point_offset_y / current_terrain.resolution)
-
-        in_cell_offset_x = point_offset_x % current_terrain.resolution
-        in_cell_offset_y = point_offset_y % current_terrain.resolution
-
-        if ll_index_x == 999:
-            # If x index is at max, we cannt use the point to its right for interpolation
-            if ll_index_y == 999:
-                # If y index is at max, we cannt use the point above for interpolation
-                z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-
-                return z_ll
-            else:
-                z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-                z_ul = current_terrain.data.values[ll_index_y + 1][ll_index_x]
-
-                return (
-                    in_cell_offset_y * z_ul + (1 - in_cell_offset_y) * z_ll
-                ) / current_terrain.resolution
-        elif ll_index_y == 999:
-            # If y index is at max, we cannt use the point above for interpolation
-            z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-            z_lr = current_terrain.data.values[ll_index_y][ll_index_x + 1]
-
-            return (
-                in_cell_offset_x * z_lr + (1 - in_cell_offset_x) * z_ll
-            ) / current_terrain.resolution
-        else:
-            z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-            z_ul = current_terrain.data.values[ll_index_y + 1][ll_index_x]
-            z_ur = current_terrain.data.values[ll_index_y + 1][ll_index_x + 1]
-            z_lr = current_terrain.data.values[ll_index_y][ll_index_x + 1]
-
-            z_l = (
-                in_cell_offset_x * z_lr + (1 - in_cell_offset_x) * z_ll
-            ) / current_terrain.resolution
-            z_u = (
-                in_cell_offset_x * z_ur + (1 - in_cell_offset_x) * z_ul
-            ) / current_terrain.resolution
-
-            return (
-                in_cell_offset_y * z_u + (1 - in_cell_offset_y) * z_l
-            ) / current_terrain.resolution
 
     def adapt_coords(
         self, points_coords: list[Point], geo_center: Point

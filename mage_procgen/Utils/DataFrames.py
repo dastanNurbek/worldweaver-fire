@@ -30,7 +30,22 @@ class BuildingDataFrame:
         usage_1 = "usage_1"
         usage_2 = "usage_2"
         number_housings = "nombre_de_logements"
+        height = "hauteur"
+        number_floors = "nombre_d_etages"
         geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                BuildingDataFrame.WFS.ID,
+                BuildingDataFrame.WFS.nature,
+                BuildingDataFrame.WFS.usage_1,
+                BuildingDataFrame.WFS.usage_2,
+                BuildingDataFrame.WFS.number_housings,
+                BuildingDataFrame.WFS.height,
+                BuildingDataFrame.WFS.number_floors,
+                BuildingDataFrame.WFS.geometry,
+            ]
 
 
 class RoadDataFrame:
@@ -74,6 +89,20 @@ class RoadDataFrame:
         urban = "urbain"
         geometry = "geometry"
 
+        @staticmethod
+        def get_columns():
+            return [
+                RoadDataFrame.WFS.ID,
+                RoadDataFrame.WFS.nature,
+                RoadDataFrame.WFS.importance,
+                RoadDataFrame.WFS.number_lanes,
+                RoadDataFrame.WFS.direction,
+                RoadDataFrame.WFS.position_rel_to_ground,
+                RoadDataFrame.WFS.width,
+                RoadDataFrame.WFS.urban,
+                RoadDataFrame.WFS.geometry,
+            ]
+
 
 class ZoneInterestDataFrame:
 
@@ -97,6 +126,14 @@ class ZoneInterestDataFrame:
         detail_nature = "nature_detaillee"
         geometry = "geometry"
 
+        @staticmethod
+        def get_columns():
+            return [
+                ZoneInterestDataFrame.WFS.ID,
+                ZoneInterestDataFrame.WFS.detail_nature,
+                ZoneInterestDataFrame.WFS.geometry,
+            ]
+
 
 class WaterDataFrame:
 
@@ -115,3 +152,23 @@ class WaterDataFrame:
         ID = "cleabs"
         nature = "nature"
         geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                WaterDataFrame.WFS.ID,
+                WaterDataFrame.WFS.nature,
+                WaterDataFrame.WFS.geometry,
+            ]
+
+
+class DefaultDataFrame:
+    ID = "ID"
+    geometry = "geometry"
+
+    @staticmethod
+    def get_columns():
+        return [
+            DefaultDataFrame.ID,
+            DefaultDataFrame.geometry,
+        ]

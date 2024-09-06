@@ -15,6 +15,8 @@ from mage_procgen.Utils.Rendering import (
 )
 from mage_procgen.Utils.DataFrames import BuildingDataFrame
 
+from mage_procgen.Loader.Loader import Loader
+
 from mage_procgen.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
@@ -36,6 +38,7 @@ class RenderManager:
         geowindow: GeoWindow,
         crs: int,
         config: Config,
+        loader: Loader,
     ):
         self.terrain_data = terrain_data
         self.rendering_data = rendering_data
@@ -45,7 +48,10 @@ class RenderManager:
         self.current_zone = None
         configure_render(self.window.center_deg)
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
-            config.base_folder, self.config.terrain_resolution, 1
+            config.base_folder,
+            self.config.terrain_resolution,
+            terrain_data[0].resolution,
+            loader,
         )
         self.building_renderer = BuildingRenderer.BuildingRenderer(
             self.terrain_data, self.config.building_render_config

@@ -9,6 +9,9 @@ from mage_procgen.Utils.Config import Config, GeoWindowConfig
 from mage_procgen.Utils.DataFiles import config_folder, default_config_file
 
 
+# TODO: change this when config is stable
+
+
 def generate_config(new_file_name: str, **kwargs):
     """
     Generate a configuration file from another configuration and saves it as 'new_file_name'
@@ -97,6 +100,9 @@ def generate_config(new_file_name: str, **kwargs):
         car_render_config_geometry_node_name (str): Name of the geometry node setup for cars
         car_render_config_tagging_index (int): Index using which cars will be tagged in the semantic map
     """
+
+    raise NotImplementedError("This function is not implemented yet")
+
     _location = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     default_config_filepath = os.path.realpath(
         os.path.join(_location, "..", config_folder, default_config_file)

@@ -7,7 +7,7 @@ from mage_procgen.Utils.Geometry import polygonise
 from shapely.geometry import MultiPolygon, Polygon, mapping
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Utils.Utils import GeoData
 from mage_procgen.Utils.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
@@ -22,7 +22,7 @@ class Preprocessor:
     _building_inter_threshold = 1
 
     def __init__(
-        self, geo_data: g.GeoDataFrame, geowindow: GeoWindow, config: Config, crs: int
+        self, geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
     ):
         self.geo_data = geo_data
         self.window = geowindow
@@ -49,7 +49,7 @@ class Preprocessor:
                 self.window.dataframe, how="intersection", keep_geom_type=True
             )
             if not new_oceans.empty:
-                new_oceans = new_oceans.overlay(
+                new_oceans = self.window.dataframe.overlay(
                     self.geo_data.departements, how="difference", keep_geom_type=True
                 )
 
@@ -60,9 +60,7 @@ class Preprocessor:
             )
         )
 
-        sidewalks_zone_list = list(
-            self.geo_data.residentials.geometry
-        )  # (industrial_and_commercial_zones, how="union", keep_geom_type=True)
+        sidewalks_zone_list = list(self.geo_data.residentials.geometry)
         sidewalks_zone_list.extend(list(industrial_and_commercial_zones.geometry))
         sidewalks_zone = g.GeoSeries(sidewalks_zone_list)
 

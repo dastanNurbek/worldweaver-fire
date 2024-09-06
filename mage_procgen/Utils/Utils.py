@@ -77,6 +77,18 @@ class GeoWindow:
         # Order is Xmin, Ymin, Xmax, Ymax
         self.bounds = self.dataframe.geometry[0].bounds
 
+        self.crs = to_crs
+
+    def to_crs(self, to_crs: int):
+        return GeoWindow.from_square(
+            self.bounds[0],
+            self.bounds[2],
+            self.bounds[1],
+            self.bounds[3],
+            self.crs,
+            to_crs,
+        )
+
 
 @dataclass
 class RenderingData:

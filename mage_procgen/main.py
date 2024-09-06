@@ -14,8 +14,11 @@ from mage_procgen.Utils.DataFiles import (
     base_config_file,
     default_config_file,
     check_shapefiles_presence,
+    setup_project_folder,
+    setup_export_folder,
 )
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Loader.FileLoader import FileLoader
+from mage_procgen.Loader.StreamLoader import StreamLoader
 from mage_procgen.Loader.ConfigLoader import ConfigLoader
 from mage_procgen.Processor.Preprocessor import Preprocessor
 from mage_procgen.Processor.FloodProcessor import FloodProcessor
@@ -23,7 +26,6 @@ from mage_procgen.Manager.RenderManager import RenderManager
 from mage_procgen.Processor.BasicFloodProcessor import BasicFloodProcessor
 from mage_procgen.Processor.TaggingRasterProcessor import TaggingRasterProcessor
 from mage_procgen.Utils.Rendering import (
-    setup_export_folder,
     export_rendered_img,
     setup_img_persp,
     setup_img_ortho,
@@ -70,13 +72,24 @@ def main(filepath):
 
     check_shapefiles_presence(config.base_folder)
 
+    project_path = setup_project_folder(config.base_folder)
+
+    loader = None
+    match config.data_source:
+        case "STREAM":
+            loader = StreamLoader(config.base_folder, project_path)
+        case "FILE":
+            loader = FileLoader(config.base_folder, project_path)
+        case _:
+            raise ValueError(
+                "Invalid config: invalid data source type: ", config.data_source
+            )
+
     geo_window = None
 
     match config.window_type:
         case "TOWN":
-            town = Loader.load_town_shape(
-                config.base_folder, config.town_dpt, config.town_name
-            )
+            town = loader.load_town_shape(config.town_dpt, config.town_name)
 
             geo_window = GeoWindow(town.geometry[0], CRS_fr, CRS_fr)
         case "FILE":
@@ -105,9 +118,22 @@ def main(filepath):
                 "Invalid config: invalid window type: ", config.window_type
             )
 
-    geo_data = Loader.load(config.base_folder, geo_window)
+    geo_data = loader.load(geo_window)
 
     print("Files loaded")
+    window_x = (geo_window.bounds[2] - geo_window.bounds[0]) / 1000
+    window_y = (geo_window.bounds[3] - geo_window.bounds[1]) / 1000
+    print("Project name:", os.path.basename(project_path))
+    print(
+        "Box size:",
+        "{:.3f}".format(window_x),
+        "*",
+        "{:.3f}".format(window_y),
+        "=",
+        "{:.3f}".format(window_x * window_y),
+        "km²",
+    )
+    print(str(len(geo_data.buildings)), "buildings")
 
     print("Starting preprocessing")
     processor = Preprocessor(geo_data, geo_window, config, CRS_fr)
@@ -115,7 +141,7 @@ def main(filepath):
     print("Preprocessing done")
 
     render_manager = RenderManager(
-        geo_data.terrain, rendering_data, geo_window, CRS_fr, config
+        geo_data.terrain, rendering_data, geo_window, CRS_fr, config, loader
     )
     render_manager.draw_flood_interactors()
 
@@ -164,17 +190,16 @@ def main(filepath):
         render_manager.change_road_visibility(True)
 
         if not config.export_img:
-            first_dpt_code = geo_data.departements["INSEE_DEP"][0]
 
-            base_export_path = setup_export_folder(config.base_folder, first_dpt_code)
+            export_folder = setup_export_folder(project_path)
 
             config_filename = os.path.basename(config_filepath)
             shutil.copyfile(
                 config_filepath,
-                os.path.join(base_export_path, config_filename),
+                os.path.join(project_path, config_filename),
             )
 
-            setup_compositing_render(base_export_path, config)
+            setup_compositing_render(export_folder, config)
             now = datetime.now()
             now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
             set_compositing_render_image_name(now_str + "_tagging")
@@ -194,21 +219,19 @@ def main(filepath):
                 )
 
             render_manager.beautify_zone(False)
-            export_rendered_img(base_export_path, now_str)
+            export_rendered_img(export_folder, now_str)
 
         if config.export_img:
 
-            first_dpt_code = geo_data.departements["INSEE_DEP"][0]
-
-            base_export_path = setup_export_folder(config.base_folder, first_dpt_code)
+            export_folder = setup_export_folder(project_path)
 
             config_filename = os.path.basename(config_filepath)
             shutil.copyfile(
                 config_filepath,
-                os.path.join(base_export_path, config_filename),
+                os.path.join(project_path, config_filename),
             )
 
-            setup_compositing_render(base_export_path, config)
+            setup_compositing_render(export_folder, config)
 
             img_size = config.out_img_resolution * config.out_img_pixel_size
 
@@ -243,7 +266,7 @@ def main(filepath):
 
                         set_compositing_render_image_name(now_str + "_tagging")
 
-                        export_rendered_img(base_export_path, now_str)
+                        export_rendered_img(export_folder, now_str)
 
                         # TaggingRasterProcessor.compute(
                         #     base_export_path,
