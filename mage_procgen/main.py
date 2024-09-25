@@ -3,12 +3,9 @@ import shutil
 
 import os
 from numpy import arange
-import fiona
 
 from datetime import datetime
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
-from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.DataFiles import (
     config_folder,
     base_config_file,
@@ -17,23 +14,20 @@ from mage_procgen.Utils.DataFiles import (
     setup_project_folder,
     setup_export_folder,
 )
-from mage_procgen.Loader.FileLoader import FileLoader
-from mage_procgen.Loader.StreamLoader import StreamLoader
+
 from mage_procgen.Loader.ConfigLoader import ConfigLoader
-from mage_procgen.Processor.Preprocessor import Preprocessor
 from mage_procgen.Processor.FloodProcessor import FloodProcessor
 from mage_procgen.Manager.RenderManager import RenderManager
-from mage_procgen.Processor.BasicFloodProcessor import BasicFloodProcessor
-from mage_procgen.Processor.TaggingRasterProcessor import TaggingRasterProcessor
 from mage_procgen.Utils.Rendering import (
     export_rendered_img,
     setup_img_persp,
-    setup_img_ortho,
     setup_img_ortho_res,
     setup_compositing_render,
     set_compositing_render_image_name,
     check_is_sun_activated,
 )
+from mage_procgen.Drivers.IGN.IGNDriver import IGNDriver
+from mage_procgen.Drivers.OSM.OSMDriver import OSMDriver
 
 
 def main(filepath):
@@ -74,74 +68,17 @@ def main(filepath):
 
     project_path = setup_project_folder(config.base_folder)
 
-    loader = None
-    match config.data_source:
-        case "STREAM":
-            loader = StreamLoader(config.base_folder, project_path)
-        case "FILE":
-            loader = FileLoader(config.base_folder, project_path)
-        case _:
-            raise ValueError(
-                "Invalid config: invalid data source type: ", config.data_source
-            )
-
-    geo_window = None
-
-    match config.window_type:
-        case "TOWN":
-            town = loader.load_town_shape(config.town_dpt, config.town_name)
-
-            geo_window = GeoWindow(town.geometry[0], CRS_fr, CRS_fr)
-        case "FILE":
-            file_window = fiona.open(config.window_shapefile)
-            window_crs = int(file_window.crs.to_string().split(":")[1])
-            file_bounds = file_window.bounds
-            geo_window = GeoWindow.from_square(
-                file_bounds[0],
-                file_bounds[2],
-                file_bounds[1],
-                file_bounds[3],
-                window_crs,
-                CRS_fr,
-            )
-        case "COORDS":
-            geo_window: GeoWindow = GeoWindow.from_square(
-                config.geo_window.x_min,
-                config.geo_window.x_max,
-                config.geo_window.y_min,
-                config.geo_window.y_max,
-                config.geo_window.crs_from,
-                CRS_fr,
-            )
-        case _:
-            raise ValueError(
-                "Invalid config: invalid window type: ", config.window_type
-            )
-
-    geo_data = loader.load(geo_window)
-
-    print("Files loaded")
-    window_x = (geo_window.bounds[2] - geo_window.bounds[0]) / 1000
-    window_y = (geo_window.bounds[3] - geo_window.bounds[1]) / 1000
-    print("Project name:", os.path.basename(project_path))
-    print(
-        "Box size:",
-        "{:.3f}".format(window_x),
-        "*",
-        "{:.3f}".format(window_y),
-        "=",
-        "{:.3f}".format(window_x * window_y),
-        "km²",
-    )
-    print(str(len(geo_data.buildings)), "buildings")
-
-    print("Starting preprocessing")
-    processor = Preprocessor(geo_data, geo_window, config, CRS_fr)
-    rendering_data = processor.process()
-    print("Preprocessing done")
+    codec = OSMDriver(config, project_path)
+    # codec = IGNDriver(config, project_path)
+    rendering_data = codec.process()
 
     render_manager = RenderManager(
-        geo_data.terrain, rendering_data, geo_window, CRS_fr, config, loader
+        codec.terrain_data,
+        rendering_data,
+        codec.geo_window,
+        codec.internal_crs,
+        config,
+        codec.loader,
     )
     render_manager.draw_flood_interactors()
 
@@ -157,19 +94,19 @@ def main(filepath):
         print("Computing height map")
         FloodProcessor.generate_height_map(
             config.base_folder,
-            geo_window,
+            codec.geo_window,
             config.flood_cell_size,
         )
 
         render_manager.change_terrain_visibility(False)
 
         # Second render: getting a semantic map without terrain
-        # We have to hide terrain because it's very irregular is rivers, and thus terrain often clips through river surface,
+        # We have to hide terrain because it's very irregular in rivers, and thus terrain often clips through river surface,
         # Making flood init worse
         print("Computing sources")
         FloodProcessor.generate_semantic_map(
             config.base_folder,
-            geo_window,
+            codec.geo_window,
             config.flood_cell_size,
         )
 
@@ -178,7 +115,7 @@ def main(filepath):
         flood_threshold = 1000
         flood_data = FloodProcessor.flood(
             config.base_folder,
-            geo_window,
+            codec.geo_window,
             config.flood_height,
             flood_threshold,
             config.flood_cell_size,
@@ -267,15 +204,6 @@ def main(filepath):
                         set_compositing_render_image_name(now_str + "_tagging")
 
                         export_rendered_img(export_folder, now_str)
-
-                        # TaggingRasterProcessor.compute(
-                        #     base_export_path,
-                        #     now_str,
-                        #     config.out_img_resolution,
-                        #     config.tag_result_order,
-                        #     zone_window,
-                        #     geo_window.center,
-                        # )
 
                         # Clean
                         render_manager.clean_zone()

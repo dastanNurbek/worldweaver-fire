@@ -1,0 +1,78 @@
+class OSM_CH:
+    @staticmethod
+    def get_terrain_request_url(x: int, y: int):
+        return (
+            "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_"
+            + str(x // 1000)
+            + "-"
+            + str(y // 1000)
+            + "/swissalti3d_2019_"
+            + str(x // 1000)
+            + "-"
+            + str(y // 1000)
+            + "_0.5_2056_5728.tif"
+        )
+
+    @staticmethod
+    def get_town_request_url(town_name: str):
+        return (
+            'area["ISO3166-1"=CH];nwr["name"="'
+            + town_name
+            + '"][boundary=administrative][type=boundary][admin_level="8"](area);out;(way(r); >;);out skel;'
+        )
+
+    # General
+    tags = "tags"
+    amenity = "amenity"
+
+    # Geometry types
+    point = "Point"
+    multi_polygon = "MultiPolygon"
+    polygon = "Polygon"
+    multi_line_string = "MultiLineString"
+    line_string = "LineString"
+
+    building_tag = "building"
+
+    highway_tag = "highway"
+
+    # Land
+    landuse = "landuse"
+    natural = "natural"
+
+    water = "water"
+
+    usage_forests_tags = "forest"
+    usage_residential_tags = "residential"
+    usage_industrial_tags = "industrial"
+
+    # Roads
+    lanes = "lanes"
+    max_speed = "maxspeed"
+    sidewalk = "sidewalk"
+
+    has_sidewalk_list = ["both", "separate", "left", "right"]
+
+    bridge = "bridge"
+    tunnel = "tunnel"
+
+    # Buildings
+    churches_types = [
+        "religious ",
+        "cathedral",
+        "chapel",
+        "church",
+        "kingdom_hall",
+        "monastery",
+        "mosque",
+        "presbytery",
+        "shrine",
+        "synagogue",
+        "temple",
+    ]
+    malls_types = ["commercial", "office", "retail", "supermarket"]
+    factories_types = ["industrial", "warehouse"]
+    houses_types = ["house", "semidetached_house", "trullo"]
+
+    height = "height"
+    levels = "building:levels"

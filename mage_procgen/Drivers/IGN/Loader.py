@@ -1,4 +1,5 @@
-from mage_procgen.Utils.Utils import GeoWindow, GeoData
+from mage_procgen.Utils.Utils import GeoWindow
+from mage_procgen.Drivers.IGN.Utils import GeoData
 
 
 class Loader:

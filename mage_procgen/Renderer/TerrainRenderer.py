@@ -7,7 +7,7 @@ import math
 
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Drivers.IGN.Loader import Loader
 
 
 class TerrainRenderer:
@@ -186,10 +186,10 @@ class TerrainRenderer:
                         new_face_mesh_verts = []
                         for pt in new_face_verts:
                             if pt not in meshes_points[previous_point_terrain_index]:
-                                meshes_points[previous_point_terrain_index][
-                                    pt
-                                ] = meshes[previous_point_terrain_index].mesh.verts.new(
-                                    pt
+                                meshes_points[previous_point_terrain_index][pt] = (
+                                    meshes[previous_point_terrain_index].mesh.verts.new(
+                                        pt
+                                    )
                                 )
                             new_face_mesh_verts.append(
                                 meshes_points[previous_point_terrain_index][pt]

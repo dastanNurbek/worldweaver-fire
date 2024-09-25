@@ -5,8 +5,6 @@ class BuildingDataFrame:
     usage_1 = "Usage_1"
     usage_2 = "Usage_2"
     number_housings = "Nb_Housing"
-    height = "height"
-    number_floors = "Nb_floors"
     geometry = "geometry"
 
     churches_tags = ["Religieux"]
@@ -57,15 +55,10 @@ class RoadDataFrame:
     nature = "Nature"
     importance = "Importance"
     number_lanes = "Nb_lanes"
-    direction = "Direction"
     position_rel_to_ground = "Position_rel_to_ground"
-    width = "Width"
+    direction = "Direction"
     urban = "Urban"
     geometry = "geometry"
-
-    # Added columns
-    has_sidewalks = "has_sidewalks"
-    has_guardrails = "has_guardrails"
 
     class File:
         ID = "ID"

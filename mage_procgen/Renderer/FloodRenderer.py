@@ -96,9 +96,9 @@ class FloodRenderer:
                         )
 
                         if current_top_point_coords not in meshes_points_top:
-                            meshes_points_top[
-                                current_top_point_coords
-                            ] = mesh.verts.new(current_top_point_coords)
+                            meshes_points_top[current_top_point_coords] = (
+                                mesh.verts.new(current_top_point_coords)
+                            )
                         top_face_coords.append(
                             meshes_points_top[current_top_point_coords]
                         )
@@ -113,9 +113,9 @@ class FloodRenderer:
                         )
 
                         if current_bottom_point_coords not in meshes_points_bottom:
-                            meshes_points_bottom[
-                                current_bottom_point_coords
-                            ] = mesh.verts.new(current_bottom_point_coords)
+                            meshes_points_bottom[current_bottom_point_coords] = (
+                                mesh.verts.new(current_bottom_point_coords)
+                            )
                         bottom_face_coords.append(
                             meshes_points_bottom[current_bottom_point_coords]
                         )

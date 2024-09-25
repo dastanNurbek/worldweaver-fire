@@ -4,16 +4,16 @@ import geopandas as g
 import pandas as p
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow, CRS_fr
 from mage_procgen.Utils.Geometry import polygonise
-from shapely.geometry import MultiPolygon, Polygon, mapping
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
-from mage_procgen.Utils.Utils import GeoData
-from mage_procgen.Utils.DataFrames import (
+from mage_procgen.Drivers.IGN.Utils import GeoData
+from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
 )
+from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
 
 
 class Preprocessor:
@@ -21,52 +21,47 @@ class Preprocessor:
     _minimal_size = 20
     _building_inter_threshold = 1
 
-    def __init__(
-        self, geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
-    ):
-        self.geo_data = geo_data
-        self.window = geowindow
-        self.crs = crs
-        self.config = config
-
-    def process(self) -> RenderingData:
+    @staticmethod
+    def process(
+        geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
+    ) -> RenderingData:
 
         print("Processing")
-        new_buildings = self.geo_data.buildings.overlay(
-            self.window.dataframe, how="intersection", keep_geom_type=True
+        new_buildings = geo_data.buildings.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
         )
-        new_forests = self.geo_data.forests.overlay(
-            self.window.dataframe, how="intersection", keep_geom_type=True
+        new_forests = geo_data.forests.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
         )
-        new_water = self.geo_data.water.overlay(
-            self.window.dataframe, how="intersection", keep_geom_type=True
+        new_water = geo_data.water.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
         )
 
         new_oceans = None
 
-        if self.geo_data.ocean is not None:
-            new_oceans = self.geo_data.ocean.overlay(
-                self.window.dataframe, how="intersection", keep_geom_type=True
+        if geo_data.ocean is not None:
+            new_oceans = geo_data.ocean.overlay(
+                geowindow.dataframe, how="intersection", keep_geom_type=True
             )
             if not new_oceans.empty:
-                new_oceans = self.window.dataframe.overlay(
-                    self.geo_data.departements, how="difference", keep_geom_type=True
+                new_oceans = geowindow.dataframe.overlay(
+                    geo_data.departements, how="difference", keep_geom_type=True
                 )
 
         industrial_commercial_tags = ZoneInterestDataFrame.industrial_commercial_tags
-        industrial_and_commercial_zones = self.geo_data.interest_zones.query(
+        industrial_and_commercial_zones = geo_data.interest_zones.query(
             "{} in @industrial_commercial_tags".format(
                 ZoneInterestDataFrame.detail_nature
             )
         )
 
-        sidewalks_zone_list = list(self.geo_data.residentials.geometry)
+        sidewalks_zone_list = list(geo_data.residentials.geometry)
         sidewalks_zone_list.extend(list(industrial_and_commercial_zones.geometry))
         sidewalks_zone = g.GeoSeries(sidewalks_zone_list)
 
         # Windowing the roads before polygonising them leads to errors
         # Related thread: https://github.com/geopandas/geopandas/issues/1724
-        new_roads = self.geo_data.roads
+        new_roads = geo_data.roads
 
         # TODO For now just pass the lists of geom, tagging will be handled later
 
@@ -114,13 +109,13 @@ class Preprocessor:
                 x[1],
                 x[2],
                 x[3],
-                self.config.window_type == window_type_town,
-                self.window,
+                config.window_type == window_type_town,
+                geowindow,
             )
             for x in roads_with_cars[
                 [
                     RoadDataFrame.geometry,
-                    RoadDataFrame.width,
+                    RenderingRoadDataFrame.width,
                     RoadDataFrame.number_lanes,
                     RoadDataFrame.direction,
                 ]
@@ -152,7 +147,7 @@ class Preprocessor:
 
         # Now that roads are polygons, we can apply the window on them and remove them from the background
         roads_polygonised = roads_polygonised.overlay(
-            self.window.dataframe, how="intersection", keep_geom_type=True
+            geowindow.dataframe, how="intersection", keep_geom_type=True
         )
 
         roads_polygonised_ids = roads_polygonised[RoadDataFrame.ID]
@@ -211,17 +206,17 @@ class Preprocessor:
         )
 
         rendering_data = RenderingData(
-            cleaned_forests,
-            churches,
-            malls,
-            factories,
-            houses,
-            default_buildings,
-            roads_selected,
-            roads_lanes,
-            still_water,
-            flowing_water,
-            new_oceans,
+            forests=cleaned_forests,
+            churches=churches,
+            malls=malls,
+            factories=factories,
+            houses=houses,
+            default_buildings=default_buildings,
+            roads=roads_selected,
+            lanes=roads_lanes,
+            still_water=still_water,
+            flowing_water=flowing_water,
+            ocean=new_oceans,
         )
 
         return rendering_data

@@ -11,6 +11,7 @@ LineStringList = list[LineString]
 
 CRS_degrees = 4326
 CRS_fr = 2154
+CRS_ch = 2056
 
 
 class GeoWindow:
@@ -127,16 +128,3 @@ class TerrainData:
 
 
 TerrainDataList = list[TerrainData]
-
-
-@dataclass
-class GeoData:
-    buildings: g.GeoDataFrame
-    forests: g.GeoDataFrame
-    roads: g.GeoDataFrame
-    water: g.GeoDataFrame
-    ocean: g.GeoDataFrame
-    residentials: g.GeoDataFrame
-    interest_zones: g.GeoDataFrame
-    departements: g.GeoDataFrame
-    terrain: TerrainDataList

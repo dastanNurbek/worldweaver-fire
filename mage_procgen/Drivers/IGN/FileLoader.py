@@ -7,15 +7,20 @@ from mage_procgen.Parser.ShapeFileParser import ShapeFileParser, RoadShapeFilePa
 from mage_procgen.Parser.ASCParser import ASCParser
 from mage_procgen.Parser.JP2Parser import JP2Parser
 
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Drivers.IGN.Loader import Loader
 
-from mage_procgen.Utils.Utils import GeoWindow, GeoData, CRS_fr, CRS_degrees
+from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
+from mage_procgen.Drivers.IGN.Utils import GeoData
 import mage_procgen.Utils.DataFiles as df
-from mage_procgen.Utils.DataFrames import (
+from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
+)
+from mage_procgen.Utils.RenderingDataFrames import (
+    RenderingRoadDataFrame,
+    RenderingBuildingDataFrame,
 )
 
 
@@ -246,10 +251,12 @@ class FileLoader(Loader):
             BuildingDataFrame.number_housings: building_data[
                 BuildingDataFrame.File.number_housings
             ],
-            BuildingDataFrame.number_floors: building_data[
+            RenderingBuildingDataFrame.number_floors: building_data[
                 BuildingDataFrame.File.number_floors
             ],
-            BuildingDataFrame.height: building_data[BuildingDataFrame.File.height],
+            RenderingBuildingDataFrame.height: building_data[
+                BuildingDataFrame.File.height
+            ],
             BuildingDataFrame.geometry: building_data[BuildingDataFrame.File.geometry],
         }
         building_data = g.GeoDataFrame(building_data_dict)
@@ -263,7 +270,7 @@ class FileLoader(Loader):
             RoadDataFrame.position_rel_to_ground: road_data[
                 RoadDataFrame.File.position_rel_to_ground
             ],
-            RoadDataFrame.width: road_data[RoadDataFrame.File.width],
+            RenderingRoadDataFrame.width: road_data[RoadDataFrame.File.width],
             RoadDataFrame.urban: road_data[RoadDataFrame.File.urban],
             RoadDataFrame.geometry: road_data[RoadDataFrame.File.geometry],
         }

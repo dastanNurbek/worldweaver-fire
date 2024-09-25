@@ -6,29 +6,35 @@ from PIL import Image
 import numpy as np
 import math
 
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Drivers.IGN.Loader import Loader
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
 
 from mage_procgen.Parser.WFSParser import WFSParser
 
-from mage_procgen.Utils.Utils import GeoWindow, GeoData, CRS_fr, CRS_degrees
+from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
 from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Drivers.IGN.Utils import GeoData
 
 import mage_procgen.Utils.DataFiles as df
-import mage_procgen.Utils.DataStream as ds
-from mage_procgen.Utils.DataFrames import (
+from mage_procgen.Drivers.IGN.Utils import WFS_FR
+from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
     DefaultDataFrame,
 )
+from mage_procgen.Utils.RenderingDataFrames import (
+    RenderingRoadDataFrame,
+    RenderingBuildingDataFrame,
+)
 
 from owslib.wms import WebMapService
 from owslib.wfs import WebFeatureService
 
 import requests
+
 
 class StreamLoader(Loader):
     def __init__(self, base_folder: str, project_folder: str):
@@ -75,7 +81,7 @@ class StreamLoader(Loader):
         #     bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
         # )
 
-        wms = WebMapService(ds.wms_alti_url, version=ds.wms_alti_version)
+        wms = WebMapService(WFS_FR.wms_alti_url, version=WFS_FR.wms_alti_version)
 
         terrain_box_ll = (bbox_lamb93_rounded[0], bbox_lamb93_rounded[1])
         terrain_box_ur = (bbox_lamb93_rounded[2], bbox_lamb93_rounded[3])
@@ -97,7 +103,7 @@ class StreamLoader(Loader):
                 )
                 y_ur = (
                     y_ll + terrain_max_slab_size
-                    if (terrain_box_ur[1] - x_ll) > terrain_max_slab_size
+                    if (terrain_box_ur[1] - y_ll) > terrain_max_slab_size
                     else terrain_box_ur[1]
                 )
 
@@ -117,7 +123,7 @@ class StreamLoader(Loader):
                 )
 
                 terrain_img = wms.getmap(
-                    layers=[ds.rge_key_name],
+                    layers=[WFS_FR.rge_key_name],
                     styles=["normal"],
                     srs="EPSG:" + str(CRS_fr),
                     bbox=current_box,
@@ -153,12 +159,12 @@ class StreamLoader(Loader):
 
                 terrain_index += 1
 
-        wfs = WebFeatureService(url=ds.wfs_url, version=ds.wfs_version)
+        wfs = WebFeatureService(url=WFS_FR.wfs_url, version=WFS_FR.wfs_version)
 
         building_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.buildings_key_name,
+            WFS_FR.buildings_key_name,
             bbox_wgs84,
             geo_window.crs,
             BuildingDataFrame.WFS.get_columns(),
@@ -167,7 +173,7 @@ class StreamLoader(Loader):
         forest_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.forests_key_name,
+            WFS_FR.forests_key_name,
             bbox_wgs84,
             geo_window.crs,
             DefaultDataFrame.get_columns(),
@@ -176,7 +182,7 @@ class StreamLoader(Loader):
         road_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.road_key_name,
+            WFS_FR.road_key_name,
             bbox_wgs84,
             geo_window.crs,
             RoadDataFrame.WFS.get_columns(),
@@ -185,7 +191,7 @@ class StreamLoader(Loader):
         water_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.water_key_name,
+            WFS_FR.water_key_name,
             bbox_wgs84,
             geo_window.crs,
             WaterDataFrame.WFS.get_columns(),
@@ -194,7 +200,7 @@ class StreamLoader(Loader):
         residential_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.residential_zone_key_name,
+            WFS_FR.residential_zone_key_name,
             bbox_wgs84,
             geo_window.crs,
             DefaultDataFrame.get_columns(),
@@ -203,7 +209,7 @@ class StreamLoader(Loader):
         interest_zone_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.activity_zone_key_name,
+            WFS_FR.activity_zone_key_name,
             bbox_wgs84,
             geo_window.crs,
             ZoneInterestDataFrame.WFS.get_columns(),
@@ -212,7 +218,7 @@ class StreamLoader(Loader):
         departements_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.departement_key_name,
+            WFS_FR.departement_key_name,
             bbox_wgs84,
             geo_window.crs,
             DefaultDataFrame.get_columns(),
@@ -221,7 +227,7 @@ class StreamLoader(Loader):
         shore_data = WFSParser.load(
             wfs,
             input_folder,
-            ds.shore_key_name,
+            WFS_FR.shore_key_name,
             bbox_wgs84,
             geo_window.crs,
             DefaultDataFrame.get_columns(),
@@ -249,10 +255,12 @@ class StreamLoader(Loader):
             BuildingDataFrame.number_housings: building_data[
                 BuildingDataFrame.WFS.number_housings
             ],
-            BuildingDataFrame.number_floors: building_data[
+            RenderingBuildingDataFrame.number_floors: building_data[
                 BuildingDataFrame.WFS.number_floors
             ],
-            BuildingDataFrame.height: building_data[BuildingDataFrame.WFS.height],
+            RenderingBuildingDataFrame.height: building_data[
+                BuildingDataFrame.WFS.height
+            ],
             BuildingDataFrame.geometry: building_data[BuildingDataFrame.WFS.geometry],
         }
         building_data = g.GeoDataFrame(building_data_dict)
@@ -266,7 +274,7 @@ class StreamLoader(Loader):
             RoadDataFrame.position_rel_to_ground: road_data[
                 RoadDataFrame.WFS.position_rel_to_ground
             ],
-            RoadDataFrame.width: road_data[RoadDataFrame.WFS.width],
+            RenderingRoadDataFrame.width: road_data[RoadDataFrame.WFS.width],
             RoadDataFrame.urban: road_data[RoadDataFrame.WFS.urban],
             RoadDataFrame.geometry: road_data[RoadDataFrame.WFS.geometry],
         }
@@ -307,7 +315,7 @@ class StreamLoader(Loader):
     def load_town_shape(self, departement_nbr: int, town_name: str):
 
         town_request_response = requests.get(
-            ds.get_town_request_url(town_name, str(departement_nbr))
+            WFS_FR.get_town_request_url(town_name, str(departement_nbr))
         )
 
         input_folder = os.path.join(self.project_folder, df.input_data_folder)
@@ -326,7 +334,7 @@ class StreamLoader(Loader):
 
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
 
-        bdortho_wms = WebMapService(ds.bdortho_url, version=ds.bdortho_version)
+        bdortho_wms = WebMapService(WFS_FR.bdortho_url, version=WFS_FR.bdortho_version)
 
         bdortho_resolution = 0.2
 
@@ -336,7 +344,7 @@ class StreamLoader(Loader):
         )
 
         img = bdortho_wms.getmap(
-            layers=[ds.bdortho_key_name],
+            layers=[WFS_FR.bdortho_key_name],
             styles=["normal"],
             srs="EPSG:" + str(CRS_fr),
             bbox=mesh_box,

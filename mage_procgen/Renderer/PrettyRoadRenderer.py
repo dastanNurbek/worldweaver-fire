@@ -14,9 +14,10 @@ from mage_procgen.Utils.Utils import (
     GeoWindow,
 )
 from mage_procgen.Utils.Rendering import terrain_collection_name
-from mage_procgen.Utils.DataFrames import RoadDataFrame
+from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
 from mage_procgen.Utils.Geometry import interpolate_z
 from ladybug_geometry.geometry2d.pointvector import Point2D
+
 
 # TODO: find common paths with BaseRenderer
 class PrettyRoadRenderer:
@@ -122,11 +123,12 @@ class PrettyRoadRenderer:
 
         edges_config = {}
         edge_index = 0
+
         for road_index in tqdm(roads.index):
 
             road_geom = roads.geometry[road_index]
 
-            # Windowing
+            # Windowing is done here since lines and polygons cannot be mixed for dataframe overlay operations
             windowed_line = []
             for point in road_geom.coords:
 
@@ -147,11 +149,13 @@ class PrettyRoadRenderer:
             is_bridge = False
             is_tunnel = False
 
-            road_pos_to_ground = roads[RoadDataFrame.position_rel_to_ground][road_index]
+            road_pos_to_ground = roads[RenderingRoadDataFrame.position_rel_to_ground][
+                road_index
+            ]
             is_int = road_pos_to_ground.isdigit()
             if is_int:
                 road_pos_to_ground_value = int(
-                    roads[RoadDataFrame.position_rel_to_ground][road_index]
+                    roads[RenderingRoadDataFrame.position_rel_to_ground][road_index]
                 )
                 is_bridge = road_pos_to_ground_value >= 1
                 is_tunnel = road_pos_to_ground_value <= -1
@@ -197,9 +201,9 @@ class PrettyRoadRenderer:
                     )
 
                 edges_config[edge_index] = (
-                    roads[RoadDataFrame.has_sidewalks][road_index],
-                    roads[RoadDataFrame.has_guardrails][road_index],
-                    roads[RoadDataFrame.number_lanes][road_index],
+                    roads[RenderingRoadDataFrame.has_sidewalks][road_index],
+                    roads[RenderingRoadDataFrame.has_guardrails][road_index],
+                    roads[RenderingRoadDataFrame.number_lanes][road_index],
                 )
 
                 previous_point = new_point

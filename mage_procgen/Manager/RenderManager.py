@@ -1,28 +1,26 @@
 from bpy import data as D
 import math
 import geopandas as g
-from shapely.geometry import MultiPolygon, Polygon, mapping, LineString
-from mage_procgen.Utils.Utils import PolygonList, TerrainData, LineStringList
+from shapely.geometry import MultiPolygon, LineString
+from mage_procgen.Utils.Utils import PolygonList, TerrainData
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Rendering import (
     configure_render,
     rendering_collection_name,
-    cars_collection_name,
     terrain_collection_name,
     buildings_collection_name,
     mockup_collection_name,
 )
-from mage_procgen.Utils.DataFrames import BuildingDataFrame
+from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
-from mage_procgen.Loader.Loader import Loader
+from mage_procgen.Drivers.IGN.Loader import Loader
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
     MockupBuildingRenderer,
     ForestRenderer,
-    RoadRenderer,
     PrettyRoadRenderer,
     WaterRenderer,
     TerrainRenderer,
@@ -399,7 +397,10 @@ class RenderManager:
         data = [
             (x[0], x[1])
             for x in buildings[
-                [BuildingDataFrame.number_floors, BuildingDataFrame.geometry]
+                [
+                    RenderingBuildingDataFrame.number_floors,
+                    RenderingBuildingDataFrame.geometry,
+                ]
             ]
             .to_numpy()
             .tolist()
@@ -419,7 +420,9 @@ class RenderManager:
 
         data = [
             (x[0], x[1])
-            for x in buildings[[BuildingDataFrame.height, BuildingDataFrame.geometry]]
+            for x in buildings[
+                [RenderingBuildingDataFrame.height, RenderingBuildingDataFrame.geometry]
+            ]
             .to_numpy()
             .tolist()
         ]

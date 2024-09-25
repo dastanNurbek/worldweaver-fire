@@ -9,6 +9,7 @@ from mage_procgen.Utils.Geometry import norm2d, interpolate_z
 from mage_procgen.Utils.Rendering import terrain_collection_name
 from random import random
 
+
 # TODO: find common paths with BaseRenderer
 class RoadRenderer:
     _AssetsFolder = "Assets"
