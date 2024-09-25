@@ -145,10 +145,6 @@ class Preprocessor:
 
         highways = all_lines[all_lines.index.isin(highway_ids)]
 
-        selected_surfaces = ["asphalt", "sett", "concrete"]
-
-        # TODO: filter roads
-
         road_has_sidewalk = []
         road_has_guardrails = []
         road_number_lanes = []
@@ -234,7 +230,7 @@ class Preprocessor:
                         if OSM_CH.amenity in waters[OSM_CH.tags][ind]:
                             if (
                                 waters[OSM_CH.tags][ind][OSM_CH.amenity]
-                                in still_water_ban_list
+                                    in still_water_ban_list
                             ):
                                 still_water_ids.append(ind)
                         else:
