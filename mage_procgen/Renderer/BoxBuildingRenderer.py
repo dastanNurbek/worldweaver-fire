@@ -273,8 +273,8 @@ class BoxBuildingRenderer(BaseRenderer):
                     triangles.append(triangles_flat[tri_ind : tri_ind + step])
                 try:
                     # Sometimes due to bad geometry we will try to create the same face more than once,
-                    # Which results in an error. We're keeping this simple try except with minimal trace to monitor
-                    # TODO: Test more and decide what to do of this case
+                    # Which results in an error. We filter and swallow this exact error
+                    # because it happens only a few time in a scene and is completely benign.
                     for triangle in triangles:
                         triangle_pts = [face_path[x] for x in triangle]
                         triangle_face = mesh.faces.new(
@@ -283,9 +283,9 @@ class BoxBuildingRenderer(BaseRenderer):
                                 for x in triangle_pts
                             ]
                         )
-                except Exception as e:
-                    print("Error trying to add face inside roof " + mesh_data.name)
-                    print(str(e))
+                except ValueError as e:
+                    if not str(e) == "faces.new(verts): face already exists":
+                        raise e
 
             mesh.to_mesh(mesh_data)
             mesh.free()

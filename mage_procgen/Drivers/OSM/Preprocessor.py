@@ -230,7 +230,7 @@ class Preprocessor:
                         if OSM_CH.amenity in waters[OSM_CH.tags][ind]:
                             if (
                                 waters[OSM_CH.tags][ind][OSM_CH.amenity]
-                                    in still_water_ban_list
+                                in still_water_ban_list
                             ):
                                 still_water_ids.append(ind)
                         else:

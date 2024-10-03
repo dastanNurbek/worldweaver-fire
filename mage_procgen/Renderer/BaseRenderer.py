@@ -86,6 +86,7 @@ class BaseRenderer:
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
         m = mesh_obj.modifiers.new("", "NODES")
+        m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
 
     def insert_hole(

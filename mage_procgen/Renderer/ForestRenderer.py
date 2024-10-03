@@ -1,16 +1,33 @@
 from bpy import data as D
-
+from mage_procgen.Utils.Utils import Point
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
-from mage_procgen.Utils.Utils import TerrainData
 
 
 class ForestRenderer(BaseRenderer):
     _mesh_name = "Forest"
 
-    def __init__(self, terrain_data: list[TerrainData], object_config):
-        super().__init__(terrain_data, object_config)
+    def config_geometry_node(
+        self, road_object, building_object, terrain_object, ray_length
+    ):
+        node = D.objects[self._mesh_name].modifiers[self.geometry_node_name]
+        node["Socket_4"] = road_object
+        node["Socket_6"] = building_object
+        node["Socket_8"] = terrain_object
+        node["Socket_3"] = ray_length
 
-        # Need to bind the forest geometry node to the terrain collection so that trees are neither floating nor underground
-        D.node_groups[self.geometry_node_name].nodes["Collection Info"].inputs[
-            0
-        ].default_value = D.collections["Terrain"]
+    def adapt_coords(
+        self, points_coords: list[Point], geo_center: Point
+    ) -> list[Point]:
+
+        # Centering the coordinates so that Blender's internal precision is less impactful,
+        # But putting the Z location high up so that the trees can be projected onto the terrain by the geometrynode
+        centered_points_coords = [
+            (
+                x[0] - geo_center[0],
+                x[1] - geo_center[1],
+                D.objects["Camera_Ortho"].location[2],
+            )
+            for x in points_coords
+        ]
+
+        return centered_points_coords

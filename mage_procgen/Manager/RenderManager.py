@@ -295,6 +295,12 @@ class RenderManager:
         self.forests_renderer.render(
             forests, self.window.center, rendering_collection_name
         )
+        self.forests_renderer.config_geometry_node(
+            self.road_renderer.get_mesh_obj(),
+            self.mockup_building_renderer.get_mesh_obj(),
+            self.terrain_renderer.get_mesh_obj(),
+            D.objects["Camera_Ortho"].location[2] * 2,
+        )
 
         # TODO: evaluate if anything should be there
         # TODO: fix windowing

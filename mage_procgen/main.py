@@ -68,8 +68,8 @@ def main(filepath):
 
     project_path = setup_project_folder(config.base_folder)
 
-    codec = OSMDriver(config, project_path)
-    # codec = IGNDriver(config, project_path)
+    # codec = OSMDriver(config, project_path)
+    codec = IGNDriver(config, project_path)
     rendering_data = codec.process()
 
     render_manager = RenderManager(

@@ -312,6 +312,9 @@ class TerrainRenderer:
         node["Socket_4"] = water_object
         node["Socket_6"] = building_object
 
+    def get_mesh_obj(self):
+        return self.terrain_object
+
     @staticmethod
     def __check_boundaries(point, terrain_mesh_info):
 
