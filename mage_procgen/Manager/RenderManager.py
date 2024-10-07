@@ -14,7 +14,7 @@ from mage_procgen.Utils.Rendering import (
 )
 from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
-from mage_procgen.Drivers.IGN.Loader import Loader
+from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
@@ -36,7 +36,7 @@ class RenderManager:
         geowindow: GeoWindow,
         crs: int,
         config: Config,
-        loader: Loader,
+        driver: BaseDriver,
     ):
         self.terrain_data = terrain_data
         self.rendering_data = rendering_data
@@ -49,7 +49,7 @@ class RenderManager:
             config.base_folder,
             self.config.terrain_resolution,
             terrain_data[0].resolution,
-            loader,
+            driver,
         )
         self.building_renderer = BuildingRenderer.BuildingRenderer(
             self.terrain_data, self.config.building_render_config

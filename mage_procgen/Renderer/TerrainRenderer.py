@@ -7,7 +7,7 @@ import math
 
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
-from mage_procgen.Drivers.IGN.Loader import Loader
+from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 
 class TerrainRenderer:
@@ -24,13 +24,13 @@ class TerrainRenderer:
         base_folder: str,
         render_resolution: float,
         file_resolution: float,
-        loader: Loader,
+        driver: BaseDriver,
     ):
 
         self.base_folder = base_folder
         self.render_resolution = render_resolution
         self.file_resolution = file_resolution
-        self.loader = loader
+        self.driver = driver
         if render_resolution / file_resolution != render_resolution // file_resolution:
             raise ValueError(
                 "terrain render resolution has to be a multiple of file resolution"
@@ -241,7 +241,7 @@ class TerrainRenderer:
             if use_sat_img:
 
                 try:
-                    texture_file_path = self.loader.load_texture(
+                    texture_file_path = self.driver.load_texture(
                         (
                             mesh_info.x_min,
                             mesh_info.y_min,

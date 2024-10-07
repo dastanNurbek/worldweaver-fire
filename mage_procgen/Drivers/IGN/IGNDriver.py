@@ -1,6 +1,8 @@
 import os
 import fiona
 
+from mage_procgen.Drivers.BaseDriver import BaseDriver
+
 from mage_procgen.Drivers.IGN.StreamLoader import StreamLoader
 from mage_procgen.Drivers.IGN.FileLoader import FileLoader
 from mage_procgen.Drivers.IGN.Preprocessor import Preprocessor
@@ -8,13 +10,13 @@ from mage_procgen.Drivers.IGN.Preprocessor import Preprocessor
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr
 
 
-class IGNDriver:
+class IGNDriver(BaseDriver):
     def __init__(self, config, project_path):
-        self.config = config
-        self.project_path = project_path
+
+        super().__init__(config, project_path)
+
         self.internal_crs = CRS_fr
 
-        self.loader = None
         match config.data_source:
             case "STREAM":
                 self.loader = StreamLoader(config.base_folder, project_path)
@@ -26,8 +28,6 @@ class IGNDriver:
                 )
 
         self.processor = Preprocessor
-        self.geo_window = None
-        self.terrain_data = None
 
     def process(self):
 
@@ -89,3 +89,7 @@ class IGNDriver:
         )
 
         return rendering_data
+
+    def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
+
+        return self.loader.load_texture(mesh_box)

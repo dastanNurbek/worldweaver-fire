@@ -68,17 +68,17 @@ def main(filepath):
 
     project_path = setup_project_folder(config.base_folder)
 
-    # codec = OSMDriver(config, project_path)
-    codec = IGNDriver(config, project_path)
-    rendering_data = codec.process()
+    # driver = OSMDriver(config, project_path)
+    driver = IGNDriver(config, project_path)
+    rendering_data = driver.process()
 
     render_manager = RenderManager(
-        codec.terrain_data,
+        driver.terrain_data,
         rendering_data,
-        codec.geo_window,
-        codec.internal_crs,
+        driver.geo_window,
+        driver.internal_crs,
         config,
-        codec.loader,
+        driver,
     )
     render_manager.draw_flood_interactors()
 
@@ -94,7 +94,7 @@ def main(filepath):
         print("Computing height map")
         FloodProcessor.generate_height_map(
             config.base_folder,
-            codec.geo_window,
+            driver.geo_window,
             config.flood_cell_size,
         )
 
@@ -106,7 +106,7 @@ def main(filepath):
         print("Computing sources")
         FloodProcessor.generate_semantic_map(
             config.base_folder,
-            codec.geo_window,
+            driver.geo_window,
             config.flood_cell_size,
         )
 
@@ -115,7 +115,7 @@ def main(filepath):
         flood_threshold = 1000
         flood_data = FloodProcessor.flood(
             config.base_folder,
-            codec.geo_window,
+            driver.geo_window,
             config.flood_height,
             flood_threshold,
             config.flood_cell_size,

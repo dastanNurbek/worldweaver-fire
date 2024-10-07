@@ -1,22 +1,21 @@
 import os
 import fiona
 
+from mage_procgen.Drivers.BaseDriver import BaseDriver
+
 from mage_procgen.Drivers.OSM.OsmChLoader import OsmChLoader
 from mage_procgen.Drivers.OSM.Preprocessor import Preprocessor
 
 from mage_procgen.Utils.Utils import GeoWindow, CRS_ch
 
 
-class OSMDriver:
+class OSMDriver(BaseDriver):
     def __init__(self, config, project_path):
-        self.config = config
-        self.project_path = project_path
+        super().__init__(config, project_path)
         self.internal_crs = CRS_ch
 
         self.loader = OsmChLoader(config.base_folder, project_path)
         self.processor = Preprocessor
-        self.geo_window = None
-        self.terrain_data = None
 
     def process(self):
 
@@ -74,3 +73,7 @@ class OSMDriver:
         )
 
         return rendering_data
+
+    def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
+
+        return self.loader.load_texture(mesh_box)
