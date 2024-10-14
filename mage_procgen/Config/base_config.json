@@ -61,7 +61,7 @@
  },
  "forest_render_config": {
   "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Forests2.blend",
+  "geometry_node_file": "Forests.blend",
   "geometry_node_name": "Forest_pine",
   "tagging_index": 3
  },

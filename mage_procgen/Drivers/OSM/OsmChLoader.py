@@ -1,39 +1,30 @@
 import os
 
-import overpass
 import pandas as p
-import geopandas as g
 from PIL import Image
 import numpy as np
 import math
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_ch, CRS_degrees
-from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Utils.Utils import GeoWindow, CRS_ch
+from mage_procgen.Utils.Utils import TerrainData, TerrainDataList
 
-import mage_procgen.Utils.DataFiles as df
+from mage_procgen.Drivers.OSM.Utils import SwissAlti
 
-from mage_procgen.Drivers.OSM.Utils import OSM_CH
+from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
 
 import requests
 
 import json
 
 
-class OsmChLoader:
+class OsmChLoader(OsmLoader):
+
     def __init__(self, base_folder: str, project_folder: str):
-        self.base_folder = base_folder
-        self.project_folder = project_folder
+        super().__init__(base_folder, project_folder)
+        self.internal_crs = CRS_ch
 
-    def load(self, geo_window: GeoWindow):
-
-        bbox = geo_window.bounds
-
-        # TODO: check if this one is necessary because the window should already be in lambert93
-        geo_window_lv95 = geo_window.to_crs(CRS_ch)
-        bbox_lv95 = geo_window_lv95.bounds
-
-        geo_window_wgs84 = geo_window.to_crs(CRS_degrees)
-        bbox_wgs84 = geo_window_wgs84.bounds
+    def load_terrain_data(self, input_folder: str, geo_window: GeoWindow) -> TerrainDataList:
+        bbox_lv95 = geo_window.bounds
 
         # Need to round out the terrain box to the nearest km in order to fetch the correct slabs
         bbox_lv95_rounded = (
@@ -49,15 +40,7 @@ class OsmChLoader:
         no_data = -9999
         print("Loading terrain data from swissalti")
 
-        input_folder = os.path.join(self.project_folder, df.input_data_folder)
-
-        if not os.path.isdir(input_folder):
-            os.makedirs(input_folder, exist_ok=True)
-
-        oceans_data = None
         terrain_data = []
-
-        load_oceans = False
 
         terrain_box_ll = (bbox_lv95_rounded[0], bbox_lv95_rounded[1])
         terrain_box_ur = (bbox_lv95_rounded[2], bbox_lv95_rounded[3])
@@ -94,7 +77,7 @@ class OsmChLoader:
                 )
 
                 terrain_img = requests.get(
-                    OSM_CH.get_terrain_request_url(int(x_ll), int(y_ll))
+                    SwissAlti.get_terrain_request_url(int(x_ll), int(y_ll))
                 )
                 terrain_file_name = "terrain" + str(terrain_index) + ".tif"
                 with open(
@@ -125,54 +108,4 @@ class OsmChLoader:
 
                 terrain_index += 1
 
-        print("Loading data from OSM")
-        api = overpass.API()
-        # Order for MapQuery is south, west, north, east
-        map_query = overpass.MapQuery(
-            bbox_wgs84[1],
-            bbox_wgs84[0],
-            bbox_wgs84[3],
-            bbox_wgs84[2],
-        )
-
-        response = api.get(map_query)
-
-        response_str = json.dumps(response, indent=2)
-
-        with open(os.path.join(input_folder, "data.geojson"), "w") as data_file:
-            bytes_written = data_file.write(response_str)
-
-        geo_df = g.read_file(os.path.join(input_folder, "data.geojson")).to_crs(CRS_ch)
-
-        geo_data = (geo_df, terrain_data)
-
-        return geo_data
-
-    # TODO: decide on this method's signature since departement nbr is not used here
-    def load_town_shape(self, town_name: str):
-
-        api = overpass.API()
-
-        query = OSM_CH.get_town_request_url(town_name)
-
-        response = api.get(query)
-
-        input_folder = os.path.join(self.project_folder, df.input_data_folder)
-
-        if not os.path.isdir(input_folder):
-            os.makedirs(input_folder, exist_ok=True)
-
-        response_str = json.dumps(response, indent=2)
-
-        with open(os.path.join(input_folder, town_name + ".json"), "w") as town_file:
-            bytes_written = town_file.write(response_str)
-
-        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
-            CRS_ch
-        )
-
-        return town
-
-    def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
-
-        raise NotImplementedError("Method not implemented for swiss data")
+        return terrain_data

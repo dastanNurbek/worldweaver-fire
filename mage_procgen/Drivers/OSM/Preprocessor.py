@@ -4,7 +4,7 @@ import geopandas as g
 import pandas as p
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow
 from mage_procgen.Utils.Config import Config
-from mage_procgen.Drivers.OSM.Utils import OSM_CH
+from mage_procgen.Drivers.OSM.Utils import OSM
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
@@ -18,14 +18,18 @@ class Preprocessor:
 
     @staticmethod
     def process(
-        geo_dataframe: g.geodataframe, geowindow: GeoWindow, config: Config, crs: int
+        geo_dataframe: g.geodataframe,
+        oceans_data: g.geodataframe,
+        geowindow: GeoWindow,
+        config: Config,
+        crs: int,
     ) -> RenderingData:
 
         print("Processing OSM data")
 
-        points = geo_dataframe[geo_dataframe.geom_type == OSM_CH.point]
-        multi_polys = geo_dataframe[geo_dataframe.geom_type == OSM_CH.multi_polygon]
-        polys = geo_dataframe[geo_dataframe.geom_type == OSM_CH.polygon]
+        points = geo_dataframe[geo_dataframe.geom_type == OSM.point]
+        multi_polys = geo_dataframe[geo_dataframe.geom_type == OSM.multi_polygon]
+        polys = geo_dataframe[geo_dataframe.geom_type == OSM.polygon]
         all_polys = p.concat([polys, multi_polys])
 
         # Buildings
@@ -36,29 +40,29 @@ class Preprocessor:
         buildings_ind = []
         buildings_height = {}
         buildings_levels = {}
-        for ind in all_polys[OSM_CH.tags].index:
-            if OSM_CH.building_tag in geo_dataframe[OSM_CH.tags][ind]:
+        for ind in all_polys[OSM.tags].index:
+            if OSM.building_tag in geo_dataframe[OSM.tags][ind]:
 
-                building_tag = geo_dataframe[OSM_CH.tags][ind][OSM_CH.building_tag]
-                if building_tag in OSM_CH.churches_types:
+                building_tag = geo_dataframe[OSM.tags][ind][OSM.building_tag]
+                if building_tag in OSM.churches_types:
                     churches_ind.append(ind)
-                elif building_tag in OSM_CH.factories_types:
+                elif building_tag in OSM.factories_types:
                     factories_ind.append(ind)
-                elif building_tag in OSM_CH.malls_types:
+                elif building_tag in OSM.malls_types:
                     malls_ind.append(ind)
-                elif building_tag in OSM_CH.houses_types:
+                elif building_tag in OSM.houses_types:
                     houses_ind.append(ind)
                 else:
                     buildings_ind.append(ind)
 
                 buildings_height[ind] = math.nan
                 buildings_levels[ind] = math.nan
-                if OSM_CH.height in geo_dataframe[OSM_CH.tags][ind]:
-                    height = geo_dataframe[OSM_CH.tags][ind][OSM_CH.height]
+                if OSM.height in geo_dataframe[OSM.tags][ind]:
+                    height = geo_dataframe[OSM.tags][ind][OSM.height]
                     if height.isdigit():
                         buildings_height[ind] = float(height)
-                if OSM_CH.levels in geo_dataframe[OSM_CH.tags][ind]:
-                    levels = geo_dataframe[OSM_CH.tags][ind][OSM_CH.levels]
+                if OSM.levels in geo_dataframe[OSM.tags][ind]:
+                    levels = geo_dataframe[OSM.tags][ind][OSM.levels]
                     if levels.isdigit():
                         buildings_levels[ind] = int(levels)
 
@@ -96,27 +100,27 @@ class Preprocessor:
 
         # Landmasses
         masses_indexes = []
-        for ind in geo_dataframe[OSM_CH.tags].index:
-            if geo_dataframe[OSM_CH.tags][ind] is not None:
-                if OSM_CH.landuse in geo_dataframe[OSM_CH.tags][ind]:
+        for ind in geo_dataframe[OSM.tags].index:
+            if geo_dataframe[OSM.tags][ind] is not None:
+                if OSM.landuse in geo_dataframe[OSM.tags][ind]:
                     masses_indexes.append(ind)
 
         masses = geo_dataframe.query("index in @masses_indexes")
 
         # Forests
         selected_forest_tags = ["forest"]
-        forests_iOSM_CH = []
-        for ind in masses[OSM_CH.tags].index:
-            if masses[OSM_CH.tags][ind][OSM_CH.landuse] in selected_forest_tags:
-                forests_iOSM_CH.append(ind)
+        forests_ids = []
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_forest_tags:
+                forests_ids.append(ind)
 
-        forests = masses.query("index in @forests_iOSM_CH")
+        forests = masses.query("index in @forests_ids")
 
         # Residential
         selected_residential_tags = ["residential"]
         residential_ids = []
-        for ind in masses[OSM_CH.tags].index:
-            if masses[OSM_CH.tags][ind][OSM_CH.landuse] in selected_residential_tags:
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_residential_tags:
                 residential_ids.append(ind)
 
         residentials = masses.query("index in @residential_ids")
@@ -125,22 +129,22 @@ class Preprocessor:
         selected_interest_tags = ["commercial", "industrial"]
 
         interest_ids = []
-        for ind in masses[OSM_CH.tags].index:
-            if masses[OSM_CH.tags][ind][OSM_CH.landuse] in selected_interest_tags:
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_interest_tags:
                 interest_ids.append(ind)
 
         interest_zones = masses.query("index in @interest_ids")
 
         # Roads
-        lines = geo_dataframe[geo_dataframe.geom_type == OSM_CH.line_string]
-        multi_lines = geo_dataframe[geo_dataframe.geom_type == OSM_CH.multi_line_string]
+        lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
+        multi_lines = geo_dataframe[geo_dataframe.geom_type == OSM.multi_line_string]
         all_lines = p.concat([lines, multi_lines])
 
         highway_ids = []
         for line_ind in all_lines.index:
-            if all_lines[OSM_CH.tags][line_ind] is not None:
-                for key in all_lines[OSM_CH.tags][line_ind].keys():
-                    if OSM_CH.highway_tag in key:
+            if all_lines[OSM.tags][line_ind] is not None:
+                for key in all_lines[OSM.tags][line_ind].keys():
+                    if OSM.highway_tag in key:
                         highway_ids.append(line_ind)
 
         highways = all_lines[all_lines.index.isin(highway_ids)]
@@ -153,23 +157,36 @@ class Preprocessor:
 
         for road_index in highways.index:
             road_geom = highways.geometry[road_index]
-            road_tags = highways[OSM_CH.tags][road_index]
+            road_tags = highways[OSM.tags][road_index]
             road_lane_nbr = 1
-            if OSM_CH.lanes in road_tags.keys():
-                if road_tags[OSM_CH.lanes].isdigit():
-                    road_lane_nbr = int(road_tags[OSM_CH.lanes])
+            if OSM.lanes in road_tags.keys():
+                if road_tags[OSM.lanes].isdigit():
+                    road_lane_nbr = int(road_tags[OSM.lanes])
 
             speed = 0
-            # max_speed can in theory have units, but it SHOULD only be kmh in CH, so no unit need
-            # will need better processing if we need to take other units into account
-            if OSM_CH.max_speed in road_tags.keys():
-                if road_tags[OSM_CH.max_speed].isdigit():
-                    speed = int(road_tags[OSM_CH.max_speed])
+            # max_speed can either be without units (in kmh) or with unit indicated:
+            # cf https://wiki.openstreetmap.org/wiki/Key:maxspeed
+            # some values are not parsed and ignored
+            if OSM.max_speed in road_tags.keys():
+                if road_tags[OSM.max_speed].isdigit():
+                    speed = int(road_tags[OSM.max_speed])
+                else:
+                    try:
+                        speed_value = float(road_tags[OSM.max_speed].split()[0])
+                        speed_unit = road_tags[OSM.max_speed].split()[1]
+                        if speed_unit == OSM.mph_key:
+                            speed = speed_value * OSM.mph_mult
+                        elif speed_unit == OSM.knot_key:
+                            speed = speed_value * OSM.knot_mult
+                        elif speed_unit in OSM.kmh_keys:
+                            speed = speed_value
+                    except ValueError:
+                        pass
 
             has_sidewalk = False
             has_guardrails = False
-            if OSM_CH.sidewalk in road_tags.keys():
-                if road_tags[OSM_CH.sidewalk] in OSM_CH.has_sidewalk_list:
+            if OSM.sidewalk in road_tags.keys():
+                if road_tags[OSM.sidewalk] in OSM.has_sidewalk_list:
                     has_sidewalk = True
 
             if not has_sidewalk:
@@ -177,9 +194,9 @@ class Preprocessor:
                     has_guardrails = True
 
             pos_rel_to_ground = "0"
-            if OSM_CH.bridge in road_tags.keys():
+            if OSM.bridge in road_tags.keys():
                 pos_rel_to_ground = "1"
-            elif OSM_CH.tunnel in road_tags.keys():
+            elif OSM.tunnel in road_tags.keys():
                 pos_rel_to_ground = "-1"
 
             road_has_sidewalk.append(has_sidewalk)
@@ -198,51 +215,53 @@ class Preprocessor:
         road_data = g.GeoDataFrame(road_data_dict)
 
         # Water
-        water_tags = [OSM_CH.water]
+        water_tags = [OSM.water]
         water_ids = []
-        for ind in geo_dataframe[OSM_CH.tags].index:
-            if geo_dataframe[OSM_CH.tags][ind] is not None:
-                if OSM_CH.landuse in geo_dataframe[OSM_CH.tags][ind]:
-                    if geo_dataframe[OSM_CH.tags][ind][OSM_CH.landuse] in water_tags:
+        for ind in geo_dataframe[OSM.tags].index:
+            if geo_dataframe[OSM.tags][ind] is not None:
+                if OSM.landuse in geo_dataframe[OSM.tags][ind]:
+                    if geo_dataframe[OSM.tags][ind][OSM.landuse] in water_tags:
                         if ind not in water_ids:
                             water_ids.append(ind)
-                if OSM_CH.natural in geo_dataframe[OSM_CH.tags][ind]:
-                    if geo_dataframe[OSM_CH.tags][ind][OSM_CH.natural] in water_tags:
+                if OSM.natural in geo_dataframe[OSM.tags][ind]:
+                    if geo_dataframe[OSM.tags][ind][OSM.natural] in water_tags:
                         if ind not in water_ids:
                             water_ids.append(ind)
 
         waters = geo_dataframe.query("index in @water_ids")
 
-        flowing_water_tags = ["rapids", "river", "stream", "canal", "ditch"]
+        # Tagging is not great on waters, so we consider any body of water "flowing" unless there is a tag that explicits it
+        # Also, we filter for things like fountains that should not be displayed.
         still_water_tags = ["lagoon", "lake", "oxbow", "basin", "pond", "reservoir"]
         still_water_ban_list = ["fountain"]
-        flowing_water_ids = []
         still_water_ids = []
+        still_water_banned_ids = []
 
-        for ind in waters[OSM_CH.tags].index:
-            if OSM_CH.water in waters[OSM_CH.tags][ind]:
-                if waters[OSM_CH.tags][ind][OSM_CH.water] in flowing_water_tags:
-                    if ind not in flowing_water_ids:
-                        flowing_water_ids.append(ind)
-            if OSM_CH.water in waters[OSM_CH.tags][ind]:
-                if waters[OSM_CH.tags][ind][OSM_CH.water] in still_water_tags:
-                    if ind not in flowing_water_ids:
-                        if OSM_CH.amenity in waters[OSM_CH.tags][ind]:
-                            if (
-                                waters[OSM_CH.tags][ind][OSM_CH.amenity]
-                                in still_water_ban_list
-                            ):
-                                still_water_ids.append(ind)
+        for ind in waters[OSM.tags].index:
+            if OSM.water in waters[OSM.tags][ind]:
+                if waters[OSM.tags][ind][OSM.water] in still_water_tags:
+                    if OSM.amenity in waters[OSM.tags][ind]:
+                        if waters[OSM.tags][ind][OSM.amenity] in still_water_ban_list:
+                            still_water_banned_ids.append(ind)
                         else:
                             still_water_ids.append(ind)
+                    else:
+                        still_water_ids.append(ind)
+            else:
+                if OSM.amenity in waters[OSM.tags][ind]:
+                    if waters[OSM.tags][ind][OSM.amenity] in still_water_ban_list:
+                        still_water_banned_ids.append(ind)
 
+        non_flowing_water_ids = still_water_ids.copy()
+        non_flowing_water_ids.extend(still_water_banned_ids)
         still_water = waters.query("index in @still_water_ids")
-        flowing_water = waters.query("index in @flowing_water_ids")
+        flowing_water = waters.query("index not in @non_flowing_water_ids")
 
         # Lanes deprecated
         roads_lanes = None
-        # No oceans in Switzerland
-        new_oceans = None
+
+        if not forests.empty:
+            forests = forests.overlay(waters, how="difference", keep_geom_type=True)
 
         forests = forests.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
@@ -266,6 +285,9 @@ class Preprocessor:
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
         flowing_water = flowing_water.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        new_oceans = oceans_data.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
 

@@ -1,17 +1,4 @@
-class OSM_CH:
-    @staticmethod
-    def get_terrain_request_url(x: int, y: int):
-        return (
-            "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_"
-            + str(x // 1000)
-            + "-"
-            + str(y // 1000)
-            + "/swissalti3d_2019_"
-            + str(x // 1000)
-            + "-"
-            + str(y // 1000)
-            + "_0.5_2056_5728.tif"
-        )
+class OSM:
 
     @staticmethod
     def get_town_request_url(town_name: str):
@@ -49,6 +36,11 @@ class OSM_CH:
     # Roads
     lanes = "lanes"
     max_speed = "maxspeed"
+    mph_key = "mph"
+    mph_mult = 1.609344
+    knot_key = "knots"
+    knot_mult = 1.852
+    kmh_keys = ["km/h", "kph", "kmh", "kmph"]
     sidewalk = "sidewalk"
 
     has_sidewalk_list = ["both", "separate", "left", "right"]
@@ -76,3 +68,25 @@ class OSM_CH:
 
     height = "height"
     levels = "building:levels"
+
+
+class SwissAlti:
+    @staticmethod
+    def get_terrain_request_url(x: int, y: int):
+        return (
+            "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_"
+            + str(x // 1000)
+            + "-"
+            + str(y // 1000)
+            + "/swissalti3d_2019_"
+            + str(x // 1000)
+            + "-"
+            + str(y // 1000)
+            + "_0.5_2056_5728.tif"
+        )
+
+
+class WFS:
+    srtm_url = "https://data.geopf.fr/wms-r"
+    srtm_version = "1.3.0"
+    srtm_key_name = "ELEVATION.ELEVATIONGRIDCOVERAGE.SRTM3"

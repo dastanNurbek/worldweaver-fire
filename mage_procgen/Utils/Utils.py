@@ -12,6 +12,7 @@ LineStringList = list[LineString]
 CRS_degrees = 4326
 CRS_fr = 2154
 CRS_ch = 2056
+CRS_wgs84_m = 3857
 
 
 class GeoWindow:

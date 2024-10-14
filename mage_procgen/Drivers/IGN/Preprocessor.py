@@ -43,10 +43,10 @@ class Preprocessor:
             new_oceans = geo_data.ocean.overlay(
                 geowindow.dataframe, how="intersection", keep_geom_type=True
             )
-            if not new_oceans.empty:
-                new_oceans = geowindow.dataframe.overlay(
-                    geo_data.departements, how="difference", keep_geom_type=True
-                )
+            # if not new_oceans.empty:
+            #     new_oceans = geowindow.dataframe.overlay(
+            #         geo_data.departements, how="difference", keep_geom_type=True
+            #     )
 
         industrial_commercial_tags = ZoneInterestDataFrame.industrial_commercial_tags
         industrial_and_commercial_zones = geo_data.interest_zones.query(
@@ -156,19 +156,24 @@ class Preprocessor:
         )
 
         # Removing roads from forests so we don't have trees on the road
-        new_forests = new_forests.overlay(
-            roads_polygonised, how="difference", keep_geom_type=True
-        )
+        if not new_forests.empty:
+            new_forests = new_forests.overlay(
+                roads_polygonised, how="difference", keep_geom_type=True
+            )
 
         # Forests can intersect buildings, which we don't want
-        cleaned_forests = new_forests.overlay(
-            new_buildings, how="difference", keep_geom_type=True
-        )
+        if not new_forests.empty:
+            cleaned_forests = new_forests.overlay(
+                new_buildings, how="difference", keep_geom_type=True
+            )
+        else:
+            cleaned_forests = new_forests
 
         # Removing water from forests
-        cleaned_forests = cleaned_forests.overlay(
-            new_water, how="difference", keep_geom_type=True
-        )
+        if not cleaned_forests.empty:
+            cleaned_forests = cleaned_forests.overlay(
+                new_water, how="difference", keep_geom_type=True
+            )
 
         # Splitting water between "still" and "flowing"
         flowing_water_tags = WaterDataFrame.flowing_water_tags

@@ -47,6 +47,7 @@ def configure_render(geo_center_deg):
         sc.sun_pos_properties.sun_object = sun
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
+        # TODO: correlate pos to UTC Zone
         sc.sun_pos_properties.UTC_zone = 2
         sc.sun_pos_properties.time = 12
     except Exception as _:

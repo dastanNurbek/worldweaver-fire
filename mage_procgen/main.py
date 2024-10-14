@@ -68,8 +68,10 @@ def main(filepath):
 
     project_path = setup_project_folder(config.base_folder)
 
+    driver = select_driver(config, project_path)
+
     # driver = OSMDriver(config, project_path)
-    driver = IGNDriver(config, project_path)
+    # #driver = IGNDriver(config, project_path)
     rendering_data = driver.process()
 
     render_manager = RenderManager(
@@ -210,6 +212,15 @@ def main(filepath):
 
                     except Exception as error:
                         print("Could not generate an image: ", error)
+
+
+def select_driver(config, project_path):
+    if config.data_source in OSMDriver.supported_data_sources:
+        return OSMDriver(config, project_path)
+    elif config.data_source in IGNDriver.supported_data_sources:
+        return IGNDriver(config, project_path)
+    else:
+        return ValueError("Unsupported data source in config file:", config.data_source)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,8 @@ from mage_procgen.Utils.Utils import (
     LineStringList,
     GeoWindow,
 )
+
+from shapely.geometry import MultiLineString
 from mage_procgen.Utils.Rendering import terrain_collection_name
 from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
 from mage_procgen.Utils.Geometry import interpolate_z
@@ -130,13 +132,22 @@ class PrettyRoadRenderer:
 
             # Windowing is done here since lines and polygons cannot be mixed for dataframe overlay operations
             windowed_line = []
-            for point in road_geom.coords:
 
-                if (
-                    geo_window.bounds[0] < point[0] < geo_window.bounds[2]
-                    and geo_window.bounds[1] < point[1] < geo_window.bounds[3]
-                ):
-                    windowed_line.append(point)
+            if type(road_geom) == MultiLineString:
+                for geom in road_geom.geoms:
+                    for point in geom.coords:
+                        if (
+                            geo_window.bounds[0] < point[0] < geo_window.bounds[2]
+                            and geo_window.bounds[1] < point[1] < geo_window.bounds[3]
+                        ):
+                            windowed_line.append(point)
+            else:
+                for point in road_geom.coords:
+                    if (
+                        geo_window.bounds[0] < point[0] < geo_window.bounds[2]
+                        and geo_window.bounds[1] < point[1] < geo_window.bounds[3]
+                    ):
+                        windowed_line.append(point)
 
             if len(windowed_line) == 0:
                 continue
@@ -192,7 +203,17 @@ class PrettyRoadRenderer:
                     if is_bridge or is_tunnel:
                         new_point.co[2] = centered_points_coords[i][2]
 
-                edge = mesh.edges.new([previous_point, new_point])
+                if new_point == previous_point:
+                    continue
+
+                try:
+                    # Sometimes due to bad geometry we will try to create the same edge more than once,
+                    # Which results in an error. We filter and swallow this exact error
+                    # because it happens only a few time in a scene and is completely benign.
+                    edge = mesh.edges.new([previous_point, new_point])
+                except ValueError as e:
+                    if not str(e) == "edges.new(): this edge exists":
+                        raise e
 
                 if is_bridge:
                     new_point_bridge = bridge_mesh.verts.new(centered_points_coords[i])

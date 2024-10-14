@@ -114,9 +114,9 @@ class RenderManager:
         # Draw roads.
         # Bind terrain to roads
         # TODO: fix windowing
-        road_zone = RenderManager.__window_lines(
-            self.rendering_data.roads.geometry, self.window
-        )
+        # road_zone = RenderManager.__window_lines(
+        #     self.rendering_data.roads.geometry, self.window
+        # )
         # roads = self.__extract_geom(road_zone.geometry)
         # lanes_zone = self.__window_lanes(zone_window)
         self.road_renderer.render(
@@ -448,17 +448,31 @@ class RenderManager:
 
         for line in line_collection:
 
-            windowed_line = []
-            for point in line.coords:
+            if type(line) == MultiLineString:
+                for geom in line.geoms:
+                    windowed_line = []
+                    for point in geom.coords:
 
-                if (
-                    zone_window.bounds[0] < point[0] < zone_window.bounds[2]
-                    and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
-                ):
-                    windowed_line.append(point)
+                        if (
+                            zone_window.bounds[0] < point[0] < zone_window.bounds[2]
+                            and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
+                        ):
+                            windowed_line.append(point)
 
-            if len(windowed_line) > 1:
-                windowed_lines.append(LineString(windowed_line))
+                    if len(windowed_line) > 1:
+                        windowed_lines.append(LineString(windowed_line))
+            else:
+                windowed_line = []
+                for point in line.coords:
+
+                    if (
+                        zone_window.bounds[0] < point[0] < zone_window.bounds[2]
+                        and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
+                    ):
+                        windowed_line.append(point)
+
+                if len(windowed_line) > 1:
+                    windowed_lines.append(LineString(windowed_line))
 
         return windowed_lines
 
