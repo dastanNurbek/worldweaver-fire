@@ -108,21 +108,16 @@ class RenderManager:
         self.flowing_water_renderer.render(
             flowing_water, self.window.center, rendering_collection_name
         )
-        print("Objects that interact with flood rendered")
 
-        # TODO:
-        # Draw roads.
-        # Bind terrain to roads
-        # TODO: fix windowing
-        # road_zone = RenderManager.__window_lines(
-        #     self.rendering_data.roads.geometry, self.window
-        # )
-        # roads = self.__extract_geom(road_zone.geometry)
-        # lanes_zone = self.__window_lanes(zone_window)
         self.road_renderer.render(
             self.rendering_data.roads,
             self.window,
             rendering_collection_name,
+        )
+
+        still_water = self.__extract_geom(self.rendering_data.still_water.geometry)
+        self.still_water_renderer.render(
+            still_water, self.window.center, rendering_collection_name
         )
 
         buildings = self.__extract_geom(self.rendering_data.default_buildings.geometry)
@@ -141,8 +136,11 @@ class RenderManager:
         self.terrain_renderer.config_geometry_node(
             self.road_renderer.get_mesh_obj(),
             self.flowing_water_renderer.get_mesh_obj(),
+            self.still_water_renderer.get_mesh_obj(),
             self.mockup_building_renderer.get_mesh_obj(),
         )
+
+        print("Objects that interact with flood rendered")
 
     def draw_flood(self, flood_data):
         self.flood_renderer.render(flood_data, rendering_collection_name)
@@ -302,29 +300,6 @@ class RenderManager:
             D.objects["Camera_Ortho"].location[2] * 2,
         )
 
-        # TODO: evaluate if anything should be there
-        # TODO: fix windowing
-        # road_zone = RenderManager.__window_lines(
-        #     self.rendering_data.roads.geometry, zone_window
-        # )
-        # # roads = self.__extract_geom(road_zone.geometry)
-        # # lanes_zone = self.__window_lanes(zone_window)
-        # self.road_renderer.render(
-        #     road_zone,
-        #     self.window.center,
-        #     rendering_collection_name,
-        #     # lanes_zone,
-        #     # cars_collection_name,
-        # )
-
-        still_water_zone = self.rendering_data.still_water.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
-        )
-        still_water = self.__extract_geom(still_water_zone.geometry)
-        self.still_water_renderer.render(
-            still_water, self.window.center, rendering_collection_name
-        )
-
         return zone_window
 
     def clean_zone(self):
@@ -350,11 +325,19 @@ class RenderManager:
             terrain.hide_viewport = not is_terrain_visible
             terrain.hide_render = not is_terrain_visible
 
-    def change_road_visibility(self, is_road_visible):
+    def change_non_sources_visibility(self, is_visible):
+        """
+        Hides objects that need to be displayed before flood because they interact with terrain, but need to be hidden
+        during source computation
+        """
 
         for road_object in self.road_renderer.get_meshes_objs():
-            road_object.hide_viewport = not is_road_visible
-            road_object.hide_render = not is_road_visible
+            road_object.hide_viewport = not is_visible
+            road_object.hide_render = not is_visible
+
+        still_water_obj = self.still_water_renderer.get_mesh_obj()
+        still_water_obj.hide_viewport = not is_visible
+        still_water_obj.hide_render = not is_visible
 
     def __corner_coord(self, ray_direction, max_distance, origin):
 

@@ -22,7 +22,6 @@ shapefiles_folder = "Shapefiles"
 regions_file = "ARRONDISSEMENT/ARRONDISSEMENT.shp"
 regions_archive = "ARRONDISSEMENT.7z"
 
-# ocean_file = "OCEAN/World_Seas_IHO_v3.shp"
 ocean_file = "OCEAN/water_polygons.shp"
 ocean_archive = "OCEAN.7z"
 

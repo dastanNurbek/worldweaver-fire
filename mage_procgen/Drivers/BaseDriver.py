@@ -6,7 +6,6 @@ from mage_procgen.Utils.Utils import GeoWindow
 
 
 class BaseDriver:
-
     def __init__(self, config: Config, project_path: str):
         self.config = config
         self.project_path = project_path

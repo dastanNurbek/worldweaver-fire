@@ -4,6 +4,7 @@ from bpy import data as D, context as C, ops as O
 import bmesh
 
 import math
+from numpy import arange
 
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
@@ -70,49 +71,96 @@ class TerrainRenderer:
 
         current_terrain = terrain_data[0]
         terrain_index = 0
-        previous_point_terrain_index = 0
 
-        meshes = {x: TerrainMeshInfo(bmesh.new()) for x in range(len(terrain_data))}
+        meshes = {
+            x: TerrainMeshInfo(
+                bmesh.new(),
+                terrain_data[x].base_map_file,
+                terrain_data[x].x_min,
+                terrain_data[x].x_max,
+                terrain_data[x].y_min,
+                terrain_data[x].y_max,
+            )
+            for x in range(len(terrain_data))
+        }
         meshes_points = {x: {} for x in range(len(terrain_data))}
+        meshes_points_real_coords = {x: [] for x in range(len(terrain_data))}
 
         global_x_min = min([x.x_min for x in terrain_data])
         global_x_max = max([x.x_max for x in terrain_data])
         global_y_min = min([x.y_min for x in terrain_data])
         global_y_max = max([x.y_max for x in terrain_data])
 
-        total_pts_number_x = int((global_x_max - global_x_min) / self.render_resolution)
-        total_pts_number_y = int((global_y_max - global_y_min) / self.render_resolution)
+        base_range_x = arange(global_x_min, global_x_max, self.render_resolution)
+        range_x = []
+        for x in base_range_x:
+            if box[0] < x < box[2]:
+                range_x.append(x)
+        for terrain in terrain_data:
+            if terrain.x_max not in range_x:
+                if box[0] < terrain.x_max < box[2]:
+                    range_x.append(terrain.x_max)
+        range_x.append(box[0])
+        range_x.append(box[2])
+        range_x = list(set(range_x))
+        range_x.sort()
 
-        range_x = range(total_pts_number_x)
-        range_y = range(total_pts_number_y)
+        base_range_y = arange(global_y_min, global_y_max, self.render_resolution)
+        range_y = []
+        for y in base_range_y:
+            if box[1] < y < box[3]:
+                range_y.append(y)
+        for terrain in terrain_data:
+            if terrain.y_max not in range_y:
+                if box[1] < terrain.y_max < box[3]:
+                    range_y.append(terrain.y_max)
+        range_y.append(box[1])
+        range_y.append(box[3])
+        range_y = list(set(range_y))
+        range_y.sort()
 
         previous_terrain_line = None
+
+        ind_y = 0
 
         for y in range_y:
 
             current_terrain_line = []
 
-            current_point_y = global_y_min + y * self.render_resolution
+            ind_x = 0
 
             for x in range_x:
 
-                current_point_x = global_x_min + x * self.render_resolution
+                # Box is not in terraindata but has to be displayed.
+                # To that end, we make it so we search the first or last point actually in terraindata.
+                # The points of the box will be placed at those point's Z coordinate
+                point_query_x = x
+                if ind_x == 0:
+                    point_query_x = range_x[1]
+                if ind_x == len(range_x) - 1:
+                    point_query_x = range_x[-2]
+
+                point_query_y = y
+                if ind_y == 0:
+                    point_query_y = range_y[1]
+                if ind_y == len(range_y) - 1:
+                    point_query_y = range_y[-2]
 
                 # Checking if the current point is in the current dataset
                 is_point_in_current_terrain = True
-                is_point_in_current_terrain &= current_point_x >= current_terrain.x_min
-                is_point_in_current_terrain &= current_point_x < current_terrain.x_max
-                is_point_in_current_terrain &= current_point_y >= current_terrain.y_min
-                is_point_in_current_terrain &= current_point_y < current_terrain.y_max
+                is_point_in_current_terrain &= point_query_x >= current_terrain.x_min
+                is_point_in_current_terrain &= point_query_x < current_terrain.x_max
+                is_point_in_current_terrain &= point_query_y >= current_terrain.y_min
+                is_point_in_current_terrain &= point_query_y < current_terrain.y_max
 
                 if not is_point_in_current_terrain:
 
                     for terrain in terrain_data:
                         is_point_in_terrain = True
-                        is_point_in_terrain &= current_point_x >= terrain.x_min
-                        is_point_in_terrain &= current_point_x < terrain.x_max
-                        is_point_in_terrain &= current_point_y >= terrain.y_min
-                        is_point_in_terrain &= current_point_y < terrain.y_max
+                        is_point_in_terrain &= point_query_x >= terrain.x_min
+                        is_point_in_terrain &= point_query_x < terrain.x_max
+                        is_point_in_terrain &= point_query_y >= terrain.y_min
+                        is_point_in_terrain &= point_query_y < terrain.y_max
 
                         if is_point_in_terrain:
                             current_terrain = terrain
@@ -120,11 +168,11 @@ class TerrainRenderer:
                             break
 
                 current_point_index_x = (
-                    current_point_x - current_terrain.x_min
+                    point_query_x - current_terrain.x_min
                 ) / self.file_resolution
                 # Y axis is pointing north so the index needs to be inversed
                 current_point_index_y = (current_terrain.nbrow - 1) - (
-                    (current_point_y - current_terrain.y_min) / self.file_resolution
+                    (point_query_y - current_terrain.y_min) / self.file_resolution
                 )
 
                 if (
@@ -135,20 +183,6 @@ class TerrainRenderer:
                     or current_point_index_x < 0
                     or current_point_index_y < 0
                 ):
-                    # TODO: Fix this.
-                    # Sometimes slabs are missing, when they're too far out to sea.
-                    # This make the terrain render correctly but it attaches the points lying in the missing slab to another slab, which screws up the texture.
-
-                    # print("INVALID POINT INDEX: ")
-                    # print("x: " + str(current_point_x) + " y: " + str(current_point_y))
-                    # print(
-                    #    "i_x "
-                    #    + str(current_point_index_x)
-                    #    + " i_y: "
-                    #    + str(current_point_index_y)
-                    # )
-
-                    # raise ValueError()
                     current_point_z = 0
                 else:
                     current_point_z = current_terrain.data.values[
@@ -160,75 +194,77 @@ class TerrainRenderer:
                         current_point_z = 0
 
                 current_point_coords = [
-                    current_point_x,
-                    current_point_y,
+                    x,
+                    y,
                     current_point_z,
                 ]
 
                 current_terrain_line.append(current_point_coords)
 
-                if previous_terrain_line is not None and x > 0:
-                    # Checking if the point is inside the window
-                    is_point_in_window = True
-                    is_point_in_window &= current_point_x >= box[0] - 1
-                    is_point_in_window &= current_point_x < box[2] + 1
-                    is_point_in_window &= current_point_y >= box[1] - 1
-                    is_point_in_window &= current_point_y < box[3] + 1
+                if previous_terrain_line is not None and ind_x > 0:
 
-                    if is_point_in_window:
-                        new_face_verts = [
-                            center_point(current_terrain_line[x], center),
-                            center_point(current_terrain_line[x - 1], center),
-                            center_point(previous_terrain_line[x - 1], center),
-                            center_point(previous_terrain_line[x], center),
-                        ]
+                    new_face_verts = [
+                        current_terrain_line[ind_x],
+                        current_terrain_line[ind_x - 1],
+                        previous_terrain_line[ind_x - 1],
+                        previous_terrain_line[ind_x],
+                    ]
 
-                        new_face_mesh_verts = []
-                        for pt in new_face_verts:
-                            if pt not in meshes_points[previous_point_terrain_index]:
-                                meshes_points[previous_point_terrain_index][pt] = (
-                                    meshes[previous_point_terrain_index].mesh.verts.new(
-                                        pt
-                                    )
-                                )
-                            new_face_mesh_verts.append(
-                                meshes_points[previous_point_terrain_index][pt]
-                            )
+                    # Face has to be added to the terrain containing the lower left corner of the face
+                    ll_point = previous_terrain_line[ind_x - 1]
+                    ll_point_terrain_index = terrain_index
+                    is_ll_point_in_current_terrain = True
+                    is_ll_point_in_current_terrain &= (
+                        ll_point[0] >= current_terrain.x_min
+                    )
+                    is_ll_point_in_current_terrain &= (
+                        ll_point[0] < current_terrain.x_max
+                    )
+                    is_ll_point_in_current_terrain &= (
+                        ll_point[1] >= current_terrain.y_min
+                    )
+                    is_ll_point_in_current_terrain &= (
+                        ll_point[1] < current_terrain.y_max
+                    )
 
-                        # Some checks will be superfluous, but better be safe than sorry
-                        TerrainRenderer.__check_boundaries(
-                            current_terrain_line[x],
-                            meshes[previous_point_terrain_index],
-                        )
-                        TerrainRenderer.__check_boundaries(
-                            current_terrain_line[x - 1],
-                            meshes[previous_point_terrain_index],
-                        )
-                        TerrainRenderer.__check_boundaries(
-                            previous_terrain_line[x - 1],
-                            meshes[previous_point_terrain_index],
-                        )
-                        TerrainRenderer.__check_boundaries(
-                            previous_terrain_line[x],
-                            meshes[previous_point_terrain_index],
+                    if not is_ll_point_in_current_terrain:
+
+                        for terrain in terrain_data:
+                            is_ll_point_in_terrain = True
+                            is_ll_point_in_terrain &= ll_point[0] >= terrain.x_min
+                            is_ll_point_in_terrain &= ll_point[0] < terrain.x_max
+                            is_ll_point_in_terrain &= ll_point[1] >= terrain.y_min
+                            is_ll_point_in_terrain &= ll_point[1] < terrain.y_max
+
+                            if is_ll_point_in_terrain:
+                                ll_point_terrain_index = terrain_data.index(terrain)
+                                break
+
+                    new_face_mesh_verts = []
+                    for pt in new_face_verts:
+                        centered_pt = center_point(pt, center)
+                        if centered_pt not in meshes_points[ll_point_terrain_index]:
+                            meshes_points[ll_point_terrain_index][centered_pt] = meshes[
+                                ll_point_terrain_index
+                            ].mesh.verts.new(centered_pt)
+
+                            meshes_points_real_coords[ll_point_terrain_index].append(pt)
+
+                        new_face_mesh_verts.append(
+                            meshes_points[ll_point_terrain_index][centered_pt]
                         )
 
-                        face = meshes[previous_point_terrain_index].mesh.faces.new(
-                            new_face_mesh_verts
-                        )
+                    face = meshes[ll_point_terrain_index].mesh.faces.new(
+                        new_face_mesh_verts
+                    )
 
-                previous_point_terrain_index = terrain_index
+                ind_x += 1
 
             previous_terrain_line = current_terrain_line
 
-        for index, mesh_info in meshes.items():
+            ind_y += 1
 
-            pts_number_x = int(
-                (mesh_info.x_max - mesh_info.x_min) / self.render_resolution
-            )
-            pts_number_y = int(
-                (mesh_info.y_max - mesh_info.y_min) / self.render_resolution
-            )
+        for index, mesh_info in meshes.items():
 
             mesh_name = self._mesh_name + "_" + str(index)
             mesh_data = D.meshes.new(mesh_name)
@@ -236,58 +272,55 @@ class TerrainRenderer:
             mesh_info.mesh.to_mesh(mesh_data)
             mesh_info.mesh.free()
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
+            terrain_collection.objects.link(mesh_obj)
             mesh_material = D.materials[self._BaseMaterialName].copy()
 
             if use_sat_img:
 
-                try:
-                    texture_file_path = self.driver.load_texture(
-                        (
-                            mesh_info.x_min,
-                            mesh_info.y_min,
-                            mesh_info.x_max,
-                            mesh_info.y_max,
-                        ),
-                    )
+                if os.path.isfile(mesh_info.base_map_file):
+                    try:
+                        D.images.load(mesh_info.base_map_file)
 
-                    D.images.load(texture_file_path)
-
-                    mesh_material.node_tree.nodes["Image Texture"].image = D.images[
-                        os.path.basename(texture_file_path)
-                    ]
-                except Exception as e:
-                    print("Couldn't add texture image to slab: " + str(e))
+                        mesh_material.node_tree.nodes["Image Texture"].image = D.images[
+                            os.path.basename(mesh_info.base_map_file)
+                        ]
+                    except Exception as e:
+                        print("Couldn't add texture image to slab: " + str(e))
 
             mesh_data.materials.append(mesh_material)
 
-            terrain_collection.objects.link(mesh_obj)
-
-            uv_coords = [
-                (1 / (pts_number_x), 1 / (pts_number_y)),
-                (0, 1 / (pts_number_y)),
-                (0, 0),
-                (1 / (pts_number_x), 0),
-            ]
-
+            base_map_size_x = mesh_info.base_map_x_max - mesh_info.base_map_x_min
+            base_map_size_y = mesh_info.base_map_y_max - mesh_info.base_map_y_min
             uvlayer = mesh_obj.data.uv_layers.new(name="UVMap_Terrain")
 
             for face in mesh_obj.data.polygons:
+                for v_ind in range(len(face.vertices)):
+                    vertex_ind = face.vertices[v_ind]
+                    vertex_real_coords = meshes_points_real_coords[index][vertex_ind]
 
-                # Each face has 4 loops (sides), and starts in the lower left corner (xmin, ymin)
-                start_coord_x = (
-                    1 / pts_number_x * ((face.loop_start // 4) % pts_number_x)
-                )
-                start_coord_y = (
-                    1 / pts_number_y * (face.loop_start // (pts_number_x * 4))
-                )
-
-                start_coord = (start_coord_x, start_coord_y)
-                for loop_idx in face.loop_indices:
-                    cur_coord = uv_coords[loop_idx % 4]
-                    uvlayer.data[loop_idx].uv = (
-                        start_coord[0] + cur_coord[0],
-                        start_coord[1] + cur_coord[1],
+                    vertex_coords_in_basemap = (
+                        vertex_real_coords[0] - mesh_info.base_map_x_min,
+                        vertex_real_coords[1] - mesh_info.base_map_y_min,
                     )
+
+                    vertex_uv = (
+                        vertex_coords_in_basemap[0] / base_map_size_x,
+                        vertex_coords_in_basemap[1] / base_map_size_y,
+                    )
+
+                    # TODO: monitor this
+                    if (
+                        vertex_uv[0] > 1
+                        or vertex_uv[0] < 0
+                        or vertex_uv[1] > 1
+                        or vertex_uv[1] < 0
+                    ):
+                        print("CAUTION: bad uv coord")
+                        print(str(vertex_real_coords))
+                        print(str(vertex_uv))
+
+                    vertex_loop_ind = face.loop_indices[v_ind]
+                    uvlayer.data[vertex_loop_ind].uv = vertex_uv
 
         if len(D.collections[parent_collection_name].objects) > 1:
             # Merging all slabs of terrain into one object to enable shrinkwrap of road later
@@ -306,33 +339,33 @@ class TerrainRenderer:
         m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
 
-    def config_geometry_node(self, road_object, water_object, building_object):
+    def config_geometry_node(
+        self, road_object, water_object, still_water_object, building_object
+    ):
         node = self.terrain_object.modifiers[self.geometry_node_name]
         node["Socket_2"] = road_object
         node["Socket_4"] = water_object
         node["Socket_6"] = building_object
+        node["Socket_8"] = still_water_object
 
     def get_mesh_obj(self):
         return self.terrain_object
 
-    @staticmethod
-    def __check_boundaries(point, terrain_mesh_info):
-
-        if point[0] < terrain_mesh_info.x_min:
-            terrain_mesh_info.x_min = point[0]
-        if point[0] > terrain_mesh_info.x_max:
-            terrain_mesh_info.x_max = point[0]
-        if point[1] < terrain_mesh_info.y_min:
-            terrain_mesh_info.y_min = point[1]
-        if point[1] > terrain_mesh_info.y_max:
-            terrain_mesh_info.y_max = point[1]
-
 
 class TerrainMeshInfo:
-    def __init__(self, mesh):
+    def __init__(
+        self,
+        mesh,
+        base_map_file,
+        base_map_x_min,
+        base_map_x_max,
+        base_map_y_min,
+        base_map_y_max,
+    ):
 
         self.mesh = mesh
-        self.x_min = math.inf
-        self.x_max = -math.inf
-        self.y_min = math.inf
-        self.y_max = -math.inf
+        self.base_map_file = base_map_file
+        self.base_map_x_min = base_map_x_min
+        self.base_map_x_max = base_map_x_max
+        self.base_map_y_min = base_map_y_min
+        self.base_map_y_max = base_map_y_max

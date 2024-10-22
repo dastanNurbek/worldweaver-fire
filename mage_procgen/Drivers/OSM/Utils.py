@@ -1,5 +1,4 @@
 class OSM:
-
     @staticmethod
     def get_town_request_url(town_name: str):
         return (

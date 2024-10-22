@@ -12,3 +12,4 @@ fiona==1.9.6
 owslib==0.31.0
 funkybob
 overpass==0.7.2
+timezonefinder==6.5.3

@@ -22,9 +22,13 @@ class IGNDriver(BaseDriver):
 
         match config.data_source:
             case "STREAM":
-                self.loader = StreamLoader(config.base_folder, project_path)
+                self.loader = StreamLoader(
+                    config.base_folder, project_path, self.config.use_sat_img
+                )
             case "FILE":
-                self.loader = FileLoader(config.base_folder, project_path)
+                self.loader = FileLoader(
+                    config.base_folder, project_path, self.config.use_sat_img
+                )
             case _:
                 raise ValueError(
                     "Invalid config: invalid data source type: ", config.data_source

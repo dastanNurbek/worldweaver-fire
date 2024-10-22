@@ -4,11 +4,10 @@ import pandas as p
 import geopandas as g
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser, RoadShapeFileParser
-from mage_procgen.Parser.ASCParser import ASCParser
+from mage_procgen.Parser.ASCParser import ASCParser, ASCData
 from mage_procgen.Parser.JP2Parser import JP2Parser
 
 from mage_procgen.Drivers.IGN.Loader import Loader
-
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
 from mage_procgen.Drivers.IGN.Utils import GeoData
 import mage_procgen.Utils.DataFiles as df
@@ -22,6 +21,7 @@ from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
+from mage_procgen.Utils.Utils import TerrainData
 
 
 class FileLoader(Loader):
@@ -51,34 +51,18 @@ class FileLoader(Loader):
 
         load_oceans = False
 
+        # TODO: this "= geo_window" is weird, look into it
+        # Specifically for terrain, we have to make sure it loads a complete rectangle
+        terrain_window = geo_window = GeoWindow.from_square(
+            bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
+        )
+
         for current_departement in departements_names:
 
             print("Loading data for departement " + current_departement)
 
-            # TODO: this "= geo_window" is weird, look into it
-            # Specifically for terrain, we have to make sure it loads a complete rectangle
-            terrain_window = geo_window = GeoWindow.from_square(
-                bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
-            )
-            current_terrain_data = ASCParser.load(
-                os.path.join(
-                    self.base_folder,
-                    df.departements,
-                    current_departement,
-                    df.terrain_DB,
-                    df.delivery,
-                    df.terrain_data_folder,
-                ),
-                terrain_window,
-                os.path.join(
-                    self.base_folder,
-                    df.departements,
-                    current_departement,
-                    df.terrain_DB,
-                    df.additional,
-                    df.terrain_data_folder,
-                    df.slab_file,
-                ),
+            current_terrain_data = self.load_departement_terrain(
+                current_departement, terrain_window
             )
 
             terrain_data.extend(current_terrain_data)
@@ -327,6 +311,144 @@ class FileLoader(Loader):
         town = towns.query("NOM == @town_name").reset_index()
 
         return town
+
+    def load_departement_terrain(self, current_departement, terrain_window):
+
+        bbox = terrain_window.bounds
+        file_folder = os.path.join(
+            self.base_folder,
+            df.departements,
+            current_departement,
+            df.terrain_DB,
+            df.delivery,
+            df.terrain_data_folder,
+        )
+        slab_file = os.path.join(
+            self.base_folder,
+            df.departements,
+            current_departement,
+            df.terrain_DB,
+            df.additional,
+            df.terrain_data_folder,
+            df.slab_file,
+        )
+        slabs = ShapeFileParser.load(slab_file, bbox, CRS_fr)
+        slab_parts = slabs.overlay(
+            terrain_window.dataframe, how="intersection", keep_geom_type=True
+        )
+
+        loaded_files = []
+
+        for index, row in slab_parts.iterrows():
+            file_name = os.path.basename(row["NOM_DALLE"]) + ".asc"
+
+            file_full_path = os.path.join(file_folder, file_name)
+
+            # Sometimes the name of the file in the dalles.shp file does not correspond to the actual name of the file
+            if not os.path.isfile(file_full_path):
+                # The corner of the file seems always be present in format _DDDD_DDDD_
+                # We can use that to find the file we want
+                file_coords = df.file_coords_regex.findall(file_name)[0]
+
+                file_name = next(x for x in os.listdir(file_folder) if file_coords in x)
+                file_full_path = os.path.join(file_folder, file_name)
+
+            asc_data = ASCParser.load(file_full_path)
+
+            current_box = (
+                asc_data.x_min,
+                asc_data.y_min,
+                asc_data.x_max,
+                asc_data.y_max,
+            )
+
+            terrain_base_map = ""
+            if self.use_sat_img:
+                try:
+                    terrain_base_map = self.load_texture(current_box)
+                except Exception as e:
+                    print("Couldn't load texture image of terrain slab: " + str(e))
+
+            loaded_files.append(
+                TerrainData(
+                    asc_data.x_min,
+                    asc_data.y_min,
+                    asc_data.x_max,
+                    asc_data.y_max,
+                    asc_data.resolution,
+                    asc_data.nbcol,
+                    asc_data.nbrow,
+                    asc_data.no_data,
+                    terrain_base_map,
+                    asc_data.data,
+                )
+            )
+
+        # Coherence check: find out if we are missing a slab
+        global_x_min = min([x.x_min for x in loaded_files])
+        global_x_max = max([x.x_max for x in loaded_files])
+        global_y_min = min([x.y_min for x in loaded_files])
+        global_y_max = max([x.y_max for x in loaded_files])
+
+        resolution = loaded_files[0].resolution
+        nbcols = loaded_files[0].nbcol
+        nbrows = loaded_files[0].nbrow
+        no_data = loaded_files[0].no_data
+
+        terrain_data = p.DataFrame([[0 for x in range(nbcols)] for y in range(nbrows)])
+
+        current_x = global_x_min
+        current_y = global_y_min
+        current_terrain = None
+
+        while current_x < global_x_max and current_y < global_y_max:
+
+            for terrain in loaded_files:
+                if current_x == terrain.x_min and current_y == terrain.y_min:
+                    current_terrain = terrain
+                    break
+
+            # If the terrain that is supposed to be there is not, add it
+            if current_terrain is None:
+                current_box = (
+                    current_x,
+                    current_y,
+                    current_x + resolution * nbcols,
+                    current_y + resolution * nbrows,
+                )
+
+                # Sometimes (ex: in sea but near-ish coastline) there is no elevation data but there is an ortho img
+                # In this case, we should fetch it.
+                terrain_base_map = ""
+                if self.use_sat_img:
+                    try:
+                        terrain_base_map = self.load_texture(current_box)
+                    except Exception as e:
+                        print("Couldn't load texture image of terrain slab: " + str(e))
+
+                loaded_files.append(
+                    TerrainData(
+                        current_x,
+                        current_y,
+                        current_x + resolution * nbcols,
+                        current_y + resolution * nbrows,
+                        resolution,
+                        nbcols,
+                        nbrows,
+                        no_data,
+                        terrain_base_map,
+                        terrain_data,
+                    )
+                )
+
+            # If we're at the end of a line
+            if current_x >= global_x_max:
+                current_y = current_y + resolution * nbrows
+                current_x = global_x_min
+            else:
+                current_x = current_x + resolution * nbcols
+
+        return loaded_files
 
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
 

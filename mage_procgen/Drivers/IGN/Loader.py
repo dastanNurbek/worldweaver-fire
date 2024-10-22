@@ -3,9 +3,10 @@ from mage_procgen.Drivers.IGN.Utils import GeoData
 
 
 class Loader:
-    def __init__(self, base_folder: str, project_folder: str):
+    def __init__(self, base_folder: str, project_folder: str, use_sat_img: bool):
         self.base_folder = base_folder
         self.project_folder = project_folder
+        self.use_sat_img = use_sat_img
 
     def load(self, geo_window: GeoWindow) -> GeoData:
 

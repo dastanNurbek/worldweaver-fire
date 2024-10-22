@@ -18,12 +18,13 @@ import json
 
 
 class OsmChLoader(OsmLoader):
-
     def __init__(self, base_folder: str, project_folder: str):
         super().__init__(base_folder, project_folder)
         self.internal_crs = CRS_ch
 
-    def load_terrain_data(self, input_folder: str, geo_window: GeoWindow) -> TerrainDataList:
+    def load_terrain_data(
+        self, input_folder: str, geo_window: GeoWindow
+    ) -> TerrainDataList:
         bbox_lv95 = geo_window.bounds
 
         # Need to round out the terrain box to the nearest km in order to fetch the correct slabs
@@ -102,6 +103,7 @@ class OsmChLoader(OsmLoader):
                         terrain_df.shape[1],
                         terrain_df.shape[0],
                         no_data,
+                        "",
                         terrain_df,
                     )
                 )

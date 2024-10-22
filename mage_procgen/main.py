@@ -89,8 +89,7 @@ def main(filepath):
 
     if config.flood:
 
-        # TODO: hide roads so that they don't count for height map and render pass
-        render_manager.change_road_visibility(False)
+        render_manager.change_non_sources_visibility(False)
 
         # First render: writing a height map
         print("Computing height map")
@@ -125,8 +124,7 @@ def main(filepath):
 
         render_manager.draw_flood(flood_data)
 
-        # TODO: re-enable roads
-        render_manager.change_road_visibility(True)
+        render_manager.change_non_sources_visibility(True)
 
         if not config.export_img:
 
@@ -220,7 +218,7 @@ def select_driver(config, project_path):
     elif config.data_source in IGNDriver.supported_data_sources:
         return IGNDriver(config, project_path)
     else:
-        return ValueError("Unsupported data source in config file:", config.data_source)
+        raise ValueError("Unsupported data source in config file:", config.data_source)
 
 
 if __name__ == "__main__":

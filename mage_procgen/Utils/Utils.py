@@ -125,6 +125,7 @@ class TerrainData:
     nbcol: int
     nbrow: int
     no_data: float
+    base_map_file: str
     data: p.DataFrame
 
 

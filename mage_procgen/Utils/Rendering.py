@@ -2,6 +2,8 @@ import os
 import math
 from bpy import context as C, data as D, ops as O
 from datetime import datetime
+from timezonefinder import TimezoneFinder
+import pytz
 import addon_utils
 import random
 
@@ -42,13 +44,25 @@ def configure_render(geo_center_deg):
     sun.data.type = "SUN"
     sun.data.energy = 10
 
+    tzf = TimezoneFinder()
+    tz = tzf.timezone_at(lng=geo_center_deg[0], lat=geo_center_deg[1])
+    local = pytz.timezone(tz)
+
+    date = datetime.now()
+    dt = local.utcoffset(date)
+    utc_offset = dt.seconds // 3600
+    if utc_offset > 12:
+        utc_offset = 12 - utc_offset
+
     try:
         sc = C.scene
         sc.sun_pos_properties.sun_object = sun
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
-        # TODO: correlate pos to UTC Zone
-        sc.sun_pos_properties.UTC_zone = 2
+        sc.sun_pos_properties.day = date.day
+        sc.sun_pos_properties.month = date.month
+        sc.sun_pos_properties.year = date.year
+        sc.sun_pos_properties.UTC_zone = utc_offset
         sc.sun_pos_properties.time = 12
     except Exception as _:
         raise Exception(

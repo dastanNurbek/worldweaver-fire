@@ -37,10 +37,6 @@ import requests
 
 
 class StreamLoader(Loader):
-    def __init__(self, base_folder: str, project_folder: str):
-        self.base_folder = base_folder
-        self.project_folder = project_folder
-
     def load(self, geo_window: GeoWindow) -> GeoData:
 
         bbox = geo_window.bounds
@@ -75,11 +71,6 @@ class StreamLoader(Loader):
         terrain_data = []
 
         load_oceans = False
-
-        # Specifically for terrain, we have to make sure it loads a complete rectangle
-        # terrain_window = geo_window = GeoWindow.from_square(
-        #     bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
-        # )
 
         wms = WebMapService(WFS_FR.wms_alti_url, version=WFS_FR.wms_alti_version)
 
@@ -143,6 +134,13 @@ class StreamLoader(Loader):
                 terrain_im_array = np.array(terrain_image)
                 terrain_df = p.DataFrame(terrain_im_array)
 
+                terrain_base_map = ""
+                if self.use_sat_img:
+                    try:
+                        terrain_base_map = self.load_texture(current_box)
+                    except Exception as e:
+                        print("Couldn't load texture image of terrain slab: " + str(e))
+
                 terrain_data.append(
                     TerrainData(
                         current_box[0],
@@ -153,6 +151,7 @@ class StreamLoader(Loader):
                         terrain_df.shape[1],
                         terrain_df.shape[0],
                         no_data,
+                        terrain_base_map,
                         terrain_df,
                     )
                 )

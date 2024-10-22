@@ -195,6 +195,7 @@ class OsmLoader:
                         terrain_df.shape[1],
                         terrain_df.shape[0],
                         no_data,
+                        "",
                         terrain_df,
                     )
                 )
