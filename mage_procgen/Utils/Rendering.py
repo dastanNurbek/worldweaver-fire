@@ -146,8 +146,8 @@ def setup_img_persp(resolution, pixel_size, center):
 
 def setup_img_ortho(size_x, size_y, pixel_size, center):
     sc = C.scene
-    sc.render.resolution_x = size_x // pixel_size
-    sc.render.resolution_y = size_y // pixel_size
+    sc.render.resolution_x = int(size_x // pixel_size)
+    sc.render.resolution_y = int(size_y // pixel_size)
 
     size = max(size_x, size_y)
 
@@ -167,41 +167,17 @@ def setup_img_ortho(size_x, size_y, pixel_size, center):
         if cur_z_max > max_z:
             max_z = cur_z_max
 
-    camera_z = max_z + 50
+    # Highest building in the world is ~800m and camera has to be above that
+    camera_z = max_z + 1000
 
-    camera.location = (center[0], center[1], max_z + 50)
+    camera.location = (center[0], center[1], camera_z)
 
     return camera_z
 
 
 def setup_img_ortho_res(resolution, pixel_size, center):
-    sc = C.scene
-    sc.render.resolution_x = resolution
-    sc.render.resolution_y = resolution
-
-    size = resolution * pixel_size
-
-    camera = D.objects["Camera_Ortho"]
-    sc.camera = camera
-    camera.data.ortho_scale = size
-
-    max_z = -math.inf
-
-    # Calculating the maximum height of the scene, using terrain and buildings
-    # TODO: check if there are edge cases where this does not hold
-    terrain_collection = D.collections["Terrain"].objects
-    for terrain in terrain_collection:
-        terrain_box = terrain.bound_box
-        z_coords = [v[2] for v in terrain_box]
-        cur_z_max = max(z_coords)
-        if cur_z_max > max_z:
-            max_z = cur_z_max
-
-    camera_z = max_z + 50
-
-    camera.location = (center[0], center[1], max_z + 50)
-
-    return camera_z
+    size = int(resolution * pixel_size)
+    return setup_img_ortho(size, size, pixel_size, center)
 
 
 def setup_compositing_height_map(base_folder: str):
