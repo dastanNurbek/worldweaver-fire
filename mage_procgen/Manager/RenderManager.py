@@ -2,6 +2,7 @@ from bpy import data as D
 import math
 import geopandas as g
 from shapely.geometry import MultiPolygon, LineString
+
 from mage_procgen.Utils.Utils import PolygonList, TerrainData
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow
 from mage_procgen.Utils.Config import Config
@@ -10,7 +11,9 @@ from mage_procgen.Utils.Rendering import (
     rendering_collection_name,
     terrain_collection_name,
     buildings_collection_name,
-    mockup_collection_name,
+    additionals_collection_name,
+    persp_camera_name,
+    ortho_camera_name,
 )
 from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
@@ -19,12 +22,13 @@ from mage_procgen.Drivers.BaseDriver import BaseDriver
 from mage_procgen.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
-    MockupBuildingRenderer,
+    BuildingFootprintRenderer,
     ForestRenderer,
     PrettyRoadRenderer,
     WaterRenderer,
     TerrainRenderer,
     FloodRenderer,
+    ZoneRenderer,
 )
 
 
@@ -36,7 +40,6 @@ class RenderManager:
         geowindow: GeoWindow,
         crs: int,
         config: Config,
-        driver: BaseDriver,
     ):
         self.terrain_data = terrain_data
         self.rendering_data = rendering_data
@@ -49,7 +52,7 @@ class RenderManager:
             config.base_folder,
             self.config.terrain_resolution,
             terrain_data[0].resolution,
-            driver,
+            self.config.use_sat_img,
         )
         self.building_renderer = BuildingRenderer.BuildingRenderer(
             self.terrain_data, self.config.building_render_config
@@ -83,9 +86,12 @@ class RenderManager:
         self.still_water_renderer = WaterRenderer.StillWaterRenderer(
             self.terrain_data, self.config.water_render_config
         )
-        self.mockup_building_renderer = MockupBuildingRenderer.MockupBuildingRenderer(
-            self.terrain_data
+        self.building_footprint_renderer = (
+            BuildingFootprintRenderer.BuildingFootprintRenderer(self.terrain_data)
         )
+        self.fields_renderer = ZoneRenderer.FieldsRenderer(self.terrain_data)
+        self.grass_renderer = ZoneRenderer.GrassRenderer(self.terrain_data)
+        self.developed_renderer = ZoneRenderer.DevelopedRenderer(self.terrain_data)
 
     def draw_flood_interactors(self):
         # Rendering objects that interact with flood
@@ -94,10 +100,10 @@ class RenderManager:
             self.terrain_data,
             self.window,
             terrain_collection_name,
-            self.config.use_sat_img,
         )
         print("Terrain rendered")
 
+        # Drawing water
         flowing_water = self.__extract_geom(self.rendering_data.flowing_water.geometry)
         if (
             self.rendering_data.ocean is not None
@@ -109,15 +115,16 @@ class RenderManager:
             flowing_water, self.window.center, rendering_collection_name
         )
 
+        still_water = self.__extract_geom(self.rendering_data.still_water.geometry)
+        self.still_water_renderer.render(
+            still_water, self.window.center, rendering_collection_name
+        )
+
+        # Drawing roads and buildind footprints to modify terrain
         self.road_renderer.render(
             self.rendering_data.roads,
             self.window,
             rendering_collection_name,
-        )
-
-        still_water = self.__extract_geom(self.rendering_data.still_water.geometry)
-        self.still_water_renderer.render(
-            still_water, self.window.center, rendering_collection_name
         )
 
         buildings = self.__extract_geom(self.rendering_data.default_buildings.geometry)
@@ -129,16 +136,39 @@ class RenderManager:
         buildings.extend(churches)
         buildings.extend(factories)
         buildings.extend(malls)
-        self.mockup_building_renderer.render(
-            buildings, self.window.center, mockup_collection_name
+        self.building_footprint_renderer.render(
+            buildings, self.window.center, additionals_collection_name
+        )
+
+        # Drawing zones to texture terrain
+        fields = self.__extract_geom(self.rendering_data.fields.geometry)
+        self.fields_renderer.render(
+            fields, self.window.center, additionals_collection_name
+        )
+
+        grass = self.__extract_geom(self.rendering_data.grass.geometry)
+        self.grass_renderer.render(
+            grass, self.window.center, additionals_collection_name
+        )
+
+        developed = self.__extract_geom(self.rendering_data.developed.geometry)
+        self.developed_renderer.render(
+            developed, self.window.center, additionals_collection_name
         )
 
         self.terrain_renderer.config_geometry_node(
             self.road_renderer.get_mesh_obj(),
             self.flowing_water_renderer.get_mesh_obj(),
             self.still_water_renderer.get_mesh_obj(),
-            self.mockup_building_renderer.get_mesh_obj(),
+            self.building_footprint_renderer.get_mesh_obj(),
         )
+
+        if not self.config.use_sat_img:
+            self.terrain_renderer.config_tagging_node(
+                self.fields_renderer.get_mesh_obj(),
+                self.grass_renderer.get_mesh_obj(),
+                self.developed_renderer.get_mesh_obj(),
+            )
 
         print("Objects that interact with flood rendered")
 
@@ -155,7 +185,7 @@ class RenderManager:
             vector_multiplier = 1.2
 
             if use_camera_presp:
-                camera = D.objects["Camera"]
+                camera = D.objects[persp_camera_name]
                 origin = camera.location
 
                 # camera Z should be by far the highest so this rule of thumb should hold
@@ -219,7 +249,7 @@ class RenderManager:
                         "Zone to beautify is outside of the boundaries of the scene"
                     )
             else:
-                camera = D.objects["Camera_Ortho"]
+                camera = D.objects[ortho_camera_name]
                 origin = camera.location
                 window_size = camera.data.ortho_scale
 
@@ -295,9 +325,9 @@ class RenderManager:
         )
         self.forests_renderer.config_geometry_node(
             self.road_renderer.get_mesh_obj(),
-            self.mockup_building_renderer.get_mesh_obj(),
+            self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
-            D.objects["Camera_Ortho"].location[2] * 2,
+            D.objects[ortho_camera_name].location[2] * 2,
         )
 
         return zone_window

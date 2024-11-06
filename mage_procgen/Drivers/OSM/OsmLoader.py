@@ -101,6 +101,34 @@ class OsmLoader:
             self.internal_crs
         )
 
+        # Due to defaults in osm2geojson, some polygons, which are inners of multipolygons but still objects of their own,
+        # are not returned by a simple mapquery. To get around this, we query them separately
+        # https://github.com/mvexel/overpass-api-python-wrapper/issues/163
+        # https://github.com/aspectumapp/osm2geojson/issues/46
+        additional_request = OSM.get_additional_request(bbox_wgs84)
+
+        additional_response = api.get(additional_request)
+
+        # For some reason there seem to be duplicated features in the response
+        filtered_features = []
+        for feature in additional_response["features"]:
+            if feature not in filtered_features:
+                filtered_features.append(feature)
+        additional_response["features"] = filtered_features
+        additional_response_str = json.dumps(additional_response, indent=2)
+
+        with open(
+            os.path.join(input_folder, "additional_data.geojson"), "w"
+        ) as data_file:
+            bytes_written = data_file.write(additional_response_str)
+
+        additional_geo_df = g.read_file(
+            os.path.join(input_folder, "additional_data.geojson")
+        ).to_crs(self.internal_crs)
+        geo_df = g.GeoDataFrame(
+            p.concat([geo_df, additional_geo_df], ignore_index=True)
+        )
+
         return geo_df
 
     def load_terrain_data(self, input_folder, geo_window):

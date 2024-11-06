@@ -105,6 +105,9 @@ class RenderingData:
     still_water: g.GeoDataFrame
     flowing_water: g.GeoDataFrame
     ocean: g.GeoDataFrame
+    fields: g.GeoDataFrame
+    grass: g.GeoDataFrame
+    developed: g.GeoDataFrame
 
 
 @dataclass

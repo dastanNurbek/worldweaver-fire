@@ -232,11 +232,11 @@ class PrettyRoadRenderer:
                     previous_point_bridge = new_point_bridge
                 edge_index += 1
 
-        mesh_name = self._mesh_name
-        mesh_data = D.meshes.new(mesh_name)
+        mesh_data = D.meshes.new(self._mesh_name)
+        self._mesh_name = mesh_data.name
         mesh.to_mesh(mesh_data)
         mesh.free()
-        mesh_obj = D.objects.new(mesh_data.name, mesh_data)
+        mesh_obj = D.objects.new(self._mesh_name, mesh_data)
         mesh_obj.pass_index = self.config.tagging_index
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
@@ -249,7 +249,7 @@ class PrettyRoadRenderer:
         mesh_obj.select_set(True)
         C.view_layer.objects.active = mesh_obj
         O.object.mode_set(mode="EDIT")
-        mesh_data = D.objects[mesh_name].data
+        mesh_data = D.objects[self._mesh_name].data
         attribute_lane_nbr = mesh_data.attributes.new(
             name="street type", type="INT", domain="EDGE"
         )
@@ -302,11 +302,11 @@ class PrettyRoadRenderer:
         O.object.mode_set(mode="OBJECT")
         O.object.select_all(action="DESELECT")
 
-        bridge_mesh_name = self._bridge_mesh_name
-        bridge_mesh_data = D.meshes.new(bridge_mesh_name)
+        bridge_mesh_data = D.meshes.new(self._bridge_mesh_name)
+        self._bridge_mesh_name = bridge_mesh_data.name
         bridge_mesh.to_mesh(bridge_mesh_data)
         bridge_mesh.free()
-        bridge_mesh_obj = D.objects.new(bridge_mesh_data.name, bridge_mesh_data)
+        bridge_mesh_obj = D.objects.new(self._bridge_mesh_name, bridge_mesh_data)
         bridge_mesh_obj.pass_index = self.config.tagging_index
         D.collections[parent_collection_name].objects.link(bridge_mesh_obj)
 

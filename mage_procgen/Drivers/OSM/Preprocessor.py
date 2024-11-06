@@ -108,7 +108,7 @@ class Preprocessor:
         masses = geo_dataframe.query("index in @masses_indexes")
 
         # Forests
-        selected_forest_tags = ["forest"]
+        selected_forest_tags = [OSM.usage_forests_tags]
         forests_ids = []
         for ind in masses[OSM.tags].index:
             if masses[OSM.tags][ind][OSM.landuse] in selected_forest_tags:
@@ -117,7 +117,7 @@ class Preprocessor:
         forests = masses.query("index in @forests_ids")
 
         # Residential
-        selected_residential_tags = ["residential"]
+        selected_residential_tags = [OSM.usage_residential_tags]
         residential_ids = []
         for ind in masses[OSM.tags].index:
             if masses[OSM.tags][ind][OSM.landuse] in selected_residential_tags:
@@ -126,7 +126,7 @@ class Preprocessor:
         residentials = masses.query("index in @residential_ids")
 
         # Interest zones
-        selected_interest_tags = ["commercial", "industrial"]
+        selected_interest_tags = [OSM.usage_commercial_tags, OSM.usage_commercial_tags]
 
         interest_ids = []
         for ind in masses[OSM.tags].index:
@@ -134,6 +134,37 @@ class Preprocessor:
                 interest_ids.append(ind)
 
         interest_zones = masses.query("index in @interest_ids")
+
+        # Fields
+        selected_field_tags = OSM.field_landuses
+
+        field_ids = []
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_field_tags:
+                field_ids.append(ind)
+
+        fields = masses.query("index in @field_ids")
+
+        # Grass
+        selected_grass_tags = OSM.grass_landuses.copy()
+        selected_grass_tags.extend(OSM.leisure_landuses)
+
+        grass_ids = []
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_grass_tags:
+                grass_ids.append(ind)
+
+        grass = masses.query("index in @grass_ids")
+
+        # Developed
+        selected_developed_tags = OSM.developed_landuses
+
+        developed_ids = []
+        for ind in masses[OSM.tags].index:
+            if masses[OSM.tags][ind][OSM.landuse] in selected_developed_tags:
+                developed_ids.append(ind)
+
+        developed = masses.query("index in @developed_ids")
 
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
@@ -290,6 +321,15 @@ class Preprocessor:
         new_oceans = oceans_data.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
+        fields = fields.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        grass = grass.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        developed = developed.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
 
         rendering_data = RenderingData(
             forests=forests,
@@ -303,6 +343,9 @@ class Preprocessor:
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,
+            fields=fields,
+            grass=grass,
+            developed=developed,
         )
 
         return rendering_data

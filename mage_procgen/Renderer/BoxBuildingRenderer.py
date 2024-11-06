@@ -6,7 +6,7 @@ import bmesh
 from shapely.geometry import mapping
 from tqdm import tqdm
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
-from mage_procgen.Utils.Rendering import mockup_collection_name
+from mage_procgen.Utils.Rendering import additionals_collection_name
 import os
 import bpy
 
@@ -324,7 +324,7 @@ class BoxBuildingRenderer(BaseRenderer):
             mesh_top.free()
             mesh_obj_top = D.objects.new(mesh_data_top.name, mesh_data_top)
             mesh_obj_top.pass_index = self.config.tagging_index
-            D.collections[mockup_collection_name].objects.link(mesh_obj_top)
+            D.collections[additionals_collection_name].objects.link(mesh_obj_top)
 
             # Dark grey material so that the top layer is not very visible
             if self._top_material_name not in D.materials:

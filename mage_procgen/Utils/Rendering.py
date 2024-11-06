@@ -15,7 +15,10 @@ terrain_collection_name = "Terrain"
 cars_collection_name = "Cars"
 buildings_collection_name = "Buildings"
 base_collection_name = "Collection"
-mockup_collection_name = "Mockups"
+additionals_collection_name = "additionals"
+
+persp_camera_name = "Camera"
+ortho_camera_name = "Camera_Ortho"
 
 
 def check_is_sun_activated():
@@ -70,7 +73,7 @@ def configure_render(geo_center_deg):
         )
 
     # Camera
-    camera = D.objects["Camera"]
+    camera = D.objects[persp_camera_name]
     camera.location = (0, 0, 1100)
     camera.rotation_euler = (0, 0, 0)
     camera.data.clip_end = 100000
@@ -78,8 +81,8 @@ def configure_render(geo_center_deg):
     camera.data.angle = 10 * math.pi / 180
 
     # Ortho Camera
-    camera_data = D.cameras.new(name="Camera_Ortho")
-    camera_object = D.objects.new("Camera_Ortho", camera_data)
+    camera_data = D.cameras.new(name=ortho_camera_name)
+    camera_object = D.objects.new(ortho_camera_name, camera_data)
     D.collections[base_collection_name].objects.link(camera_object)
     camera_data.type = "ORTHO"
     camera_data.clip_end = 100000
@@ -105,8 +108,8 @@ def configure_render(geo_center_deg):
     buildings_collection = D.collections.new(buildings_collection_name)
     D.collections[rendering_collection_name].children.link(buildings_collection)
 
-    mockup_collection = D.collections.new(mockup_collection_name)
-    D.collections[base_collection_name].children.link(mockup_collection)
+    additional_collection = D.collections.new(additionals_collection_name)
+    D.collections[base_collection_name].children.link(additional_collection)
 
 
 # TODO: move out of here when we know better what it should do
@@ -124,7 +127,7 @@ def setup_img_persp(resolution, pixel_size, center):
     sc.render.resolution_x = resolution
     sc.render.resolution_y = resolution
 
-    camera = D.objects["Camera"]
+    camera = D.objects[ortho_camera_name]
     sc.camera = camera
     img_size = resolution * pixel_size
     camera_elevation = img_size / (2 * math.tan(camera.data.angle / 2))
@@ -151,7 +154,7 @@ def setup_img_ortho(size_x, size_y, pixel_size, center):
 
     size = max(size_x, size_y)
 
-    camera = D.objects["Camera_Ortho"]
+    camera = D.objects[ortho_camera_name]
     sc.camera = camera
     camera.data.ortho_scale = size
 

@@ -70,8 +70,6 @@ def main(filepath):
 
     driver = select_driver(config, project_path)
 
-    # driver = OSMDriver(config, project_path)
-    # #driver = IGNDriver(config, project_path)
     rendering_data = driver.process()
 
     render_manager = RenderManager(
@@ -80,7 +78,6 @@ def main(filepath):
         driver.geo_window,
         driver.internal_crs,
         config,
-        driver,
     )
     render_manager.draw_flood_interactors()
 

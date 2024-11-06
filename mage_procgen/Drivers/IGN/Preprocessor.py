@@ -222,6 +222,9 @@ class Preprocessor:
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,
+            fields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            grass=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            developed=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
         )
 
         return rendering_data

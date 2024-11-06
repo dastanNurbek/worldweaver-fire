@@ -8,7 +8,6 @@ from numpy import arange
 
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
-from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 
 class TerrainRenderer:
@@ -16,8 +15,10 @@ class TerrainRenderer:
     _mesh_name = "Terrain"
 
     _TerrainAdaptationGN = "TerrainMove"
+    _TerrainTaggingGN = "TerrainTagging"
     _BaseMaterialName = "Base_Terrain"
-    _MaterialFile = "Terrain.blend"
+    _TaggedMaterialName = "Tagged_Terrain"
+    _MaterialFile = "Terrain_2.blend"
     _AssetsFolder = "Assets"
 
     def __init__(
@@ -25,13 +26,13 @@ class TerrainRenderer:
         base_folder: str,
         render_resolution: float,
         file_resolution: float,
-        driver: BaseDriver,
+        use_sat_img: bool,
     ):
 
         self.base_folder = base_folder
         self.render_resolution = render_resolution
         self.file_resolution = file_resolution
-        self.driver = driver
+        self.use_sat_img = use_sat_img
         if render_resolution / file_resolution != render_resolution // file_resolution:
             raise ValueError(
                 "terrain render resolution has to be a multiple of file resolution"
@@ -45,11 +46,16 @@ class TerrainRenderer:
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
-                data_to.materials = data_from.materials
-                data_to.node_groups = [self._TerrainAdaptationGN]
+                data_to.materials = [self._BaseMaterialName, self._TaggedMaterialName]
+                data_to.node_groups = [
+                    self._TerrainAdaptationGN,
+                    self._TerrainTaggingGN,
+                ]
 
             self._base_material = data_to.materials[0]
+            self._tagged_material = data_to.materials[1]
             self.geometry_node_name = data_to.node_groups[0].name
+            self.tagging_geometry_node_name = data_to.node_groups[1].name
         except Exception as _:
             raise Exception(
                 "Unable to load the terrain material " + "from the file " + filepath
@@ -60,7 +66,6 @@ class TerrainRenderer:
         terrain_data,
         geo_window: GeoWindow,
         parent_collection_name,
-        use_sat_img: bool = False,
     ):
 
         terrain_collection = D.collections[parent_collection_name]
@@ -273,10 +278,10 @@ class TerrainRenderer:
             mesh_info.mesh.free()
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
             terrain_collection.objects.link(mesh_obj)
-            mesh_material = D.materials[self._BaseMaterialName].copy()
 
-            if use_sat_img:
+            if self.use_sat_img:
 
+                mesh_material = D.materials[self._BaseMaterialName].copy()
                 if os.path.isfile(mesh_info.base_map_file):
                     try:
                         D.images.load(mesh_info.base_map_file)
@@ -287,7 +292,10 @@ class TerrainRenderer:
                     except Exception as e:
                         print("Couldn't add texture image to slab: " + str(e))
 
-            mesh_data.materials.append(mesh_material)
+                mesh_data.materials.append(mesh_material)
+            else:
+                mesh_material = D.materials[self._TaggedMaterialName]
+                mesh_data.materials.append(mesh_material)
 
             base_map_size_x = mesh_info.base_map_x_max - mesh_info.base_map_x_min
             base_map_size_y = mesh_info.base_map_y_max - mesh_info.base_map_y_min
@@ -338,6 +346,10 @@ class TerrainRenderer:
         m = self.terrain_object.modifiers.new("", "NODES")
         m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
+        if not self.use_sat_img:
+            m2 = self.terrain_object.modifiers.new("", "NODES")
+            m2.name = self.tagging_geometry_node_name
+            m2.node_group = D.node_groups[self.tagging_geometry_node_name]
 
     def config_geometry_node(
         self, road_object, water_object, still_water_object, building_object
@@ -347,6 +359,13 @@ class TerrainRenderer:
         node["Socket_4"] = water_object
         node["Socket_6"] = building_object
         node["Socket_8"] = still_water_object
+
+    def config_tagging_node(self, fields_object, grass_object, developed_object):
+        if not self.use_sat_img:
+            node = self.terrain_object.modifiers[self.tagging_geometry_node_name]
+            node["Socket_2"] = fields_object
+            node["Socket_3"] = grass_object
+            node["Socket_4"] = developed_object
 
     def get_mesh_obj(self):
         return self.terrain_object

@@ -7,6 +7,25 @@ class OSM:
             + '"][boundary=administrative][type=boundary][admin_level="8"](area);out;(way(r); >;);out skel;'
         )
 
+    @staticmethod
+    def get_additional_request(bbox: tuple[float, float, float, float]):
+        # Order of coords for query is south, west, north, east
+        return (
+            "nwr("
+            + "{:.5f}".format(bbox[1])
+            + ","
+            + "{:.5f}".format(bbox[0])
+            + ","
+            + "{:.5f}".format(bbox[3])
+            + ","
+            + "{:.5f}".format(bbox[2])
+            + ")->.a;"
+            + 'way(r.a:"inner")-> .b;'
+            + 'way.b["landuse"]->.c;'
+            + "(.c; .c>;);"
+            + "out;"
+        )
+
     # General
     tags = "tags"
     amenity = "amenity"
@@ -30,6 +49,7 @@ class OSM:
 
     usage_forests_tags = "forest"
     usage_residential_tags = "residential"
+    usage_commercial_tags = "residential"
     usage_industrial_tags = "industrial"
 
     # Roads
@@ -64,6 +84,39 @@ class OSM:
     malls_types = ["commercial", "office", "retail", "supermarket"]
     factories_types = ["industrial", "warehouse"]
     houses_types = ["house", "semidetached_house", "trullo"]
+
+    field_landuses = [
+        "allotments",
+        "aquaculture",
+        "farmland",
+        "farmyard" "greenhouse_horticulture",
+        "orchard",
+        "plant_nursery",
+        "vineyard",
+    ]
+
+    grass_landuses = [
+        "grass",
+        "meadow",
+        "recreation_ground",
+    ]
+
+    developed_landuses = [
+        "brownfield",
+        "commercial",
+        "construction",
+        "garages",
+        "industrial",
+        "landfill",
+        "quarry",
+        "religious",
+        "residential",
+        "retail",
+    ]
+
+    leisure_landuses = [
+        "village_green",
+    ]
 
     height = "height"
     levels = "building:levels"

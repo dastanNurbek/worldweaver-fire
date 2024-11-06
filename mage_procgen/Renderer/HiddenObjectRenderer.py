@@ -3,12 +3,12 @@ from bpy import data as D
 import bmesh
 from shapely.geometry import mapping
 from tqdm import tqdm
-from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.Geometry import interpolate_z
 
 
-class MockupBuildingRenderer(BaseRenderer):
-    _mesh_name = "Mockup_Buildings"
+class HiddenObjectRenderer(BaseRenderer):
+    _mesh_name = "HiddenObject"
 
     def __init__(self, terrain_data: list[TerrainData]):
 
@@ -16,17 +16,17 @@ class MockupBuildingRenderer(BaseRenderer):
 
     def render(
         self,
-        buildings: BuildingList,
+        objects: list,
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
 
         mesh = bmesh.new()
 
-        for building in tqdm(buildings):
+        for object in tqdm(objects):
 
             # Kind of hack because Polygon.coords is not implemented
-            polygon_geometry = mapping(building)["coordinates"]
+            polygon_geometry = mapping(object)["coordinates"]
             points_coords = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
@@ -50,30 +50,15 @@ class MockupBuildingRenderer(BaseRenderer):
                 mesh.verts.new(x) for x in centered_points_coords[:-1]
             )
 
-        mesh_name = self._mesh_name
-        mesh_data = D.meshes.new(mesh_name)
+        mesh_data = D.meshes.new(self._mesh_name)
+        self._mesh_name = mesh_data.name
         mesh.to_mesh(mesh_data)
         mesh.free()
-        mesh_obj = D.objects.new(mesh_data.name, mesh_data)
+        mesh_obj = D.objects.new(self._mesh_name, mesh_data)
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
         mesh_obj.hide_render = True
         mesh_obj.hide_viewport = True
-
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
-
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        # Also, building rendering requires the base polygon to have constant z, so we fix every point's z to be the lowest in the set.
-        z_min = min([x[2] for x in points_coords])
-
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
-            for x in points_coords
-        ]
-
-        return centered_points_coords
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]
