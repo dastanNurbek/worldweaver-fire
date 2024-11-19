@@ -17,8 +17,6 @@ from mage_procgen.Utils.Rendering import (
 )
 from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
-from mage_procgen.Drivers.BaseDriver import BaseDriver
-
 from mage_procgen.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
@@ -29,6 +27,7 @@ from mage_procgen.Renderer import (
     TerrainRenderer,
     FloodRenderer,
     ZoneRenderer,
+    LineZoneRenderer,
 )
 
 
@@ -89,9 +88,14 @@ class RenderManager:
         self.building_footprint_renderer = (
             BuildingFootprintRenderer.BuildingFootprintRenderer(self.terrain_data)
         )
-        self.fields_renderer = ZoneRenderer.FieldsRenderer(self.terrain_data)
+        self.wheatfields_renderer = ZoneRenderer.WheatFieldRenderer(self.terrain_data)
+        self.cornfields_renderer = ZoneRenderer.CornFieldRenderer(self.terrain_data)
         self.grass_renderer = ZoneRenderer.GrassRenderer(self.terrain_data)
         self.developed_renderer = ZoneRenderer.DevelopedRenderer(self.terrain_data)
+        self.tartan_renderer = ZoneRenderer.TartanRenderer(self.terrain_data)
+        self.compacted_renderer = ZoneRenderer.CompactedRenderer(self.terrain_data)
+        self.asphalt_renderer = ZoneRenderer.AsphaltRenderer(self.terrain_data)
+        self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
 
     def draw_flood_interactors(self):
         # Rendering objects that interact with flood
@@ -127,11 +131,15 @@ class RenderManager:
             rendering_collection_name,
         )
 
-        buildings = self.__extract_geom(self.rendering_data.default_buildings.geometry)
-        houses = self.__extract_geom(self.rendering_data.houses.geometry)
-        churches = self.__extract_geom(self.rendering_data.churches.geometry)
-        factories = self.__extract_geom(self.rendering_data.factories.geometry)
-        malls = self.__extract_geom(self.rendering_data.malls.geometry)
+        buildings = self.__extract_geom(
+            self.rendering_data.buildings.default_buildings.geometry
+        )
+        houses = self.__extract_geom(self.rendering_data.buildings.houses.geometry)
+        churches = self.__extract_geom(self.rendering_data.buildings.churches.geometry)
+        factories = self.__extract_geom(
+            self.rendering_data.buildings.factories.geometry
+        )
+        malls = self.__extract_geom(self.rendering_data.buildings.malls.geometry)
         buildings.extend(houses)
         buildings.extend(churches)
         buildings.extend(factories)
@@ -141,19 +149,47 @@ class RenderManager:
         )
 
         # Drawing zones to texture terrain
-        fields = self.__extract_geom(self.rendering_data.fields.geometry)
-        self.fields_renderer.render(
-            fields, self.window.center, additionals_collection_name
+        wheatfields = self.__extract_geom(
+            self.rendering_data.zones.wheatfields.geometry
+        )
+        self.wheatfields_renderer.render(
+            wheatfields, self.window.center, additionals_collection_name
         )
 
-        grass = self.__extract_geom(self.rendering_data.grass.geometry)
+        cornfields = self.__extract_geom(self.rendering_data.zones.cornfields.geometry)
+        self.cornfields_renderer.render(
+            cornfields, self.window.center, additionals_collection_name
+        )
+
+        grass = self.__extract_geom(self.rendering_data.zones.grass.geometry)
         self.grass_renderer.render(
             grass, self.window.center, additionals_collection_name
         )
 
-        developed = self.__extract_geom(self.rendering_data.developed.geometry)
+        developed = self.__extract_geom(self.rendering_data.zones.developed.geometry)
         self.developed_renderer.render(
             developed, self.window.center, additionals_collection_name
+        )
+
+        tartan = self.__extract_geom(self.rendering_data.zones.tartan.geometry)
+        self.tartan_renderer.render(
+            tartan, self.window.center, additionals_collection_name
+        )
+
+        compacted = self.__extract_geom(self.rendering_data.zones.compacted.geometry)
+        self.compacted_renderer.render(
+            compacted, self.window.center, additionals_collection_name
+        )
+
+        asphalt = self.__extract_geom(self.rendering_data.zones.asphalt.geometry)
+        self.asphalt_renderer.render(
+            asphalt, self.window.center, additionals_collection_name
+        )
+
+        self.path_renderer.render(
+            self.rendering_data.zones.paths,
+            self.window,
+            additionals_collection_name,
         )
 
         self.terrain_renderer.config_geometry_node(
@@ -165,9 +201,15 @@ class RenderManager:
 
         if not self.config.use_sat_img:
             self.terrain_renderer.config_tagging_node(
-                self.fields_renderer.get_mesh_obj(),
+                self.wheatfields_renderer.get_mesh_obj(),
+                self.cornfields_renderer.get_mesh_obj(),
                 self.grass_renderer.get_mesh_obj(),
                 self.developed_renderer.get_mesh_obj(),
+                self.tartan_renderer.get_mesh_obj(),
+                self.compacted_renderer.get_mesh_obj(),
+                self.asphalt_renderer.get_mesh_obj(),
+                self.road_renderer.get_mesh_obj(),
+                self.path_renderer.get_mesh_obj(),
             )
 
         print("Objects that interact with flood rendered")
@@ -278,7 +320,7 @@ class RenderManager:
                     zone_x_min, zone_x_max, zone_y_min, zone_y_max, self.crs, self.crs
                 )
 
-        buildings_zone = self.rendering_data.default_buildings.overlay(
+        buildings_zone = self.rendering_data.buildings.default_buildings.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
         buildings = self.__extract_buildings_data(buildings_zone)
@@ -286,7 +328,7 @@ class RenderManager:
             buildings, self.window.center, buildings_collection_name
         )
 
-        houses_zone = self.rendering_data.houses.overlay(
+        houses_zone = self.rendering_data.buildings.houses.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
         houses = self.__extract_houses_data(houses_zone)
@@ -294,7 +336,7 @@ class RenderManager:
             houses, self.window.center, buildings_collection_name
         )
 
-        churches_zone = self.rendering_data.churches.overlay(
+        churches_zone = self.rendering_data.buildings.churches.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
         churches = self.__extract_buildings_data(churches_zone)
@@ -302,7 +344,7 @@ class RenderManager:
             churches, self.window.center, buildings_collection_name
         )
 
-        factories_zone = self.rendering_data.factories.overlay(
+        factories_zone = self.rendering_data.buildings.factories.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
         factories = self.__extract_buildings_data(factories_zone)
@@ -310,7 +352,7 @@ class RenderManager:
             factories, self.window.center, buildings_collection_name
         )
 
-        malls_zone = self.rendering_data.malls.overlay(
+        malls_zone = self.rendering_data.buildings.malls.overlay(
             zone_window.dataframe, how="intersection", keep_geom_type=True
         )
         malls = self.__extract_buildings_data(malls_zone)

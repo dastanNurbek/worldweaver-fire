@@ -2,7 +2,13 @@ import math
 
 import geopandas as g
 import pandas as p
-from mage_procgen.Utils.Utils import RenderingData, GeoWindow, CRS_fr
+from mage_procgen.Utils.Utils import (
+    RenderingData,
+    GeoWindow,
+    CRS_fr,
+    BuildingRenderingData,
+    ZonesRenderingData,
+)
 from mage_procgen.Utils.Geometry import polygonise
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
@@ -210,21 +216,34 @@ class Preprocessor:
             "{} not in @houses.ID".format(BuildingDataFrame.ID)
         )
 
-        rendering_data = RenderingData(
-            forests=cleaned_forests,
+        buildings_data = BuildingRenderingData(
             churches=churches,
             malls=malls,
             factories=factories,
             houses=houses,
             default_buildings=default_buildings,
+        )
+
+        zones_data = ZonesRenderingData(
+            wheatfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            cornfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            grass=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            developed=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            tartan=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            compacted=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            asphalt=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            paths=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+        )
+
+        rendering_data = RenderingData(
+            forests=cleaned_forests,
+            buildings=buildings_data,
             roads=roads_selected,
             lanes=roads_lanes,
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,
-            fields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            grass=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            developed=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            zones=zones_data,
         )
 
         return rendering_data

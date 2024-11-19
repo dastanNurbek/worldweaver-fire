@@ -1,8 +1,8 @@
-from mage_procgen.Renderer.HiddenObjectRenderer import HiddenObjectRenderer
+from mage_procgen.Renderer.HiddenPolygonRenderer import HiddenPolygonRenderer
 from mage_procgen.Utils.Utils import Point
 
 
-class BuildingFootprintRenderer(HiddenObjectRenderer):
+class BuildingFootprintRenderer(HiddenPolygonRenderer):
     _mesh_name = "Building_Footprint"
 
     def adapt_coords(

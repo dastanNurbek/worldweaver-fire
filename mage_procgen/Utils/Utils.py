@@ -93,21 +93,36 @@ class GeoWindow:
 
 
 @dataclass
-class RenderingData:
-    forests: g.GeoDataFrame
+class BuildingRenderingData:
     churches: g.GeoDataFrame
     malls: g.GeoDataFrame
     factories: g.GeoDataFrame
     houses: g.GeoDataFrame
     default_buildings: g.GeoDataFrame
+
+
+@dataclass
+class ZonesRenderingData:
+    wheatfields: g.GeoDataFrame
+    cornfields: g.GeoDataFrame
+    grass: g.GeoDataFrame
+    developed: g.GeoDataFrame
+    tartan: g.GeoDataFrame
+    compacted: g.GeoDataFrame
+    asphalt: g.GeoDataFrame
+    paths: g.GeoDataFrame
+
+
+@dataclass
+class RenderingData:
+    forests: g.GeoDataFrame
+    buildings: BuildingRenderingData
     roads: g.GeoDataFrame
     lanes: LineStringList
     still_water: g.GeoDataFrame
     flowing_water: g.GeoDataFrame
     ocean: g.GeoDataFrame
-    fields: g.GeoDataFrame
-    grass: g.GeoDataFrame
-    developed: g.GeoDataFrame
+    zones: ZonesRenderingData
 
 
 @dataclass

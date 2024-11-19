@@ -1,12 +1,12 @@
 from bpy import data as D
 
-from mage_procgen.Renderer.HiddenPolygonRenderer import HiddenPolygonRenderer
+from mage_procgen.Renderer.HiddenLineRenderer import HiddenLineRenderer
 from mage_procgen.Utils.Rendering import ortho_camera_name
 from mage_procgen.Utils.Utils import Point
 
 
-class ZoneRenderer(HiddenPolygonRenderer):
-    _mesh_name = "Zone"
+class LineZoneRenderer(HiddenLineRenderer):
+    _mesh_name = "LineZone"
 
     def adapt_coords(
         self, points_coords: list[Point], geo_center: Point
@@ -26,29 +26,5 @@ class ZoneRenderer(HiddenPolygonRenderer):
         return centered_points_coords
 
 
-class WheatFieldRenderer(ZoneRenderer):
-    _mesh_name = "WheatFieldsZone"
-
-
-class CornFieldRenderer(ZoneRenderer):
-    _mesh_name = "CornFieldsZone"
-
-
-class GrassRenderer(ZoneRenderer):
-    _mesh_name = "GrassZone"
-
-
-class DevelopedRenderer(ZoneRenderer):
-    _mesh_name = "DevelopedZone"
-
-
-class TartanRenderer(ZoneRenderer):
-    _mesh_name = "TartanZone"
-
-
-class CompactedRenderer(ZoneRenderer):
-    _mesh_name = "CompactedZone"
-
-
-class AsphaltRenderer(ZoneRenderer):
-    _mesh_name = "AsphaltZone"
+class PathRenderer(LineZoneRenderer):
+    _mesh_name = "PathLineZone"

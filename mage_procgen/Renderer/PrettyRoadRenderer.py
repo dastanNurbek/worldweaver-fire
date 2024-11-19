@@ -237,6 +237,7 @@ class PrettyRoadRenderer:
         mesh.to_mesh(mesh_data)
         mesh.free()
         mesh_obj = D.objects.new(self._mesh_name, mesh_data)
+        self._mesh_name = mesh_obj.name
         mesh_obj.pass_index = self.config.tagging_index
         D.collections[parent_collection_name].objects.link(mesh_obj)
 

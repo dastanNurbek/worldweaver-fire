@@ -18,7 +18,7 @@ class TerrainRenderer:
     _TerrainTaggingGN = "TerrainTagging"
     _BaseMaterialName = "Base_Terrain"
     _TaggedMaterialName = "Tagged_Terrain"
-    _MaterialFile = "Terrain_2.blend"
+    _MaterialFile = "Terrain_Textures.blend"
     _AssetsFolder = "Assets"
 
     def __init__(
@@ -286,7 +286,7 @@ class TerrainRenderer:
                     try:
                         D.images.load(mesh_info.base_map_file)
 
-                        mesh_material.node_tree.nodes["Image Texture"].image = D.images[
+                        mesh_material.node_tree.nodes["Basemap Image"].image = D.images[
                             os.path.basename(mesh_info.base_map_file)
                         ]
                     except Exception as e:
@@ -360,12 +360,47 @@ class TerrainRenderer:
         node["Socket_6"] = building_object
         node["Socket_8"] = still_water_object
 
-    def config_tagging_node(self, fields_object, grass_object, developed_object):
+    def config_tagging_node(
+        self,
+        wheatfields_object,
+        cornields_object,
+        grass_object,
+        developed_object,
+        tartan_object,
+        compacted_object,
+        asphalt_object,
+        roads_object,
+        path_object,
+    ):
         if not self.use_sat_img:
-            node = self.terrain_object.modifiers[self.tagging_geometry_node_name]
-            node["Socket_2"] = fields_object
-            node["Socket_3"] = grass_object
-            node["Socket_4"] = developed_object
+            node_tree = D.node_groups[self._TerrainTaggingGN]
+            node_tree.nodes["Compute Proximity Wheat Fields"].inputs[
+                2
+            ].default_value = wheatfields_object
+            node_tree.nodes["Compute Proximity Corn Fields"].inputs[
+                2
+            ].default_value = cornields_object
+            node_tree.nodes["Compute Proximity Grass"].inputs[
+                2
+            ].default_value = grass_object
+            node_tree.nodes["Compute Proximity Developed"].inputs[
+                2
+            ].default_value = developed_object
+            node_tree.nodes["Compute Proximity Tartan"].inputs[
+                2
+            ].default_value = tartan_object
+            node_tree.nodes["Compute Proximity Compacted"].inputs[
+                2
+            ].default_value = compacted_object
+            node_tree.nodes["Compute Proximity Asphalt"].inputs[
+                2
+            ].default_value = asphalt_object
+            node_tree.nodes["Compute Proximity Roads"].inputs[
+                2
+            ].default_value = roads_object
+            node_tree.nodes["Compute Edge Proximity Path"].inputs[
+                2
+            ].default_value = path_object
 
     def get_mesh_obj(self):
         return self.terrain_object

@@ -32,6 +32,7 @@ class OSM:
 
     # Geometry types
     point = "Point"
+    geometry = "geometry"
     multi_polygon = "MultiPolygon"
     polygon = "Polygon"
     multi_line_string = "MultiLineString"
@@ -40,6 +41,15 @@ class OSM:
     building_tag = "building"
 
     highway_tag = "highway"
+
+    path_tags = [
+        "footway",
+        "bridleway",
+        "steps",
+        "corridor",
+        "path",
+        "via_ferrata",
+    ]
 
     # Land
     landuse = "landuse"
@@ -95,6 +105,10 @@ class OSM:
         "vineyard",
     ]
 
+    field_crop = "crop"
+    wheat_crop = "wheat"
+    corn_crop = "corn"
+
     grass_landuses = [
         "grass",
         "meadow",
@@ -117,6 +131,18 @@ class OSM:
     leisure_landuses = [
         "village_green",
     ]
+
+    surface = "surface"
+
+    grass_surface = "grass"
+    asphalt_surface = [
+        "asphalt",
+    ]
+    tartan_surface = "tartan"
+    compacted_surface = "compacted"
+
+    leisure = "leisure"
+    playground = "playground"
 
     height = "height"
     levels = "building:levels"

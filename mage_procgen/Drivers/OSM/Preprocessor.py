@@ -1,8 +1,14 @@
 import math
+from random import random
 
 import geopandas as g
 import pandas as p
-from mage_procgen.Utils.Utils import RenderingData, GeoWindow
+from mage_procgen.Utils.Utils import (
+    RenderingData,
+    GeoWindow,
+    BuildingRenderingData,
+    ZonesRenderingData,
+)
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Drivers.OSM.Utils import OSM
 from mage_procgen.Utils.RenderingDataFrames import (
@@ -99,72 +105,140 @@ class Preprocessor:
         buildings = all_building_data.query("index in @buildings_ind")
 
         # Landmasses
-        masses_indexes = []
+        landused_ids = []
         for ind in geo_dataframe[OSM.tags].index:
             if geo_dataframe[OSM.tags][ind] is not None:
                 if OSM.landuse in geo_dataframe[OSM.tags][ind]:
-                    masses_indexes.append(ind)
+                    landused_ids.append(ind)
 
-        masses = geo_dataframe.query("index in @masses_indexes")
+        landused = geo_dataframe.query("index in @landused_ids")
+
+        surfaces_ids = []
+        for ind in all_polys[OSM.tags].index:
+            if all_polys[OSM.tags][ind] is not None:
+                if OSM.surface in all_polys[OSM.tags][ind]:
+                    surfaces_ids.append(ind)
+
+        surfaces = all_polys.query("index in @surfaces_ids")
 
         # Forests
         selected_forest_tags = [OSM.usage_forests_tags]
         forests_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_forest_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_forest_tags:
                 forests_ids.append(ind)
 
-        forests = masses.query("index in @forests_ids")
+        forests = landused.query("index in @forests_ids")
 
         # Residential
         selected_residential_tags = [OSM.usage_residential_tags]
         residential_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_residential_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_residential_tags:
                 residential_ids.append(ind)
 
-        residentials = masses.query("index in @residential_ids")
+        residentials = landused.query("index in @residential_ids")
 
         # Interest zones
         selected_interest_tags = [OSM.usage_commercial_tags, OSM.usage_commercial_tags]
 
         interest_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_interest_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_interest_tags:
                 interest_ids.append(ind)
 
-        interest_zones = masses.query("index in @interest_ids")
+        interest_zones = landused.query("index in @interest_ids")
 
         # Fields
         selected_field_tags = OSM.field_landuses
 
         field_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_field_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_field_tags:
                 field_ids.append(ind)
 
-        fields = masses.query("index in @field_ids")
+        fields = landused.query("index in @field_ids")
+        wheatfields_ids = []
+        cornfields_ids = []
+        wheat_interval = [0, 0.5]
+        corn_interval = [0.5, 1]
+        for ind in fields[OSM.tags].index:
+            if OSM.field_crop in fields[OSM.tags][ind]:
+                if fields[OSM.tags][ind][OSM.field_crop] == OSM.wheat_crop:
+                    wheatfields_ids.append(ind)
+                elif fields[OSM.tags][ind][OSM.field_crop] == OSM.corn_crop:
+                    cornfields_ids.append(ind)
+                else:
+                    random_nbr = random()
+                    if wheat_interval[0] <= random_nbr <= wheat_interval[1]:
+                        wheatfields_ids.append(ind)
+                    elif corn_interval[0] <= random_nbr <= corn_interval[1]:
+                        cornfields_ids.append(ind)
+            else:
+                random_nbr = random()
+                if wheat_interval[0] <= random_nbr <= wheat_interval[1]:
+                    wheatfields_ids.append(ind)
+                elif corn_interval[0] <= random_nbr <= corn_interval[1]:
+                    cornfields_ids.append(ind)
+
+        wheatfields = fields.query("index in @wheatfields_ids")
+        cornfields = fields.query("index in @cornfields_ids")
 
         # Grass
         selected_grass_tags = OSM.grass_landuses.copy()
         selected_grass_tags.extend(OSM.leisure_landuses)
 
         grass_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_grass_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_grass_tags:
                 grass_ids.append(ind)
 
-        grass = masses.query("index in @grass_ids")
+        grass = landused.query("index in @grass_ids")
+
+        grass_surface_ids = []
+        for ind in surfaces[OSM.tags].index:
+            if surfaces[OSM.tags][ind][OSM.surface] == OSM.grass_surface:
+                grass_surface_ids.append(ind)
+
+        grass_surface = surfaces.query("index in @grass_surface_ids")
+        grass = grass.overlay(grass_surface, how="union", keep_geom_type=True)
 
         # Developed
         selected_developed_tags = OSM.developed_landuses
 
         developed_ids = []
-        for ind in masses[OSM.tags].index:
-            if masses[OSM.tags][ind][OSM.landuse] in selected_developed_tags:
+        for ind in landused[OSM.tags].index:
+            if landused[OSM.tags][ind][OSM.landuse] in selected_developed_tags:
                 developed_ids.append(ind)
 
-        developed = masses.query("index in @developed_ids")
+        developed = landused.query("index in @developed_ids")
+
+        tartan_ids = []
+        compacted_ids = []
+        asphalt_ids = []
+        for ind in surfaces[OSM.tags].index:
+            if surfaces[OSM.tags][ind][OSM.surface] == OSM.tartan_surface:
+                tartan_ids.append(ind)
+            elif surfaces[OSM.tags][ind][OSM.surface] == OSM.compacted_surface:
+                compacted_ids.append(ind)
+            elif surfaces[OSM.tags][ind][OSM.surface] in OSM.asphalt_surface:
+                asphalt_ids.append(ind)
+
+        tartan = surfaces.query("index in @tartan_ids")
+        compacted = surfaces.query("index in @compacted_ids")
+        asphalt = surfaces.query("index in @asphalt_ids")
+
+        leisure_tartan_ids = []
+        for ind in all_polys[OSM.tags].index:
+            if OSM.leisure in all_polys[OSM.tags][ind]:
+                if all_polys[OSM.tags][ind][OSM.leisure] == OSM.playground:
+                    leisure_tartan_ids.append(ind)
+
+        leisure_tartan = all_polys.query("index in @leisure_tartan_ids")
+        if not tartan.empty:
+            tartan = tartan.overlay(leisure_tartan, how="union", keep_geom_type=True)
+        else:
+            tartan = leisure_tartan
 
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
@@ -172,13 +246,17 @@ class Preprocessor:
         all_lines = p.concat([lines, multi_lines])
 
         highway_ids = []
+        paths_ids = []
         for line_ind in all_lines.index:
             if all_lines[OSM.tags][line_ind] is not None:
-                for key in all_lines[OSM.tags][line_ind].keys():
-                    if OSM.highway_tag in key:
+                if OSM.highway_tag in all_lines[OSM.tags][line_ind]:
+                    if all_lines[OSM.tags][line_ind][OSM.highway_tag] in OSM.path_tags:
+                        paths_ids.append(line_ind)
+                    else:
                         highway_ids.append(line_ind)
 
-        highways = all_lines[all_lines.index.isin(highway_ids)]
+        highways = all_lines.query("index in @highway_ids")
+        paths = all_lines.query("index in @paths_ids")
 
         road_has_sidewalk = []
         road_has_guardrails = []
@@ -321,7 +399,10 @@ class Preprocessor:
         new_oceans = oceans_data.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
-        fields = fields.overlay(
+        wheatfields = wheatfields.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        cornfields = cornfields.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
         grass = grass.overlay(
@@ -330,22 +411,44 @@ class Preprocessor:
         developed = developed.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
+        tartan = tartan.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        compacted = compacted.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        asphalt = asphalt.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
 
-        rendering_data = RenderingData(
-            forests=forests,
+        buildings_data = BuildingRenderingData(
             churches=churches,
             malls=malls,
             factories=factories,
             houses=houses,
             default_buildings=buildings,
+        )
+
+        zones_data = ZonesRenderingData(
+            wheatfields=wheatfields,
+            cornfields=cornfields,
+            grass=grass,
+            developed=developed,
+            tartan=tartan,
+            compacted=compacted,
+            asphalt=asphalt,
+            paths=paths,
+        )
+
+        rendering_data = RenderingData(
+            forests=forests,
+            buildings=buildings_data,
             roads=road_data,
             lanes=roads_lanes,
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,
-            fields=fields,
-            grass=grass,
-            developed=developed,
+            zones=zones_data,
         )
 
         return rendering_data
