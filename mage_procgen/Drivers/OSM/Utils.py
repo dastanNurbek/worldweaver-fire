@@ -140,6 +140,8 @@ class OSM:
     ]
     tartan_surface = "tartan"
     compacted_surface = "compacted"
+    sand_surface = "sand"
+    beach = "beach"
 
     leisure = "leisure"
     playground = "playground"

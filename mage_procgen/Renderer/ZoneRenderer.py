@@ -52,3 +52,7 @@ class CompactedRenderer(ZoneRenderer):
 
 class AsphaltRenderer(ZoneRenderer):
     _mesh_name = "AsphaltZone"
+
+
+class SandRenderer(ZoneRenderer):
+    _mesh_name = "SandZone"

@@ -16,9 +16,10 @@ class TerrainRenderer:
 
     _TerrainAdaptationGN = "TerrainMove"
     _TerrainTaggingGN = "TerrainTagging"
+    _TerrainDecoratingGN = "TerrainDecorating"
     _BaseMaterialName = "Base_Terrain"
     _TaggedMaterialName = "Tagged_Terrain"
-    _MaterialFile = "Terrain_Textures.blend"
+    _MaterialFile = "Terrain_Modifiers.blend"
     _AssetsFolder = "Assets"
 
     def __init__(
@@ -50,16 +51,37 @@ class TerrainRenderer:
                 data_to.node_groups = [
                     self._TerrainAdaptationGN,
                     self._TerrainTaggingGN,
+                    self._TerrainDecoratingGN,
                 ]
 
             self._base_material = data_to.materials[0]
             self._tagged_material = data_to.materials[1]
             self.geometry_node_name = data_to.node_groups[0].name
             self.tagging_geometry_node_name = data_to.node_groups[1].name
+            self.decorating_geometry_node_name = data_to.node_groups[2].name
         except Exception as _:
             raise Exception(
                 "Unable to load the terrain material " + "from the file " + filepath
             )
+
+        # TODO: put pass index in config just like the others
+        trashcan = (
+            D.node_groups["Decorate_TrashCansOnPath"]
+            .nodes["Object Info"]
+            .inputs[0]
+            .default_value
+        )
+
+        trashcan.pass_index = 1
+
+        lamp = (
+            D.node_groups["Decorate_LightsOnRoads"]
+            .nodes["Object Info"]
+            .inputs[0]
+            .default_value
+        )
+
+        lamp.pass_index = 1
 
     def render(
         self,
@@ -351,6 +373,10 @@ class TerrainRenderer:
             m2.name = self.tagging_geometry_node_name
             m2.node_group = D.node_groups[self.tagging_geometry_node_name]
 
+            m3 = self.terrain_object.modifiers.new("", "NODES")
+            m3.name = self.decorating_geometry_node_name
+            m3.node_group = D.node_groups[self.decorating_geometry_node_name]
+
     def config_geometry_node(
         self, road_object, water_object, still_water_object, building_object
     ):
@@ -369,6 +395,7 @@ class TerrainRenderer:
         tartan_object,
         compacted_object,
         asphalt_object,
+        sand_object,
         roads_object,
         path_object,
     ):
@@ -395,11 +422,14 @@ class TerrainRenderer:
             node_tree.nodes["Compute Proximity Asphalt"].inputs[
                 2
             ].default_value = asphalt_object
-            node_tree.nodes["Compute Proximity Roads"].inputs[
+            node_tree.nodes["Compute Proximity Sand"].inputs[
                 2
+            ].default_value = sand_object
+            node_tree.nodes["Compute Proximity and Normal Roads"].inputs[
+                4
             ].default_value = roads_object
             node_tree.nodes["Compute Edge Proximity Path"].inputs[
-                2
+                4
             ].default_value = path_object
 
     def get_mesh_obj(self):

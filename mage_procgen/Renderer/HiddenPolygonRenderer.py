@@ -27,6 +27,7 @@ class HiddenPolygonRenderer(BaseRenderer):
 
             # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(object)["coordinates"]
+
             points_coords = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]

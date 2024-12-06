@@ -95,6 +95,7 @@ class RenderManager:
         self.tartan_renderer = ZoneRenderer.TartanRenderer(self.terrain_data)
         self.compacted_renderer = ZoneRenderer.CompactedRenderer(self.terrain_data)
         self.asphalt_renderer = ZoneRenderer.AsphaltRenderer(self.terrain_data)
+        self.sand_renderer = ZoneRenderer.SandRenderer(self.terrain_data)
         self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
 
     def draw_flood_interactors(self):
@@ -186,6 +187,11 @@ class RenderManager:
             asphalt, self.window.center, additionals_collection_name
         )
 
+        sands = self.__extract_geom(self.rendering_data.zones.sand.geometry)
+        self.sand_renderer.render(
+            sands, self.window.center, additionals_collection_name
+        )
+
         self.path_renderer.render(
             self.rendering_data.zones.paths,
             self.window,
@@ -208,6 +214,7 @@ class RenderManager:
                 self.tartan_renderer.get_mesh_obj(),
                 self.compacted_renderer.get_mesh_obj(),
                 self.asphalt_renderer.get_mesh_obj(),
+                self.sand_renderer.get_mesh_obj(),
                 self.road_renderer.get_mesh_obj(),
                 self.path_renderer.get_mesh_obj(),
             )
@@ -387,8 +394,6 @@ class RenderManager:
         self.factories_renderer.clear_object()
 
         self.forests_renderer.clear_object()
-
-        self.still_water_renderer.clear_object()
 
     def change_terrain_visibility(self, is_terrain_visible):
 

@@ -232,6 +232,7 @@ class Preprocessor:
             tartan=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             compacted=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             asphalt=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+            sand=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             paths=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
         )
 

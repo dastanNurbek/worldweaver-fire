@@ -3,6 +3,7 @@ from random import random
 
 import geopandas as g
 import pandas as p
+from shapely import area, difference, intersects, contains
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
@@ -106,9 +107,9 @@ class Preprocessor:
 
         # Landmasses
         landused_ids = []
-        for ind in geo_dataframe[OSM.tags].index:
-            if geo_dataframe[OSM.tags][ind] is not None:
-                if OSM.landuse in geo_dataframe[OSM.tags][ind]:
+        for ind in all_polys[OSM.tags].index:
+            if all_polys[OSM.tags][ind] is not None:
+                if OSM.landuse in all_polys[OSM.tags][ind]:
                     landused_ids.append(ind)
 
         landused = geo_dataframe.query("index in @landused_ids")
@@ -120,6 +121,14 @@ class Preprocessor:
                     surfaces_ids.append(ind)
 
         surfaces = all_polys.query("index in @surfaces_ids")
+
+        nature_ids = []
+        for ind in all_polys[OSM.tags].index:
+            if all_polys[OSM.tags][ind] is not None:
+                if OSM.natural in all_polys[OSM.tags][ind]:
+                    nature_ids.append(ind)
+
+        natures = all_polys.query("index in @nature_ids")
 
         # Forests
         selected_forest_tags = [OSM.usage_forests_tags]
@@ -201,7 +210,10 @@ class Preprocessor:
                 grass_surface_ids.append(ind)
 
         grass_surface = surfaces.query("index in @grass_surface_ids")
-        grass = grass.overlay(grass_surface, how="union", keep_geom_type=True)
+        if not grass.empty:
+            grass = grass.overlay(grass_surface, how="union", keep_geom_type=True)
+        else:
+            grass = grass_surface
 
         # Developed
         selected_developed_tags = OSM.developed_landuses
@@ -216,17 +228,23 @@ class Preprocessor:
         tartan_ids = []
         compacted_ids = []
         asphalt_ids = []
+        sand_ids = []
         for ind in surfaces[OSM.tags].index:
             if surfaces[OSM.tags][ind][OSM.surface] == OSM.tartan_surface:
                 tartan_ids.append(ind)
             elif surfaces[OSM.tags][ind][OSM.surface] == OSM.compacted_surface:
                 compacted_ids.append(ind)
             elif surfaces[OSM.tags][ind][OSM.surface] in OSM.asphalt_surface:
-                asphalt_ids.append(ind)
+                if OSM.highway_tag not in surfaces[OSM.tags][ind]:
+                    asphalt_ids.append(ind)
+            elif surfaces[OSM.tags][ind][OSM.surface] in OSM.sand_surface:
+                sand_ids.append(ind)
 
         tartan = surfaces.query("index in @tartan_ids")
         compacted = surfaces.query("index in @compacted_ids")
         asphalt = surfaces.query("index in @asphalt_ids")
+        asphalt.to_file("/home/AVerstraete/Work/scraps/asphalt_ny.shp")
+        sands = surfaces.query("index in @sand_ids")
 
         leisure_tartan_ids = []
         for ind in all_polys[OSM.tags].index:
@@ -239,6 +257,25 @@ class Preprocessor:
             tartan = tartan.overlay(leisure_tartan, how="union", keep_geom_type=True)
         else:
             tartan = leisure_tartan
+
+        beaches_ids = []
+        sand_natures_ids = []
+        for ind in natures[OSM.tags].index:
+            if all_polys[OSM.tags][ind][OSM.natural] == OSM.beach:
+                beaches_ids.append(ind)
+            if all_polys[OSM.tags][ind][OSM.natural] == OSM.sand_surface:
+                sand_natures_ids.append(ind)
+        beaches = natures.query("index in @beaches_ids")
+        sand_natures = natures.query("index in @sand_natures_ids")
+        if not sands.empty:
+            sands = sands.overlay(beaches, how="union", keep_geom_type=True)
+        else:
+            sands = beaches
+
+        if not sands.empty:
+            sands = sands.overlay(sand_natures, how="union", keep_geom_type=True)
+        else:
+            sands = sand_natures
 
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
@@ -420,6 +457,9 @@ class Preprocessor:
         asphalt = asphalt.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
+        sands = sands.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
 
         buildings_data = BuildingRenderingData(
             churches=churches,
@@ -429,7 +469,7 @@ class Preprocessor:
             default_buildings=buildings,
         )
 
-        zones_data = ZonesRenderingData(
+        zones_data = Preprocessor.clean_zones(
             wheatfields=wheatfields,
             cornfields=cornfields,
             grass=grass,
@@ -437,6 +477,7 @@ class Preprocessor:
             tartan=tartan,
             compacted=compacted,
             asphalt=asphalt,
+            sand=sands,
             paths=paths,
         )
 
@@ -452,3 +493,71 @@ class Preprocessor:
         )
 
         return rendering_data
+
+    @staticmethod
+    def clean_zones(
+        wheatfields,
+        cornfields,
+        grass,
+        developed,
+        tartan,
+        compacted,
+        asphalt,
+        sand,
+        paths,
+    ):
+        list_zones = [
+            wheatfields,
+            cornfields,
+            grass,
+            developed,
+            tartan,
+            compacted,
+            asphalt,
+            sand,
+        ]
+
+        for zone_a_ind in range(len(list_zones)):
+            zone_a = list_zones[zone_a_ind]
+            for zone_b_ind in range(zone_a_ind + 1, len(list_zones)):
+                zone_b = list_zones[zone_b_ind]
+
+                zone_inter = zone_a.overlay(
+                    zone_b, how="intersection", keep_geom_type=True
+                )
+
+                if not zone_inter.empty:
+                    new_geom_a = []
+                    for geom_a in zone_a.geometry:
+                        new_geom_b = []
+                        for geom_b in zone_b.geometry:
+                            if intersects(geom_a, geom_b):
+                                if contains(geom_a, geom_b):
+                                    geom_a = difference(geom_a, geom_b)
+                                elif contains(geom_b, geom_a):
+                                    geom_b = difference(geom_b, geom_a)
+                                elif area(geom_a) <= area(geom_b):
+                                    geom_b = difference(geom_b, geom_a)
+                                else:
+                                    geom_a = difference(geom_a, geom_b)
+
+                            new_geom_b.append(geom_b)
+
+                        new_geom_a.append(geom_a)
+                        zone_b.set_geometry(new_geom_b, inplace=True)
+                        list_zones[zone_b_ind] = zone_b
+
+                    zone_a.set_geometry(new_geom_a, inplace=True)
+                    list_zones[zone_a_ind] = zone_a
+
+        return ZonesRenderingData(
+            wheatfields=list_zones[0],
+            cornfields=list_zones[1],
+            grass=list_zones[2],
+            developed=list_zones[3],
+            tartan=list_zones[4],
+            compacted=list_zones[5],
+            asphalt=list_zones[6],
+            sand=list_zones[7],
+            paths=paths,
+        )

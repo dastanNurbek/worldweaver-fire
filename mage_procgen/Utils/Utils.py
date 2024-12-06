@@ -110,6 +110,7 @@ class ZonesRenderingData:
     tartan: g.GeoDataFrame
     compacted: g.GeoDataFrame
     asphalt: g.GeoDataFrame
+    sand: g.GeoDataFrame
     paths: g.GeoDataFrame
 
 
