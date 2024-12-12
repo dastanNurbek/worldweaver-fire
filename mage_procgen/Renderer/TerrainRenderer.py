@@ -19,7 +19,7 @@ class TerrainRenderer:
     _TerrainDecoratingGN = "TerrainDecorating"
     _BaseMaterialName = "Base_Terrain"
     _TaggedMaterialName = "Tagged_Terrain"
-    _MaterialFile = "Terrain_Modifiers.blend"
+    _MaterialFile = "Terrain_2Tests.blend"
     _AssetsFolder = "Assets"
 
     def __init__(

@@ -243,7 +243,6 @@ class Preprocessor:
         tartan = surfaces.query("index in @tartan_ids")
         compacted = surfaces.query("index in @compacted_ids")
         asphalt = surfaces.query("index in @asphalt_ids")
-        asphalt.to_file("/home/AVerstraete/Work/scraps/asphalt_ny.shp")
         sands = surfaces.query("index in @sand_ids")
 
         leisure_tartan_ids = []
@@ -268,12 +267,14 @@ class Preprocessor:
         beaches = natures.query("index in @beaches_ids")
         sand_natures = natures.query("index in @sand_natures_ids")
         if not sands.empty:
-            sands = sands.overlay(beaches, how="union", keep_geom_type=True)
+            if not beaches.empty:
+                sands = sands.overlay(beaches, how="union", keep_geom_type=True)
         else:
             sands = beaches
 
         if not sands.empty:
-            sands = sands.overlay(sand_natures, how="union", keep_geom_type=True)
+            if not sand_natures.empty:
+                sands = sands.overlay(sand_natures, how="union", keep_geom_type=True)
         else:
             sands = sand_natures
 
@@ -520,6 +521,10 @@ class Preprocessor:
         for zone_a_ind in range(len(list_zones)):
             zone_a = list_zones[zone_a_ind]
             for zone_b_ind in range(zone_a_ind + 1, len(list_zones)):
+
+                if zone_a_ind == 0 and zone_b_ind == 1:
+                    continue
+
                 zone_b = list_zones[zone_b_ind]
 
                 zone_inter = zone_a.overlay(

@@ -8,7 +8,7 @@ class OSM:
         )
 
     @staticmethod
-    def get_additional_request(bbox: tuple[float, float, float, float]):
+    def get_additional_request_inners(bbox: tuple[float, float, float, float]):
         # Order of coords for query is south, west, north, east
         return (
             "nwr("
@@ -22,8 +22,28 @@ class OSM:
             + ")->.a;"
             + 'way(r.a:"inner")-> .b;'
             + 'way.b["landuse"]->.c;'
-            + "(.c; .c>;);"
-            + "out;"
+            + '(.c;.c>;);'
+            + 'out;'
+        )
+
+    @staticmethod
+    def get_additional_request_landuses(bbox: tuple[float, float, float, float]):
+        # Order of coords for query is south, west, north, east
+        return (
+            "nwr("
+            + "{:.5f}".format(bbox[1])
+            + ","
+            + "{:.5f}".format(bbox[0])
+            + ","
+            + "{:.5f}".format(bbox[3])
+            + ","
+            + "{:.5f}".format(bbox[2])
+            + ")->.a;"
+            + '.a is_in ->.d;'
+            + '.d < ->.e;'
+            + 'nwr.e["landuse"]->.f;'
+            + '(.f;.f>;);'
+            + 'out;'
         )
 
     # General

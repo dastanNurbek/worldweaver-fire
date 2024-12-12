@@ -105,7 +105,7 @@ class OsmLoader:
         # are not returned by a simple mapquery. To get around this, we query them separately
         # https://github.com/mvexel/overpass-api-python-wrapper/issues/163
         # https://github.com/aspectumapp/osm2geojson/issues/46
-        additional_request = OSM.get_additional_request(bbox_wgs84)
+        additional_request = OSM.get_additional_request_inners(bbox_wgs84)
 
         additional_response = api.get(additional_request)
 
@@ -125,8 +125,31 @@ class OsmLoader:
         additional_geo_df = g.read_file(
             os.path.join(input_folder, "additional_data.geojson")
         ).to_crs(self.internal_crs)
+
+        # We are still missing some pieces, namely objects that include the window and contain landuse information
+        additional_request2 = OSM.get_additional_request_landuses(bbox_wgs84)
+
+        additional_response2 = api.get(additional_request2)
+
+        # For some reason there seem to be duplicated features in the response
+        filtered_features2 = []
+        for feature in additional_response2["features"]:
+            if feature not in filtered_features2:
+                filtered_features2.append(feature)
+        additional_response2["features"] = filtered_features2
+        additional_response_str2 = json.dumps(additional_response2, indent=2)
+
+        with open(
+                os.path.join(input_folder, "additional_data2.geojson"), "w"
+        ) as data_file:
+            bytes_written = data_file.write(additional_response_str2)
+
+        additional_geo_df2 = g.read_file(
+            os.path.join(input_folder, "additional_data2.geojson")
+        ).to_crs(self.internal_crs)
+
         geo_df = g.GeoDataFrame(
-            p.concat([geo_df, additional_geo_df], ignore_index=True)
+            p.concat([geo_df, additional_geo_df, additional_geo_df2], ignore_index=True)
         )
 
         return geo_df
