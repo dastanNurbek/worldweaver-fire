@@ -1,14 +1,17 @@
 import os
+import time
 
 import overpass
 import pandas as p
 import geopandas as g
 from PIL import Image
 import numpy as np
+import skimage
 import math
 
 from mage_procgen.Utils.Utils import GeoWindow, CRS_wgs84_m, CRS_degrees
 from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Utils.perlin2d import generate_fractal_noise_2d
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
 
@@ -140,7 +143,7 @@ class OsmLoader:
         additional_response_str2 = json.dumps(additional_response2, indent=2)
 
         with open(
-                os.path.join(input_folder, "additional_data2.geojson"), "w"
+            os.path.join(input_folder, "additional_data2.geojson"), "w"
         ) as data_file:
             bytes_written = data_file.write(additional_response_str2)
 
@@ -234,6 +237,7 @@ class OsmLoader:
                 )
 
                 terrain_im_array = np.array(terrain_image)
+                terrain_im_array = np.flip(terrain_im_array, axis=0)
                 terrain_df = p.DataFrame(terrain_im_array)
 
                 terrain_data.append(
@@ -252,5 +256,99 @@ class OsmLoader:
                 )
 
                 terrain_index += 1
+
+        terrain_data = self.noisify_terrain(
+            terrain_data, bbox_rounded, terrain_resolution, input_folder
+        )
+
+        return terrain_data
+
+    def noisify_terrain(
+        self, terrain_data, bbox_terrain, terrain_resolution, input_folder
+    ):
+        print("Noisifying terrain")
+        t1 = time.time()
+
+        terrain_size = (
+            int((bbox_terrain[2] - bbox_terrain[0]) / terrain_resolution),
+            int((bbox_terrain[3] - bbox_terrain[1]) / terrain_resolution),
+        )
+
+        noise_factor = 0.2
+
+        res = 2
+        octaves = 4
+        lacunarity = 2
+        # Adding a * 8 multiplier to shape factor because otherwise some values of shape result in errors in noise generation
+        # Due to the way the arrays are created
+        shape_factor = (lacunarity ^ (octaves - 1)) * res * 8
+        # Noise has to be slightly bigger than terrain due to generate_fractal_noise_2d constraints
+        min_noise_size = (
+            (math.ceil(terrain_size[0] / shape_factor)) * shape_factor,
+            (math.ceil(terrain_size[1] / shape_factor)) * shape_factor,
+        )
+        gen_noise_size = (
+            max(min_noise_size[0], min_noise_size[1]),
+            max(min_noise_size[0], min_noise_size[1]),
+        )
+
+        # Generating 2 noise images: one for the horizontal gradient and one for the vertical one,
+        # and cropping them to the appropriate size
+        noise = generate_fractal_noise_2d(
+            gen_noise_size, (res, res), octaves=octaves, lacunarity=lacunarity
+        )
+        noise = noise[0 : terrain_size[0], 0 : terrain_size[1]]
+        noise2 = generate_fractal_noise_2d(
+            gen_noise_size, (res, res), octaves=octaves, lacunarity=lacunarity
+        )
+        noise2 = noise2[0 : terrain_size[0], 0 : terrain_size[1]]
+
+        # Putting each terrain slab into the correct place
+        terrain = np.zeros(terrain_size)
+
+        for slab in terrain_data:
+            slab_index_bounds = (
+                int((slab.x_min - bbox_terrain[0]) / terrain_resolution),
+                int((slab.y_min - bbox_terrain[1]) / terrain_resolution),
+                int((slab.x_max - bbox_terrain[0]) / terrain_resolution),
+                int((slab.y_max - bbox_terrain[1]) / terrain_resolution),
+            )
+
+            terrain[
+                slab_index_bounds[0] : slab_index_bounds[2],
+                slab_index_bounds[1] : slab_index_bounds[3],
+            ] = slab.data.T
+
+        # Calculating terrain gradients, then noisifying the gradient,
+        # and recalculating the terrain based on this new gradient
+        gradient_v, gradient_h = skimage.filters.prewitt_h(
+            terrain
+        ), skimage.filters.prewitt_v(terrain)
+        gradient_h = gradient_h * (1 + noise_factor * noise)
+        gradient_v = gradient_v * (1 + noise_factor * noise2)
+        gradient_h[:, 0] = 2 * terrain[:, 0]
+        integral_image_h = np.cumsum(gradient_h / 2, axis=1)
+        gradient_v[0, :] = 2 * terrain[0, :]
+        integral_image_v = np.cumsum(gradient_v / 2, axis=0)
+        integral_image = 0.5 * (integral_image_h + integral_image_v)
+
+        # Slicing terrain into slabs again
+        for slab in terrain_data:
+            slab_index_bounds = (
+                int((slab.x_min - bbox_terrain[0]) / terrain_resolution),
+                int((slab.y_min - bbox_terrain[1]) / terrain_resolution),
+                int((slab.x_max - bbox_terrain[0]) / terrain_resolution),
+                int((slab.y_max - bbox_terrain[1]) / terrain_resolution),
+            )
+
+            slab.data = p.DataFrame(
+                integral_image[
+                    slab_index_bounds[0] : slab_index_bounds[2],
+                    slab_index_bounds[1] : slab_index_bounds[3],
+                ]
+            ).T
+
+        t2 = time.time()
+        print("Done noisyfying terrain in ", (t2 - t1))
 
         return terrain_data

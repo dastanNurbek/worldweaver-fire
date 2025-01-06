@@ -333,9 +333,7 @@ def interpolate_z(terrain_data, x, y):
 
     # Index of the point in the grid to the lower left of the current point
     ll_index_x = int(point_offset_x / current_terrain.resolution)
-    ll_index_y = (current_terrain.nbrow - 1) - int(
-        point_offset_y / current_terrain.resolution
-    )
+    ll_index_y = int(point_offset_y / current_terrain.resolution)
 
     in_cell_offset_x = point_offset_x % current_terrain.resolution
     in_cell_offset_y = point_offset_y % current_terrain.resolution

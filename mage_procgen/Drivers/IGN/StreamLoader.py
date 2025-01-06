@@ -132,6 +132,7 @@ class StreamLoader(Loader):
                 )
 
                 terrain_im_array = np.array(terrain_image)
+                terrain_im_array = np.flip(terrain_im_array, axis=0)
                 terrain_df = p.DataFrame(terrain_im_array)
 
                 terrain_base_map = ""

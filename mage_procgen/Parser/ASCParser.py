@@ -1,6 +1,7 @@
 import os
 
 import pandas as p
+import numpy as np
 
 from dataclasses import dataclass
 
@@ -48,7 +49,9 @@ class ASCParser:
             point_list = [float(x) for x in line[0].split(" ")[1:]]
             terrain_pts_list.append(point_list)
 
-        terrain_data = p.DataFrame(terrain_pts_list)
+        terrain_im_array = np.array(terrain_pts_list)
+        terrain_im_array = np.flip(terrain_im_array, axis=0)
+        terrain_data = p.DataFrame(terrain_im_array)
 
         print("Loaded slab : " + os.path.basename(file_path))
 

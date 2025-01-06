@@ -197,10 +197,9 @@ class TerrainRenderer:
                 current_point_index_x = (
                     point_query_x - current_terrain.x_min
                 ) / self.file_resolution
-                # Y axis is pointing north so the index needs to be inversed
-                current_point_index_y = (current_terrain.nbrow - 1) - (
-                    (point_query_y - current_terrain.y_min) / self.file_resolution
-                )
+                current_point_index_y = (
+                    point_query_y - current_terrain.y_min
+                ) / self.file_resolution
 
                 if (
                     current_point_index_x != int(current_point_index_x)

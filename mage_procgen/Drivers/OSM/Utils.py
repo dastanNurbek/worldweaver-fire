@@ -22,8 +22,8 @@ class OSM:
             + ")->.a;"
             + 'way(r.a:"inner")-> .b;'
             + 'way.b["landuse"]->.c;'
-            + '(.c;.c>;);'
-            + 'out;'
+            + "(.c;.c>;);"
+            + "out;"
         )
 
     @staticmethod
@@ -39,11 +39,11 @@ class OSM:
             + ","
             + "{:.5f}".format(bbox[2])
             + ")->.a;"
-            + '.a is_in ->.d;'
-            + '.d < ->.e;'
+            + ".a is_in ->.d;"
+            + ".d < ->.e;"
             + 'nwr.e["landuse"]->.f;'
-            + '(.f;.f>;);'
-            + 'out;'
+            + "(.f;.f>;);"
+            + "out;"
         )
 
     # General
