@@ -15,6 +15,9 @@ class GeoData:
     residentials: g.GeoDataFrame
     interest_zones: g.GeoDataFrame
     departements: g.GeoDataFrame
+    plots: g.GeoDataFrame
+    landuse: g.GeoDataFrame
+    sport: g.GeoDataFrame
     terrain: TerrainDataList
 
 
@@ -30,6 +33,9 @@ class WFS_FR:
     shore_key_name = "BDTOPO_V3:limite_terre_mer"
     residential_zone_key_name = "BDTOPO_V3:zone_d_habitation"
     departement_key_name = "BDTOPO_V3:arrondissement"
+    sport_key_name = "BDTOPO_V3:terrain_de_sport"
+    landuse_key_name = "BDCARTO_V5:occupation_du_sol"
+    plot_key_name = "RPG.LATEST:parcelles_graphiques"
 
     bdortho_url = "https://data.geopf.fr/wms-r"
     bdortho_version = "1.3.0"
@@ -48,3 +54,44 @@ class WFS_FR:
             + town_dpt
             + "&format=geojson&geometry=contour"
         )
+
+
+class IGN:
+
+    # From https://geoservices.ign.fr/bd-cartor-descriptif-de-contenu
+    bdcarto_landuses_values = [
+        "Broussailles",
+        "Bâti",
+        "Carrière, décharge",
+        "Eau libre",
+        "Forêt",
+        "Glacier, névé",
+        "Mangrove",
+        "Marais salant",
+        "Marais, tourbière",
+        "Prairie",
+        "Rocher, éboulis",
+        "Sable, gravier",
+        "Vigne, verger",
+        "Zone d'activités",
+    ]
+
+    bdcarto_sand_values = ["Sable, gravier"]
+
+    # From BD TOPO documentation
+    sport_values = [
+        "Bassin de natation",
+        "Grand terrain de sport",
+        "Petit terrain multi - sports",
+        "Piste de sport",
+        "Terrain de tennis",
+    ]
+
+    # There are subcategories to most of those big ones, but as a first approximation of the surface material it's decent
+    tartan_values = ["Terrain de tennis"]
+    grass_values = ["Grand terrain de sport"]
+    asphalt_values = ["Petit terrain multi - sports"]
+
+    # From annex 1 of https://geoservices.ign.fr/sites/default/files/2023-11/DC_DL_RPG_2-1_0.pdf
+    orchard_codes = ["20"]
+    prairie_codes = ["18", "19"]

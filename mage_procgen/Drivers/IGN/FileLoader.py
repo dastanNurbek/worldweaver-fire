@@ -16,6 +16,9 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
+    SportDataFrame,
+    LandUseDataFrame,
+    PlotDataFrame,
 )
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
@@ -46,6 +49,9 @@ class FileLoader(Loader):
         residential_data = None
         interest_zone_data = None
         oceans_data = None
+        sport_data = None
+        landuse_data = None
+        plot_data = None
         departements_data = None
         terrain_data = []
 
@@ -182,6 +188,62 @@ class FileLoader(Loader):
             else:
                 interest_zone_data = current_interest_zone_data
 
+            current_sport_data = ShapeFileParser.load(
+                os.path.join(
+                    self.base_folder,
+                    df.departements,
+                    current_departement,
+                    df.bdtopo_folder,
+                    df.delivery,
+                    df.building_folder,
+                    df.sport_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if sport_data is not None:
+                sport_data = p.concat([sport_data, current_sport_data])
+            else:
+                sport_data = current_sport_data
+
+            current_plot_data = ShapeFileParser.load(
+                os.path.join(
+                    self.base_folder,
+                    df.departements,
+                    current_departement,
+                    df.rpg_folder,
+                    df.delivery,
+                    df.plot_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if plot_data is not None:
+                plot_data = p.concat([plot_data, current_plot_data])
+            else:
+                plot_data = current_plot_data
+
+            current_landuse_data = ShapeFileParser.load(
+                os.path.join(
+                    self.base_folder,
+                    df.departements,
+                    current_departement,
+                    df.bdcarto_folder,
+                    df.delivery,
+                    df.landuse_folder,
+                    df.landuse_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if landuse_data is not None:
+                landuse_data = p.concat([landuse_data, current_landuse_data])
+            else:
+                landuse_data = current_landuse_data
+
             current_departement_data = ShapeFileParser.load(
                 os.path.join(
                     self.base_folder,
@@ -226,7 +288,7 @@ class FileLoader(Loader):
                 force_2d=True,
             )
 
-        # Treat the data to remove the particularities of files
+        # Treat the data to remove the homogenise column names between different data sources
         building_data_dict = {
             BuildingDataFrame.ID: building_data[BuildingDataFrame.File.ID],
             BuildingDataFrame.nature: building_data[BuildingDataFrame.File.nature],
@@ -278,6 +340,29 @@ class FileLoader(Loader):
         }
         water_data = g.GeoDataFrame(water_data_dict)
 
+        sport_data_dict = {
+            SportDataFrame.ID: sport_data[SportDataFrame.File.ID],
+            SportDataFrame.nature: sport_data[SportDataFrame.File.nature],
+            SportDataFrame.detail_nature: sport_data[SportDataFrame.File.detail_nature],
+            SportDataFrame.geometry: sport_data[SportDataFrame.File.geometry],
+        }
+        sport_data = g.GeoDataFrame(sport_data_dict)
+
+        landuse_data_dict = {
+            LandUseDataFrame.ID: landuse_data[LandUseDataFrame.File.ID],
+            LandUseDataFrame.nature: landuse_data[LandUseDataFrame.File.nature],
+            LandUseDataFrame.geometry: landuse_data[LandUseDataFrame.File.geometry],
+        }
+        landuse_data = g.GeoDataFrame(landuse_data_dict)
+
+        plot_data_dict = {
+            PlotDataFrame.ID: plot_data[PlotDataFrame.File.ID],
+            PlotDataFrame.culture: plot_data[PlotDataFrame.File.culture],
+            PlotDataFrame.group: plot_data[PlotDataFrame.File.group],
+            PlotDataFrame.geometry: plot_data[PlotDataFrame.File.geometry],
+        }
+        plot_data = g.GeoDataFrame(plot_data_dict)
+
         geo_data = GeoData(
             buildings=building_data,
             forests=forest_data,
@@ -288,6 +373,9 @@ class FileLoader(Loader):
             interest_zones=interest_zone_data,
             departements=departements_data,
             terrain=terrain_data,
+            sport=sport_data,
+            landuse=landuse_data,
+            plots=plot_data,
         )
 
         return geo_data

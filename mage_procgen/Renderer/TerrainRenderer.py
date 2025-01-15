@@ -430,6 +430,9 @@ class TerrainRenderer:
             node_tree.nodes["Compute Edge Proximity Path"].inputs[
                 4
             ].default_value = path_object
+            node_tree.nodes["Compute Edge Proximity Field"].inputs[
+                4
+            ].default_value = wheatfields_object
 
     def get_mesh_obj(self):
         return self.terrain_object

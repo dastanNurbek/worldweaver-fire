@@ -56,7 +56,7 @@ class OsmLoader:
 
         api = overpass.API()
 
-        query = OSM.get_town_request_url(town_name)
+        query = OSM.get_town_request(town_name)
 
         response = api.get(query)
 
@@ -70,8 +70,10 @@ class OsmLoader:
         with open(os.path.join(input_folder, town_name + ".json"), "w") as town_file:
             bytes_written = town_file.write(response_str)
 
-        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
-            self.internal_crs
+        town = (
+            g.read_file(os.path.join(input_folder, town_name + ".json"))
+            .to_crs(self.internal_crs)
+            .query("index==0")
         )
 
         return town
@@ -257,15 +259,15 @@ class OsmLoader:
 
                 terrain_index += 1
 
-        terrain_data = self.noisify_terrain(
-            terrain_data, bbox_rounded, terrain_resolution, input_folder
-        )
-
         return terrain_data
 
     def noisify_terrain(
         self, terrain_data, bbox_terrain, terrain_resolution, input_folder
     ):
+        """
+        Adds noise to the gradients of the terrain.
+        Curently not in use.
+        """
         print("Noisifying terrain")
         t1 = time.time()
 
@@ -279,9 +281,11 @@ class OsmLoader:
         res = 2
         octaves = 4
         lacunarity = 2
-        # Adding a * 8 multiplier to shape factor because otherwise some values of shape result in errors in noise generation
+        # Adding a shape factor multiplier because otherwise some values of shape result in errors in noise generation
         # Due to the way the arrays are created
-        shape_factor = (lacunarity ^ (octaves - 1)) * res * 8
+        shape_factor_mult = 64
+
+        shape_factor = (lacunarity ^ (octaves - 1)) * res * shape_factor_mult
         # Noise has to be slightly bigger than terrain due to generate_fractal_noise_2d constraints
         min_noise_size = (
             (math.ceil(terrain_size[0] / shape_factor)) * shape_factor,

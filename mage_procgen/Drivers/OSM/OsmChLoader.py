@@ -1,5 +1,6 @@
 import os
 
+import geopandas as g
 import pandas as p
 from PIL import Image
 import numpy as np
@@ -13,14 +14,42 @@ from mage_procgen.Drivers.OSM.Utils import SwissAlti
 from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
 
 import requests
-
+import overpass
 import json
+
+import mage_procgen.Utils.DataFiles as df
+
+from mage_procgen.Drivers.OSM.Utils import OSM
 
 
 class OsmChLoader(OsmLoader):
     def __init__(self, base_folder: str, project_folder: str):
         super().__init__(base_folder, project_folder)
         self.internal_crs = CRS_ch
+
+    def load_town_shape(self, town_name: str):
+
+        api = overpass.API()
+
+        query = OSM.get_town_request_ch(town_name)
+
+        response = api.get(query)
+
+        input_folder = os.path.join(self.project_folder, df.input_data_folder)
+
+        if not os.path.isdir(input_folder):
+            os.makedirs(input_folder, exist_ok=True)
+
+        response_str = json.dumps(response, indent=2)
+
+        with open(os.path.join(input_folder, town_name + ".json"), "w") as town_file:
+            bytes_written = town_file.write(response_str)
+
+        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
+            self.internal_crs
+        )
+
+        return town
 
     def load_terrain_data(
         self, input_folder: str, geo_window: GeoWindow

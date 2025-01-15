@@ -128,6 +128,95 @@ class ZoneInterestDataFrame:
             ]
 
 
+class SportDataFrame:
+
+    tags = [""]
+
+    ID = "ID"
+    nature = "Nature"
+    detail_nature = "Detail_nature"
+    geometry = "geometry"
+
+    class File:
+        ID = "ID"
+        nature = "NATURE"
+        detail_nature = "NAT_DETAIL"
+        geometry = "geometry"
+
+    class WFS:
+        ID = "cleabs"
+        nature = "nature"
+        detail_nature = "nature_detaillee"
+        geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                SportDataFrame.WFS.ID,
+                SportDataFrame.WFS.nature,
+                SportDataFrame.WFS.detail_nature,
+                SportDataFrame.WFS.geometry,
+            ]
+
+
+class LandUseDataFrame:
+
+    tags = [""]
+
+    ID = "ID"
+    nature = "Nature"
+    geometry = "geometry"
+
+    class File:
+        ID = "ID"
+        nature = "NATURE"
+        geometry = "geometry"
+
+    class WFS:
+        ID = "cleabs"
+        nature = "nature"
+        geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                LandUseDataFrame.WFS.ID,
+                LandUseDataFrame.WFS.nature,
+                LandUseDataFrame.WFS.geometry,
+            ]
+
+
+class PlotDataFrame:
+
+    tags = [""]
+
+    ID = "ID"
+    culture = "Culture"
+    group = "Group"
+    geometry = "geometry"
+
+    class File:
+        ID = "ID_PARCEL"
+        culture = "CODE_CULTU"
+        group = "CODE_GROUP"
+        geometry = "geometry"
+
+    class WFS:
+        ID = "id_parcel"
+        culture = "code_cultu"
+        group = "code_group"
+        geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                PlotDataFrame.WFS.ID,
+                PlotDataFrame.WFS.culture,
+                PlotDataFrame.WFS.group,
+                PlotDataFrame.WFS.geometry,
+            ]
+
+
 class WaterDataFrame:
 
     flowing_water_tags = ["Ecoulement naturel", "Ecoulement canalisé", "Canal"]

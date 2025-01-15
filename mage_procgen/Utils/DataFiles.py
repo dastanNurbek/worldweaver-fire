@@ -40,10 +40,18 @@ dpt_file = "ARRONDISSEMENT.shp"
 town_file = "COMMUNE.shp"
 building_folder = "BATI"
 building_file = "BATIMENT.shp"
+sport_file = "TERRAIN_DE_SPORT.shp"
 residential_folder = "LIEUX_NOMMES"
 residential_file = "ZONE_D_HABITATION.shp"
 interest_zone_folder = "SERVICES_ET_ACTIVITES"
 interest_zone_file = "ZONE_D_ACTIVITE_OU_D_INTERET.shp"
+
+bdcarto_folder = "BDCARTO"
+landuse_folder = "ZONE_D_OCCUPATION_DU_SOL"
+landuse_file = "OCCUPATION_DU_SOL.shp"
+
+rpg_folder = "RPG"
+plot_file = "PARCELLES_GRAPHIQUES.shp"
 
 shore_file = "LIMITE_TERRE_MER.shp"
 
@@ -89,7 +97,7 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
     to:
 
         * BDTOPO:
-             * 1_DONNEES_LIVRAISON_2021-04-00084
+             * 1_DONNEES_LIVRAISON
                  * OCCUPATION_DU_SOL
                      * ZONE_DE_VEGETATION.shp
                  * TRANSPORT
@@ -141,6 +149,134 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
         os.path.join(
             base_folder, departements, str(departement), bdtopo_folder, delivery
         ),
+    )
+
+
+def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
+    """
+    Extracts BDCARTO archive, and changes the folders to simplify it from:
+
+        * BDCARTO
+            * BDCARTO_5-0_TOUSTHEMES_SHP_LAMB93_D006_2024-09-15
+                * BDCARTO
+                    * 1_DONNEES_LIVRAISON_2024-12-00075
+                         * BDC_5-0_SHP_LAMB93_D006-ED2024-09-15
+                             * ZONE_D_OCCUPATION_DU_SOL
+                                 * OCCUPATION_DU_SOL.shp
+
+    to:
+
+        * BDCARTO:
+             * 1_DONNEES_LIVRAISON
+                 * ZONE_D_OCCUPATION_DU_SOL
+                     * OCCUPATION_DU_SOL.shp
+
+    Parameters:
+        base_folder: base folder of the application (same one as the one written in the config file)
+        departement: number of the departement as a 2 character string (ex: "06", "77" ...)
+        archive_file: archive of the database (or the first file of the split archive)
+    """
+
+    current_base_folder = os.path.join(
+        base_folder, departements, str(departement), bdcarto_folder
+    )
+
+    archive_name = os.path.basename(archive_file).split(".")[0]
+
+    out_file_option = "-o" + current_base_folder
+
+    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+
+    subprocess.run([command_line], shell=True)
+
+    # BDCARTO_5-0_TOUSTHEMES_SHP_LAMB93_D006_2024-09-15
+    path1 = os.path.join(current_base_folder, archive_name)
+
+    # BDCARTO
+    dir1 = os.listdir(path1)[0]
+    path2 = os.path.join(path1, dir1)
+
+    # 1_DONNEES_LIVRAISON_2024-12-00075
+    # os.listdir return order is not sorted. better match by substring
+    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    path3 = os.path.join(path2, dir2)
+
+    # BDC_5-0_SHP_LAMB93_D006-ED2024-09-15
+    # Other file in the directory has the same name but it's the hashfile
+    dir3 = next(x for x in os.listdir(path3) if hash_file_extenstion not in x)
+    path4 = os.path.join(path3, dir3)
+
+    os.makedirs(
+        os.path.join(base_folder, departements, str(departement), bdcarto_folder),
+        exist_ok=True,
+    )
+    os.rename(
+        path4,
+        os.path.join(
+            base_folder, departements, str(departement), bdcarto_folder, delivery
+        ),
+    )
+
+
+def setup_rpg(base_folder: str, departement: str, archive_file: str):
+    """
+    Extracts RPG archive, and changes the folders to simplify it from:
+
+        * RPG
+            * RPG_2-2__SHP_LAMB93_R93_2023-01-01
+                * RPG
+                    * 1_DONNEES_LIVRAISON_2023
+                         * RPG_2-2__SHP_LAMB93_R93_2023-01-01
+                             * PARCELLES_GRAPHIQUES.shp
+
+    to:
+
+        * RPG:
+             * 1_DONNEES_LIVRAISON
+                 * PARCELLES_GRAPHIQUES.shp
+
+    Parameters:
+        base_folder: base folder of the application (same one as the one written in the config file)
+        departement: number of the departement as a 2 character string (ex: "06", "77" ...)
+        archive_file: archive of the database (or the first file of the split archive)
+    """
+
+    current_base_folder = os.path.join(
+        base_folder, departements, str(departement), rpg_folder
+    )
+
+    archive_name = os.path.basename(archive_file).split(".")[0]
+
+    out_file_option = "-o" + current_base_folder
+
+    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+
+    subprocess.run([command_line], shell=True)
+
+    # RPG_2-2__SHP_LAMB93_R93_2023-01-01
+    path1 = os.path.join(current_base_folder, archive_name)
+
+    # RPG
+    dir1 = os.listdir(path1)[0]
+    path2 = os.path.join(path1, dir1)
+
+    # 1_DONNEES_LIVRAISON_2023
+    # os.listdir return order is not sorted. better match by substring
+    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    path3 = os.path.join(path2, dir2)
+
+    # RPG_2-2__SHP_LAMB93_R93_2023-01-01
+    # Other file in the directory has the same name but it's the hashfile
+    dir3 = next(x for x in os.listdir(path3) if hash_file_extenstion not in x)
+    path4 = os.path.join(path3, dir3)
+
+    os.makedirs(
+        os.path.join(base_folder, departements, str(departement), rpg_folder),
+        exist_ok=True,
+    )
+    os.rename(
+        path4,
+        os.path.join(base_folder, departements, str(departement), rpg_folder, delivery),
     )
 
 

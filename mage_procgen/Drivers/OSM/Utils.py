@@ -1,10 +1,18 @@
 class OSM:
     @staticmethod
-    def get_town_request_url(town_name: str):
+    def get_town_request_ch(town_name: str):
         return (
             'area["ISO3166-1"=CH];nwr["name"="'
             + town_name
             + '"][boundary=administrative][type=boundary][admin_level="8"](area);out;(way(r); >;);out skel;'
+        )
+
+    @staticmethod
+    def get_town_request(town_name: str):
+        return (
+            'nwr[name="'
+            + town_name
+            + '"][boundary=administrative][type=boundary][admin_level="8"];out;(way(r); >;);out skel;'
         )
 
     @staticmethod

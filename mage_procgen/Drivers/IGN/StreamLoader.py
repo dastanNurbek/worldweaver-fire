@@ -24,6 +24,9 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     ZoneInterestDataFrame,
     WaterDataFrame,
     DefaultDataFrame,
+    SportDataFrame,
+    LandUseDataFrame,
+    PlotDataFrame,
 )
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
@@ -233,6 +236,33 @@ class StreamLoader(Loader):
             DefaultDataFrame.get_columns(),
         )
 
+        sport_data = WFSParser.load(
+            wfs,
+            input_folder,
+            WFS_FR.sport_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            SportDataFrame.WFS.get_columns(),
+        )
+
+        landuse_data = WFSParser.load(
+            wfs,
+            input_folder,
+            WFS_FR.landuse_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            LandUseDataFrame.WFS.get_columns(),
+        )
+
+        plot_data = WFSParser.load(
+            wfs,
+            input_folder,
+            WFS_FR.plot_key_name,
+            bbox_wgs84,
+            geo_window.crs,
+            PlotDataFrame.WFS.get_columns(),
+        )
+
         if len(shore_data) > 0:
             load_oceans = True
 
@@ -246,7 +276,7 @@ class StreamLoader(Loader):
                 force_2d=True,
             )
 
-        # Treat the data to remove the particularities of files
+        # Treat the data to remove the homogenise column names between different data sources
         building_data_dict = {
             BuildingDataFrame.ID: building_data[BuildingDataFrame.WFS.ID],
             BuildingDataFrame.nature: building_data[BuildingDataFrame.WFS.nature],
@@ -298,6 +328,29 @@ class StreamLoader(Loader):
         }
         water_data = g.GeoDataFrame(water_data_dict)
 
+        sport_data_dict = {
+            SportDataFrame.ID: sport_data[SportDataFrame.WFS.ID],
+            SportDataFrame.nature: sport_data[SportDataFrame.WFS.nature],
+            SportDataFrame.detail_nature: sport_data[SportDataFrame.WFS.detail_nature],
+            SportDataFrame.geometry: sport_data[SportDataFrame.WFS.geometry],
+        }
+        sport_data = g.GeoDataFrame(sport_data_dict)
+
+        landuse_data_dict = {
+            LandUseDataFrame.ID: landuse_data[LandUseDataFrame.WFS.ID],
+            LandUseDataFrame.nature: landuse_data[LandUseDataFrame.WFS.nature],
+            LandUseDataFrame.geometry: landuse_data[LandUseDataFrame.WFS.geometry],
+        }
+        landuse_data = g.GeoDataFrame(landuse_data_dict)
+
+        plot_data_dict = {
+            PlotDataFrame.ID: plot_data[PlotDataFrame.WFS.ID],
+            PlotDataFrame.culture: plot_data[PlotDataFrame.WFS.culture],
+            PlotDataFrame.group: plot_data[PlotDataFrame.WFS.group],
+            PlotDataFrame.geometry: plot_data[PlotDataFrame.WFS.geometry],
+        }
+        plot_data = g.GeoDataFrame(plot_data_dict)
+
         geo_data = GeoData(
             buildings=building_data,
             forests=forest_data,
@@ -308,6 +361,9 @@ class StreamLoader(Loader):
             interest_zones=interest_zone_data,
             departements=departements_data,
             terrain=terrain_data,
+            sport=sport_data,
+            landuse=landuse_data,
+            plots=plot_data,
         )
 
         return geo_data

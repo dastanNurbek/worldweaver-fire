@@ -1,4 +1,5 @@
 import math
+from typing import Union
 
 import geopandas as g
 import pandas as p
@@ -12,14 +13,20 @@ from mage_procgen.Utils.Utils import (
 from mage_procgen.Utils.Geometry import polygonise
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
-from mage_procgen.Drivers.IGN.Utils import GeoData
+from mage_procgen.Drivers.IGN.Utils import GeoData, IGN
 from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
+    LandUseDataFrame,
+    SportDataFrame,
+    PlotDataFrame,
 )
-from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
+from mage_procgen.Utils.RenderingDataFrames import (
+    RenderingRoadDataFrame,
+    clean_zones,
+)
 
 
 class Preprocessor:
@@ -40,6 +47,18 @@ class Preprocessor:
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
         new_water = geo_data.water.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        new_landuse = geo_data.landuse.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        new_sport = geo_data.sport.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        new_plots = geo_data.plots.overlay(
+            geowindow.dataframe, how="intersection", keep_geom_type=True
+        )
+        new_developed = geo_data.residentials.overlay(
             geowindow.dataframe, how="intersection", keep_geom_type=True
         )
 
@@ -75,6 +94,7 @@ class Preprocessor:
         roads_with_cars = new_roads.query(
             "{} not in @non_car_natures".format(RoadDataFrame.nature)
         )
+        paths = new_roads.query("{} in @non_car_natures".format(RoadDataFrame.nature))
 
         road_has_sidewalk = {}
         road_has_guardrails = {}
@@ -216,6 +236,42 @@ class Preprocessor:
             "{} not in @houses.ID".format(BuildingDataFrame.ID)
         )
 
+        if not new_plots.empty:
+            new_plots = new_plots.overlay(
+                new_buildings, how="difference", keep_geom_type=True
+            )
+
+            # Prairies should be grass and not plots
+            prairie_tags = IGN.prairie_codes
+            new_plots = new_plots.query(
+                "{} not in @prairie_tags".format(PlotDataFrame.group)
+            )
+
+            # Orchards should be added to forests
+            orchards_tags = IGN.orchard_codes
+            orchards = new_plots.query(
+                "{} in @orchards_tags".format(PlotDataFrame.group)
+            )
+            new_plots = new_plots.query(
+                "{} not in @orchards_tags".format(PlotDataFrame.group)
+            )
+
+            cleaned_forests = cleaned_forests.overlay(
+                orchards, how="union", keep_geom_type=True
+            )
+
+        sand_tags = IGN.bdcarto_sand_values
+        sands = new_landuse.query("{} in @sand_tags".format(LandUseDataFrame.nature))
+
+        tartan_tags = IGN.tartan_values
+        tartan = new_sport.query("{} in @tartan_tags".format(SportDataFrame.nature))
+
+        grass_tags = IGN.grass_values
+        grass = new_sport.query("{} in @grass_tags".format(SportDataFrame.nature))
+
+        asphalt_tags = IGN.asphalt_values
+        asphalt = new_sport.query("{} in @asphalt_tags".format(SportDataFrame.nature))
+
         buildings_data = BuildingRenderingData(
             churches=churches,
             malls=malls,
@@ -224,16 +280,20 @@ class Preprocessor:
             default_buildings=default_buildings,
         )
 
-        zones_data = ZonesRenderingData(
-            wheatfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            cornfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            grass=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            developed=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            tartan=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            compacted=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            asphalt=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            sand=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
-            paths=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
+        zones_data = clean_zones(
+            wheatfields=new_plots,
+            cornfields=g.GeoDataFrame(
+                columns=["id", "geometry"], geometry="geometry"
+            ),  # RPG
+            grass=grass,
+            developed=new_developed,
+            tartan=tartan,
+            compacted=g.GeoDataFrame(
+                columns=["id", "geometry"], geometry="geometry"
+            ),  # BDTOPO Terrain sport
+            asphalt=asphalt,
+            sand=sands,
+            paths=paths,
         )
 
         rendering_data = RenderingData(
