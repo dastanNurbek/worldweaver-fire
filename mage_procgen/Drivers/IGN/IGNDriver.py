@@ -1,13 +1,10 @@
-import os
-import fiona
-
 from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 from mage_procgen.Drivers.IGN.StreamLoader import StreamLoader
 from mage_procgen.Drivers.IGN.FileLoader import FileLoader
 from mage_procgen.Drivers.IGN.Preprocessor import Preprocessor
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_fr
+from mage_procgen.Utils.Utils import CRS_fr
 
 
 class IGNDriver(BaseDriver):
@@ -42,20 +39,7 @@ class IGNDriver(BaseDriver):
         geo_data = self.loader.load(self.geo_window)
         self.terrain_data = geo_data.terrain
 
-        print("Files loaded")
-        window_x = (self.geo_window.bounds[2] - self.geo_window.bounds[0]) / 1000
-        window_y = (self.geo_window.bounds[3] - self.geo_window.bounds[1]) / 1000
-        print("Project name:", os.path.basename(self.project_path))
-        print(
-            "Box size:",
-            "{:.3f}".format(window_x),
-            "*",
-            "{:.3f}".format(window_y),
-            "=",
-            "{:.3f}".format(window_x * window_y),
-            "km²",
-        )
-        print(str(len(geo_data.buildings)), "buildings")
+        print("Data loaded")
 
         rendering_data = self.processor.process(
             geo_data, self.geo_window, self.config, CRS_fr
@@ -66,3 +50,7 @@ class IGNDriver(BaseDriver):
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
 
         return self.loader.load_texture(mesh_box)
+
+    def __compute_geo_window_town__(self):
+
+        return self.loader.load_town_shape(self.config.town_dpt, self.config.town_name)
