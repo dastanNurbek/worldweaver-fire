@@ -2,7 +2,7 @@
    Schema of what the dataframes need to have so that Renderers are able to work.
    Dataframes outputed by Drivers have to follow these schemas.
 """
-from mage_procgen.Utils.Utils import ZonesRenderingData
+from mage_procgen.Utils.Utils import ZonesRenderingData, safe_overlay, OverlayType
 from shapely import area, difference, intersects, contains
 
 
@@ -56,11 +56,11 @@ def clean_zones(
 
             zone_b = list_zones[zone_b_ind]
 
-            # If either zone in empty, no point in comparing anything and overlay would fail
+            # If either zone in empty, no point in comparing anything
             if zone_a.empty or zone_b.empty:
                 continue
 
-            zone_inter = zone_a.overlay(zone_b, how="intersection", keep_geom_type=True)
+            zone_inter = safe_overlay(zone_a, zone_b, OverlayType.INTERSECTION)
 
             if not zone_inter.empty:
                 new_geom_a = []

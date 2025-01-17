@@ -9,6 +9,8 @@ from mage_procgen.Utils.Utils import (
     CRS_fr,
     BuildingRenderingData,
     ZonesRenderingData,
+    safe_overlay,
+    OverlayType,
 )
 from mage_procgen.Utils.Geometry import polygonise
 from functools import reduce
@@ -40,38 +42,31 @@ class Preprocessor:
     ) -> RenderingData:
 
         print("Processing")
-        new_buildings = geo_data.buildings.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_buildings = safe_overlay(
+            geo_data.buildings, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_forests = geo_data.forests.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_forests = safe_overlay(
+            geo_data.forests, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_water = geo_data.water.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_water = safe_overlay(
+            geo_data.water, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_landuse = geo_data.landuse.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_landuse = safe_overlay(
+            geo_data.landuse, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_sport = geo_data.sport.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_sport = safe_overlay(
+            geo_data.sport, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_plots = geo_data.plots.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_plots = safe_overlay(
+            geo_data.plots, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_developed = geo_data.residentials.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_developed = safe_overlay(
+            geo_data.residentials, geowindow.dataframe, OverlayType.INTERSECTION
         )
 
-        new_oceans = None
-
-        if geo_data.ocean is not None:
-            new_oceans = geo_data.ocean.overlay(
-                geowindow.dataframe, how="intersection", keep_geom_type=True
-            )
-            # if not new_oceans.empty:
-            #     new_oceans = geowindow.dataframe.overlay(
-            #         geo_data.departements, how="difference", keep_geom_type=True
-            #     )
+        new_oceans = safe_overlay(
+            geo_data.ocean, geowindow.dataframe, OverlayType.INTERSECTION
+        )
 
         industrial_commercial_tags = ZoneInterestDataFrame.industrial_commercial_tags
         industrial_and_commercial_zones = geo_data.interest_zones.query(
@@ -172,8 +167,8 @@ class Preprocessor:
         roads_lanes = reduce(lambda x, y: x + y, [x[1] for x in roads_elements])
 
         # Now that roads are polygons, we can apply the window on them and remove them from the background
-        roads_polygonised = roads_polygonised.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        roads_polygonised = safe_overlay(
+            roads_polygonised, geowindow.dataframe, OverlayType.INTERSECTION
         )
 
         roads_polygonised_ids = roads_polygonised[RoadDataFrame.ID]
@@ -182,24 +177,19 @@ class Preprocessor:
         )
 
         # Removing roads from forests so we don't have trees on the road
-        if not new_forests.empty:
-            new_forests = new_forests.overlay(
-                roads_polygonised, how="difference", keep_geom_type=True
-            )
+        new_forests = safe_overlay(
+            new_forests, roads_polygonised, OverlayType.DIFFERENCE
+        )
 
         # Forests can intersect buildings, which we don't want
-        if not new_forests.empty:
-            cleaned_forests = new_forests.overlay(
-                new_buildings, how="difference", keep_geom_type=True
-            )
-        else:
-            cleaned_forests = new_forests
+        cleaned_forests = safe_overlay(
+            new_forests, new_buildings, OverlayType.DIFFERENCE
+        )
 
         # Removing water from forests
-        if not cleaned_forests.empty:
-            cleaned_forests = cleaned_forests.overlay(
-                new_water, how="difference", keep_geom_type=True
-            )
+        cleaned_forests = safe_overlay(
+            cleaned_forests, new_water, OverlayType.DIFFERENCE
+        )
 
         # Splitting water between "still" and "flowing"
         flowing_water_tags = WaterDataFrame.flowing_water_tags
@@ -209,6 +199,8 @@ class Preprocessor:
         still_water = new_water.query(
             "{} not in @flowing_water_tags".format(WaterDataFrame.nature)
         )
+        still_water = safe_overlay(still_water, new_oceans, OverlayType.DIFFERENCE)
+        flowing_water = safe_overlay(flowing_water, new_oceans, OverlayType.DIFFERENCE)
 
         churches_tags = BuildingDataFrame.churches_tags
         churches = new_buildings.query(
@@ -237,9 +229,7 @@ class Preprocessor:
         )
 
         if not new_plots.empty:
-            new_plots = new_plots.overlay(
-                new_buildings, how="difference", keep_geom_type=True
-            )
+            new_plots = safe_overlay(new_plots, new_buildings, OverlayType.DIFFERENCE)
 
             # Prairies should be grass and not plots
             prairie_tags = IGN.prairie_codes
@@ -256,9 +246,7 @@ class Preprocessor:
                 "{} not in @orchards_tags".format(PlotDataFrame.group)
             )
 
-            cleaned_forests = cleaned_forests.overlay(
-                orchards, how="union", keep_geom_type=True
-            )
+            cleaned_forests = safe_overlay(cleaned_forests, orchards, OverlayType.UNION)
 
         sand_tags = IGN.bdcarto_sand_values
         sands = new_landuse.query("{} in @sand_tags".format(LandUseDataFrame.nature))

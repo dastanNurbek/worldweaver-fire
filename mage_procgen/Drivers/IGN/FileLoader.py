@@ -24,7 +24,7 @@ from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
-from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Utils.Utils import TerrainData, safe_overlay, OverlayType
 
 
 class FileLoader(Loader):
@@ -287,6 +287,10 @@ class FileLoader(Loader):
                 CRS_fr,
                 force_2d=True,
             )
+        else:
+            oceans_data = g.GeoDataFrame(
+                columns=["id", "geometry"], geometry="geometry"
+            )
 
         # Treat the data to remove the homogenise column names between different data sources
         building_data_dict = {
@@ -421,8 +425,9 @@ class FileLoader(Loader):
             df.slab_file,
         )
         slabs = ShapeFileParser.load(slab_file, bbox, CRS_fr)
-        slab_parts = slabs.overlay(
-            terrain_window.dataframe, how="intersection", keep_geom_type=True
+
+        slab_parts = safe_overlay(
+            slabs, terrain_window.dataframe, OverlayType.INTERSECTION
         )
 
         loaded_files = []

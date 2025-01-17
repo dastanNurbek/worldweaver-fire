@@ -275,6 +275,10 @@ class StreamLoader(Loader):
                 CRS_fr,
                 force_2d=True,
             )
+        else:
+            oceans_data = g.GeoDataFrame(
+                columns=["id", "geometry"], geometry="geometry"
+            )
 
         # Treat the data to remove the homogenise column names between different data sources
         building_data_dict = {

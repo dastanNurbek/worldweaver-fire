@@ -9,6 +9,8 @@ from mage_procgen.Utils.Utils import (
     GeoWindow,
     BuildingRenderingData,
     ZonesRenderingData,
+    safe_overlay,
+    OverlayType,
 )
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Drivers.OSM.Utils import OSM
@@ -211,10 +213,7 @@ class Preprocessor:
                 grass_surface_ids.append(ind)
 
         grass_surface = surfaces.query("index in @grass_surface_ids")
-        if not grass.empty:
-            grass = grass.overlay(grass_surface, how="union", keep_geom_type=True)
-        else:
-            grass = grass_surface
+        grass = safe_overlay(grass, grass_surface, OverlayType.UNION)
 
         # Developed
         selected_developed_tags = OSM.developed_landuses
@@ -253,10 +252,7 @@ class Preprocessor:
                     leisure_tartan_ids.append(ind)
 
         leisure_tartan = all_polys.query("index in @leisure_tartan_ids")
-        if not tartan.empty:
-            tartan = tartan.overlay(leisure_tartan, how="union", keep_geom_type=True)
-        else:
-            tartan = leisure_tartan
+        tartan = safe_overlay(tartan, leisure_tartan, OverlayType.UNION)
 
         beaches_ids = []
         sand_natures_ids = []
@@ -267,17 +263,9 @@ class Preprocessor:
                 sand_natures_ids.append(ind)
         beaches = natures.query("index in @beaches_ids")
         sand_natures = natures.query("index in @sand_natures_ids")
-        if not sands.empty:
-            if not beaches.empty:
-                sands = sands.overlay(beaches, how="union", keep_geom_type=True)
-        else:
-            sands = beaches
+        sands = safe_overlay(sands, beaches, OverlayType.UNION)
 
-        if not sands.empty:
-            if not sand_natures.empty:
-                sands = sands.overlay(sand_natures, how="union", keep_geom_type=True)
-        else:
-            sands = sand_natures
+        sands = safe_overlay(sands, sand_natures, OverlayType.UNION)
 
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
@@ -404,64 +392,46 @@ class Preprocessor:
         non_flowing_water_ids.extend(still_water_banned_ids)
         still_water = waters.query("index in @still_water_ids")
         flowing_water = waters.query("index not in @non_flowing_water_ids")
+        still_water = safe_overlay(still_water, oceans_data, OverlayType.DIFFERENCE)
+        flowing_water = safe_overlay(flowing_water, oceans_data, OverlayType.DIFFERENCE)
 
         # Lanes deprecated
         roads_lanes = None
 
-        if not forests.empty:
-            forests = forests.overlay(waters, how="difference", keep_geom_type=True)
+        forests = safe_overlay(forests, waters, OverlayType.DIFFERENCE)
 
-        forests = forests.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        forests = safe_overlay(forests, geowindow.dataframe, OverlayType.INTERSECTION)
+        churches = safe_overlay(churches, geowindow.dataframe, OverlayType.INTERSECTION)
+        malls = safe_overlay(malls, geowindow.dataframe, OverlayType.INTERSECTION)
+        houses = safe_overlay(houses, geowindow.dataframe, OverlayType.INTERSECTION)
+        buildings = safe_overlay(
+            buildings, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        churches = churches.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        still_water = safe_overlay(
+            still_water, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        malls = malls.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        flowing_water = safe_overlay(
+            flowing_water, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        factories = factories.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        new_oceans = safe_overlay(
+            oceans_data, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        houses = houses.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        wheatfields = safe_overlay(
+            wheatfields, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        buildings = buildings.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        cornfields = safe_overlay(
+            cornfields, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        still_water = still_water.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        grass = safe_overlay(grass, geowindow.dataframe, OverlayType.INTERSECTION)
+        developed = safe_overlay(
+            developed, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        flowing_water = flowing_water.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
+        tartan = safe_overlay(tartan, geowindow.dataframe, OverlayType.INTERSECTION)
+        compacted = safe_overlay(
+            compacted, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_oceans = oceans_data.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        wheatfields = wheatfields.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        cornfields = cornfields.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        grass = grass.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        developed = developed.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        tartan = tartan.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        compacted = compacted.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        asphalt = asphalt.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
-        sands = sands.overlay(
-            geowindow.dataframe, how="intersection", keep_geom_type=True
-        )
+        asphalt = safe_overlay(asphalt, geowindow.dataframe, OverlayType.INTERSECTION)
+        sands = safe_overlay(sands, geowindow.dataframe, OverlayType.INTERSECTION)
 
         buildings_data = BuildingRenderingData(
             churches=churches,

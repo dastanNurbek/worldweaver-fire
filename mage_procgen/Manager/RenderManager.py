@@ -1,10 +1,10 @@
 from bpy import data as D
 import math
 import geopandas as g
-from shapely.geometry import MultiPolygon, LineString
+from shapely.geometry import MultiPolygon, LineString, MultiLineString
 
 from mage_procgen.Utils.Utils import PolygonList, TerrainData
-from mage_procgen.Utils.Utils import RenderingData, GeoWindow
+from mage_procgen.Utils.Utils import RenderingData, GeoWindow, safe_overlay, OverlayType
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Rendering import (
     configure_render,
@@ -71,6 +71,9 @@ class RenderManager:
         self.flowing_water_renderer = WaterRenderer.FlowingWaterRenderer(
             self.terrain_data, self.config.water_render_config
         )
+        self.ocean_renderer = WaterRenderer.OceanRenderer(
+            self.terrain_data, self.config.water_render_config
+        )
         self.flood_renderer = FloodRenderer.FloodRenderer(
             self.config.flood_render_config
         )
@@ -110,14 +113,13 @@ class RenderManager:
 
         # Drawing water
         flowing_water = self.__extract_geom(self.rendering_data.flowing_water.geometry)
-        if (
-            self.rendering_data.ocean is not None
-            and not self.rendering_data.ocean.empty
-        ):
-            oceans_geom = self.__extract_geom(self.rendering_data.ocean.geometry)
-            flowing_water.extend(oceans_geom)
         self.flowing_water_renderer.render(
             flowing_water, self.window.center, rendering_collection_name
+        )
+
+        oceans_geom = self.__extract_geom(self.rendering_data.ocean.geometry)
+        self.ocean_renderer.render(
+            oceans_geom, self.window.center, rendering_collection_name
         )
 
         still_water = self.__extract_geom(self.rendering_data.still_water.geometry)
@@ -202,6 +204,7 @@ class RenderManager:
             self.road_renderer.get_mesh_obj(),
             self.flowing_water_renderer.get_mesh_obj(),
             self.still_water_renderer.get_mesh_obj(),
+            self.ocean_renderer.get_mesh_obj(),
             self.building_footprint_renderer.get_mesh_obj(),
         )
 
@@ -327,46 +330,56 @@ class RenderManager:
                     zone_x_min, zone_x_max, zone_y_min, zone_y_max, self.crs, self.crs
                 )
 
-        buildings_zone = self.rendering_data.buildings.default_buildings.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        buildings_zone = safe_overlay(
+            self.rendering_data.buildings.default_buildings,
+            zone_window.dataframe,
+            OverlayType.INTERSECTION,
         )
         buildings = self.__extract_buildings_data(buildings_zone)
         self.building_renderer.render(
             buildings, self.window.center, buildings_collection_name
         )
 
-        houses_zone = self.rendering_data.buildings.houses.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        houses_zone = safe_overlay(
+            self.rendering_data.buildings.houses,
+            zone_window.dataframe,
+            OverlayType.INTERSECTION,
         )
         houses = self.__extract_houses_data(houses_zone)
         self.houses_renderer.render(
             houses, self.window.center, buildings_collection_name
         )
 
-        churches_zone = self.rendering_data.buildings.churches.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        churches_zone = safe_overlay(
+            self.rendering_data.buildings.churches,
+            zone_window.dataframe,
+            OverlayType.INTERSECTION,
         )
         churches = self.__extract_buildings_data(churches_zone)
         self.churches_renderer.render(
             churches, self.window.center, buildings_collection_name
         )
 
-        factories_zone = self.rendering_data.buildings.factories.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        factories_zone = safe_overlay(
+            self.rendering_data.buildings.factories,
+            zone_window.dataframe,
+            OverlayType.INTERSECTION,
         )
         factories = self.__extract_buildings_data(factories_zone)
         self.factories_renderer.render(
             factories, self.window.center, buildings_collection_name
         )
 
-        malls_zone = self.rendering_data.buildings.malls.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        malls_zone = safe_overlay(
+            self.rendering_data.buildings.malls,
+            zone_window.dataframe,
+            OverlayType.INTERSECTION,
         )
         malls = self.__extract_buildings_data(malls_zone)
         self.malls_renderer.render(malls, self.window.center, buildings_collection_name)
 
-        forests_zone = self.rendering_data.forests.overlay(
-            zone_window.dataframe, how="intersection", keep_geom_type=True
+        forests_zone = safe_overlay(
+            self.rendering_data.forests, zone_window.dataframe, OverlayType.INTERSECTION
         )
         forests = self.__extract_geom(forests_zone.geometry)
         self.forests_renderer.render(

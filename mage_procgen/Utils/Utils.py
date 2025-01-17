@@ -1,7 +1,7 @@
 import geopandas as g
 import pandas as p
 from shapely.geometry import Polygon, LineString, mapping
-
+from enum import Enum
 from dataclasses import dataclass
 
 Point = tuple[float, float, float]
@@ -146,6 +146,52 @@ class TerrainData:
     no_data: float
     base_map_file: str
     data: p.DataFrame
+
+
+class OverlayType(Enum):
+
+    DIFFERENCE = 1
+    UNION = 2
+    INTERSECTION = 3
+
+
+def safe_overlay(
+    df1: g.GeoDataFrame, df2: g.GeoDataFrame, how: OverlayType
+) -> g.GeoDataFrame:
+    """
+    Performs overlay operation on the dataframes, with safety checks to avoid errors.
+    """
+    match how:
+        case OverlayType.DIFFERENCE:
+            if df1 is None:
+                return df1
+            if df1.empty:
+                return df1
+            if df2 is None:
+                return df1
+            if df2.empty:
+                return df1
+            return df1.overlay(df2, how="difference", keep_geom_type=True)
+        case OverlayType.UNION:
+            if df1 is None:
+                return df2
+            if df1.empty:
+                return df2
+            if df2 is None:
+                return df1
+            if df2.empty:
+                return df1
+            return df1.overlay(df2, how="union", keep_geom_type=True)
+        case OverlayType.INTERSECTION:
+            if df1 is None:
+                return df1
+            if df1.empty:
+                return df1
+            if df2 is None:
+                return df2
+            if df2.empty:
+                return df2
+            return df1.overlay(df2, how="intersection", keep_geom_type=True)
 
 
 TerrainDataList = list[TerrainData]
