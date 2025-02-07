@@ -457,7 +457,6 @@ class Preprocessor:
             forests=forests,
             buildings=buildings_data,
             roads=road_data,
-            lanes=roads_lanes,
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,

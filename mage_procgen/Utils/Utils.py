@@ -119,7 +119,6 @@ class RenderingData:
     forests: g.GeoDataFrame
     buildings: BuildingRenderingData
     roads: g.GeoDataFrame
-    lanes: LineStringList
     still_water: g.GeoDataFrame
     flowing_water: g.GeoDataFrame
     ocean: g.GeoDataFrame

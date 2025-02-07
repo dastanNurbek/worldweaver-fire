@@ -112,9 +112,10 @@ class RenderManager:
         print("Terrain rendered")
 
         # Drawing water
-        flowing_water = self.__extract_geom(self.rendering_data.flowing_water.geometry)
         self.flowing_water_renderer.render(
-            flowing_water, self.window.center, rendering_collection_name
+            self.rendering_data.flowing_water,
+            self.window.center,
+            rendering_collection_name,
         )
 
         oceans_geom = self.__extract_geom(self.rendering_data.ocean.geometry)

@@ -81,9 +81,6 @@ def main(filepath):
     )
     render_manager.draw_flood_interactors()
 
-    if not config.flood:
-        render_manager.beautify_zone(False)
-
     if config.flood:
 
         render_manager.change_non_sources_visibility(False)
@@ -123,90 +120,91 @@ def main(filepath):
 
         render_manager.change_non_sources_visibility(True)
 
-        if not config.export_img:
+    if not config.export_img:
 
-            export_folder = setup_export_folder(project_path)
+        export_folder = setup_export_folder(project_path)
 
-            config_filename = os.path.basename(config_filepath)
-            shutil.copyfile(
-                config_filepath,
-                os.path.join(project_path, config_filename),
+        config_filename = os.path.basename(config_filepath)
+        shutil.copyfile(
+            config_filepath,
+            os.path.join(project_path, config_filename),
+        )
+
+        setup_compositing_render(export_folder, config)
+        now = datetime.now()
+        now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
+        set_compositing_render_image_name(now_str + "_tagging")
+
+        if not config.use_camera_ortho:
+            setup_img_persp(
+                config.out_img_resolution,
+                config.out_img_pixel_size,
+                (0, 0, 0),
             )
 
-            setup_compositing_render(export_folder, config)
-            now = datetime.now()
-            now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
-            set_compositing_render_image_name(now_str + "_tagging")
-
-            if not config.use_camera_ortho:
-                setup_img_persp(
-                    config.out_img_resolution,
-                    config.out_img_pixel_size,
-                    (0, 0, 0),
-                )
-
-            else:
-                setup_img_ortho_res(
-                    config.out_img_resolution,
-                    config.out_img_pixel_size,
-                    (0, 0, 0),
-                )
-
-            render_manager.beautify_zone(False)
-            export_rendered_img(export_folder, now_str)
-
-        if config.export_img:
-
-            export_folder = setup_export_folder(project_path)
-
-            config_filename = os.path.basename(config_filepath)
-            shutil.copyfile(
-                config_filepath,
-                os.path.join(project_path, config_filename),
+        else:
+            setup_img_ortho_res(
+                config.out_img_resolution,
+                config.out_img_pixel_size,
+                (0, 0, 0),
             )
 
-            setup_compositing_render(export_folder, config)
+        render_manager.beautify_zone(False)
+        export_rendered_img(export_folder, now_str)
 
-            img_size = config.out_img_resolution * config.out_img_pixel_size
+    if config.export_img:
 
-            camera_step = img_size * 0.9
+        export_folder = setup_export_folder(project_path)
 
-            camera_x_min = flood_data[3][0] + img_size / 2
-            camera_x_max = flood_data[4][0] - img_size / 2
-            camera_y_min = flood_data[3][1] + img_size / 2
-            camera_y_max = flood_data[4][1] - img_size / 2
+        config_filename = os.path.basename(config_filepath)
+        shutil.copyfile(
+            config_filepath,
+            os.path.join(project_path, config_filename),
+        )
 
-            for camera_x in arange(camera_x_min, camera_x_max, camera_step):
-                for camera_y in arange(camera_y_min, camera_y_max, camera_step):
-                    try:
-                        now = datetime.now()
-                        now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
+        setup_compositing_render(export_folder, config)
 
-                        if not config.use_camera_ortho:
-                            setup_img_persp(
-                                config.out_img_resolution,
-                                config.out_img_pixel_size,
-                                (camera_x, camera_y, 0),
-                            )
-                            # Beautify
-                            zone_window = render_manager.beautify_zone(True, True)
-                        else:
-                            setup_img_ortho_res(
-                                config.out_img_resolution,
-                                config.out_img_pixel_size,
-                                (camera_x, camera_y, 0),
-                            )
-                            zone_window = render_manager.beautify_zone(True)
+        img_size = config.out_img_resolution * config.out_img_pixel_size
 
-                        set_compositing_render_image_name(now_str + "_tagging")
+        camera_step = img_size * 0.9
 
-                        export_rendered_img(export_folder, now_str)
+        scene_box = driver.geo_window.bounds
+        camera_x_min = scene_box[0] - driver.geo_window.center[0] + img_size / 2
+        camera_x_max = scene_box[2] - driver.geo_window.center[0] - img_size / 2
+        camera_y_min = scene_box[1] - driver.geo_window.center[1] + img_size / 2
+        camera_y_max = scene_box[3] - driver.geo_window.center[1] - img_size / 2
 
-                        # Clean
-                        render_manager.clean_zone()
+        for camera_x in arange(camera_x_min, camera_x_max, camera_step):
+            for camera_y in arange(camera_y_min, camera_y_max, camera_step):
+                try:
+                    now = datetime.now()
+                    now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
 
-                    except Exception as error:
-                        print("Could not generate an image: ", error)
+                    if not config.use_camera_ortho:
+                        setup_img_persp(
+                            config.out_img_resolution,
+                            config.out_img_pixel_size,
+                            (camera_x, camera_y, 0),
+                        )
+                        # Beautify
+                        zone_window = render_manager.beautify_zone(True, True)
+                    else:
+                        setup_img_ortho_res(
+                            config.out_img_resolution,
+                            config.out_img_pixel_size,
+                            (camera_x, camera_y, 0),
+                        )
+                        zone_window = render_manager.beautify_zone(True)
+
+                    set_compositing_render_image_name(now_str + "_tagging")
+
+                    export_rendered_img(export_folder, now_str)
+
+                    # Clean
+                    render_manager.clean_zone()
+
+                except Exception as error:
+                    print("Could not generate an image: ", error)
 
 
 def select_driver(config, project_path):
