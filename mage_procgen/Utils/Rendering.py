@@ -127,7 +127,7 @@ def setup_img_persp(resolution, pixel_size, center):
     sc.render.resolution_x = resolution
     sc.render.resolution_y = resolution
 
-    camera = D.objects[ortho_camera_name]
+    camera = D.objects[persp_camera_name]
     sc.camera = camera
     img_size = resolution * pixel_size
     camera_elevation = img_size / (2 * math.tan(camera.data.angle / 2))

@@ -5,6 +5,7 @@ import os
 from numpy import arange
 
 from datetime import datetime
+from time import time
 
 from mage_procgen.Utils.DataFiles import (
     config_folder,
@@ -31,6 +32,8 @@ from mage_procgen.Drivers.OSM.OSMDriver import OSMDriver
 
 
 def main(filepath):
+
+    start_time = time()
 
     # Loading config
     if len(filepath) > 0:
@@ -205,6 +208,9 @@ def main(filepath):
 
                 except Exception as error:
                     print("Could not generate an image: ", error)
+
+    stop_time = time()
+    print("Done in ", stop_time - start_time)
 
 
 def select_driver(config, project_path):

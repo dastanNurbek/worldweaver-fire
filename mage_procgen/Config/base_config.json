@@ -20,7 +20,7 @@
  "flood_height": 10,
  "flood_cell_size": 1,
  "export_img": false,
- "use_camera_ortho": false,
+ "use_camera_ortho": true,
  "out_img_resolution": 512,
  "out_img_pixel_size": 0.2,
  "building_render_config": {
