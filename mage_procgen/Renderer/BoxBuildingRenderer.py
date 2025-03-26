@@ -7,6 +7,7 @@ from shapely.geometry import mapping
 from tqdm import tqdm
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
 from mage_procgen.Utils.Rendering import additionals_collection_name
+from mage_procgen.Utils.Logging import logger
 import os
 import bpy
 
@@ -429,9 +430,8 @@ class BoxBuildingRenderer(BaseRenderer):
                         v,
                     )
                     exploration_queue.append(new_point)
-        print("ERROR")
-        print("Couldn't find a path")
+        logger.error(
+            "BoxBuildingGenerator.__compute_shortest_path_tree: Couldn't find a path. Execution details:"
+        )
         for msg in trace_msg:
-            print(msg)
-        print()
-        print()
+            logger.error(msg)

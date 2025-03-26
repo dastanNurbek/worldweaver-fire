@@ -4,6 +4,8 @@ from shapely.geometry import Polygon, LineString, mapping
 from enum import Enum
 from dataclasses import dataclass
 
+from mage_procgen.Utils.Logging import logger
+
 Point = tuple[float, float, float]
 PolygonList = list[Polygon]
 BuildingList = list[(float, Polygon)]
@@ -50,7 +52,8 @@ class GeoWindow:
 
         # Have to convert it like this, so you are guaranteed to get a rectangle in the end.
         if from_crs != to_crs:
-            print("Window was modified to be a rectangle in the destination crs")
+            # TODO: refine this. Users should be warned when the base window is modified but this seems to happen more than it should
+            logger.warn("Window was modified to be a rectangle in the destination crs")
             to_crs_box = self.dataframe.to_crs(to_crs).geometry[0].bounds
             window_s = g.GeoSeries(
                 [

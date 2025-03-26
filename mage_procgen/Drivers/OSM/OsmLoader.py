@@ -12,6 +12,7 @@ import math
 from mage_procgen.Utils.Utils import GeoWindow, CRS_wgs84_m, CRS_degrees
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.perlin2d import generate_fractal_noise_2d
+from mage_procgen.Utils.Logging import logger
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
 
@@ -161,7 +162,7 @@ class OsmLoader:
 
     def load_terrain_data(self, input_folder, geo_window):
 
-        print("Loading terrain from SRTM")
+        logger.info("Loading terrain from SRTM")
 
         bbox = geo_window.bounds
 
@@ -268,7 +269,7 @@ class OsmLoader:
         Adds noise to the gradients of the terrain.
         Curently not in use.
         """
-        print("Noisifying terrain")
+        logger.info("Noisifying terrain")
         t1 = time.time()
 
         terrain_size = (
@@ -353,6 +354,6 @@ class OsmLoader:
             ).T
 
         t2 = time.time()
-        print("Done noisyfying terrain in ", (t2 - t1))
+        logger.info("Done noisyfying terrain in " + str(t2 - t1))
 
         return terrain_data

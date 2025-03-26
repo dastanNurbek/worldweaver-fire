@@ -5,6 +5,8 @@ import numpy as np
 
 from dataclasses import dataclass
 
+from mage_procgen.Utils.Logging import logger
+
 
 @dataclass
 class ASCData:
@@ -53,7 +55,7 @@ class ASCParser:
         terrain_im_array = np.flip(terrain_im_array, axis=0)
         terrain_data = p.DataFrame(terrain_im_array)
 
-        print("Loaded slab : " + os.path.basename(file_path))
+        logger.info("Loaded slab : " + os.path.basename(file_path))
 
         return ASCData(
             x_min,

@@ -5,7 +5,7 @@ import os
 from numpy import arange
 
 from datetime import datetime
-from time import time
+from time import time, sleep
 
 from mage_procgen.Utils.DataFiles import (
     config_folder,
@@ -14,7 +14,12 @@ from mage_procgen.Utils.DataFiles import (
     check_shapefiles_presence,
     setup_project_folder,
     setup_export_folder,
+    log_folder,
+    log_file_name,
 )
+from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm, tqdm_logging_redirect
+from contextlib import redirect_stdout
 
 from mage_procgen.Loader.ConfigLoader import ConfigLoader
 from mage_procgen.Processor.FloodProcessor import FloodProcessor
@@ -27,6 +32,10 @@ from mage_procgen.Utils.Rendering import (
     set_compositing_render_image_name,
     check_is_sun_activated,
 )
+from mage_procgen.Utils.Logging import (
+    setup_logger,
+    logger,
+)  # get_logger, log_info, log_error
 from mage_procgen.Drivers.IGN.IGNDriver import IGNDriver
 from mage_procgen.Drivers.OSM.OSMDriver import OSMDriver
 
@@ -34,13 +43,15 @@ from mage_procgen.Drivers.OSM.OSMDriver import OSMDriver
 def main(filepath):
 
     start_time = time()
+    # Buffering log messages until logger is created
+    log_messages = []
 
     # Loading config
     if len(filepath) > 0:
-        print("Using config file path given by user")
+        log_messages.append("Using config file path given by user")
         config_filepath = filepath
     else:
-        print("Falling back to default conf")
+        log_messages.append("Falling back to default conf")
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
@@ -49,7 +60,7 @@ def main(filepath):
         )
 
         if not os.path.isfile(config_filepath):
-            print("No config file found, copying base config")
+            log_messages.append("No config file found, copying base config")
             shutil.copyfile(
                 os.path.join(_location, config_folder, base_config_file),
                 config_filepath,
@@ -63,6 +74,28 @@ def main(filepath):
         config.base_folder = os.path.realpath(
             os.path.join(_location, config.base_folder)
         )
+
+    setup_logger(os.path.join(config.base_folder, log_folder), log_file_name, False)
+    logger.info("Worldweaver starting")
+    for log_message in log_messages:
+        logger.info(log_message)
+
+    # with redirect_stdout(logger):
+    #     print("Test of redirection")
+    # TODO: remove this example.
+    # Tests of redirection in case we want to print during a tqdm loop
+    # Besoin de redirect sinon les logs de tqdm sont pas effacés
+    # with logging_redirect_tqdm([logger]):
+    #     for i in tqdm(range(9)):
+    #
+    #         logger.info("processing item number "+ str(i))
+    #         sleep(0.1)
+
+    # with tqdm_logging_redirect([_get_logger()]):
+    #     for i in tqdm(range(9)):
+    #
+    #         log_info("processing item number "+ str(i))
+    #         sleep(0.1)
 
     # Pre-run checks
     check_is_sun_activated()
@@ -89,7 +122,7 @@ def main(filepath):
         render_manager.change_non_sources_visibility(False)
 
         # First render: writing a height map
-        print("Computing height map")
+        logger.info("Computing height map")
         FloodProcessor.generate_height_map(
             config.base_folder,
             driver.geo_window,
@@ -101,7 +134,7 @@ def main(filepath):
         # Second render: getting a semantic map without terrain
         # We have to hide terrain because it's very irregular in rivers, and thus terrain often clips through river surface,
         # Making flood init worse
-        print("Computing sources")
+        logger.info("Computing sources")
         FloodProcessor.generate_semantic_map(
             config.base_folder,
             driver.geo_window,
@@ -207,10 +240,10 @@ def main(filepath):
                     render_manager.clean_zone()
 
                 except Exception as error:
-                    print("Could not generate an image: ", error)
+                    logger.exception("Could not generate an image", exc_info=error)
 
     stop_time = time()
-    print("Done in ", stop_time - start_time)
+    logger.info("Done in " + str(stop_time - start_time))
 
 
 def select_driver(config, project_path):

@@ -4,6 +4,8 @@ from bpy import data as D
 import bmesh
 from tqdm import tqdm
 
+from mage_procgen.Utils.Logging import logger
+
 
 class FloodRenderer:
 
@@ -62,7 +64,7 @@ class FloodRenderer:
         meshes_points_top = {}
         meshes_points_bottom = {}
 
-        print("Rendering flood")
+        logger.info("Rendering flood")
 
         for y in tqdm(range(1, len(flood_pixels))):
 

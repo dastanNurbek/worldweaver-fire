@@ -1,5 +1,7 @@
 import math
 from shapely.geometry import Polygon, LineString, Point
+
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
 
 default_thickness = 4
@@ -263,9 +265,12 @@ def line_intersection(
             return line1[1]
         else:
             # TODO: Better treatment of this: idealy should detect that the two lines are the same, and return something
-            print("line_intersection: ERROR: lines do not intersect: ")
-            print(str(line1))
-            print(str(line2))
+            logger.error(
+                "line_intersection: lines do not intersect: "
+                + str(line1)
+                + " ; "
+                + str(line2)
+            )
             return 0, 0
 
     d = (det(*line1), det(*line2))

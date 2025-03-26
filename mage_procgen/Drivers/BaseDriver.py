@@ -4,6 +4,7 @@ import fiona
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Utils import RenderingData
 from mage_procgen.Utils.Utils import GeoWindow
+from mage_procgen.Utils.Logging import logger
 
 
 class BaseDriver:
@@ -66,15 +67,15 @@ class BaseDriver:
         window_x = (self.geo_window.bounds[2] - self.geo_window.bounds[0]) / 1000
         window_y = (self.geo_window.bounds[3] - self.geo_window.bounds[1]) / 1000
         area = window_x * window_y
-        print("Project name:", os.path.basename(self.project_path))
-        print(
-            "Box size:",
-            "{:.3f}".format(window_x),
-            "*",
-            "{:.3f}".format(window_y),
-            "=",
-            "{:.3f}".format(area),
-            "km²",
+        logger.info("Project name: " + os.path.basename(self.project_path))
+        logger.info(
+            "Box size: "
+            + " {:.3f}".format(window_x)
+            + " *"
+            + " {:.3f}".format(window_y)
+            + " ="
+            + " {:.3f}".format(area)
+            + " km²"
         )
         if area > BaseDriver.max_allowed_area:
             raise ValueError(

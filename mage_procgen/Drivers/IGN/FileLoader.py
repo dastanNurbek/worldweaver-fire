@@ -25,6 +25,7 @@ from mage_procgen.Utils.RenderingDataFrames import (
     RenderingBuildingDataFrame,
 )
 from mage_procgen.Utils.Utils import TerrainData, safe_overlay, OverlayType
+from mage_procgen.Utils.Logging import logger
 
 
 class FileLoader(Loader):
@@ -32,7 +33,7 @@ class FileLoader(Loader):
 
         bbox = geo_window.bounds
 
-        print("Loading shp files")
+        logger.info("Loading shp files")
 
         arrondissements = ShapeFileParser.load(
             os.path.join(self.base_folder, df.regions_file),
@@ -65,7 +66,9 @@ class FileLoader(Loader):
 
         for current_departement in departements_names:
 
-            print("Loading data for departement " + current_departement)
+            logger.info(
+                "Loading data for departement " + current_departement,
+            )
 
             current_terrain_data = self.load_departement_terrain(
                 current_departement, terrain_window
@@ -460,7 +463,10 @@ class FileLoader(Loader):
                 try:
                     terrain_base_map = self.load_texture(current_box)
                 except Exception as e:
-                    print("Couldn't load texture image of terrain slab: " + str(e))
+                    logger.error(
+                        "Couldn't load texture image of terrain slab",
+                        exc_info=e,
+                    )
 
             loaded_files.append(
                 TerrainData(
@@ -517,7 +523,10 @@ class FileLoader(Loader):
                     try:
                         terrain_base_map = self.load_texture(current_box)
                     except Exception as e:
-                        print("Couldn't load texture image of terrain slab: " + str(e))
+                        logger.error(
+                            "Couldn't load texture image of terrain slab",
+                            exc_info=e,
+                        )
 
                 loaded_files.append(
                     TerrainData(

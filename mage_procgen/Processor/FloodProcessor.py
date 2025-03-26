@@ -13,6 +13,7 @@ from scipy.ndimage import gaussian_filter as gf
 
 from PIL import Image
 
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Rendering import (
@@ -103,7 +104,7 @@ class FloodProcessor:
         flood_threshold: float,
         flood_cell_size: float,
     ):
-        print("Initialising flood")
+        logger.info("Initialising flood")
 
         bounds = geo_window.bounds
         center = geo_window.center
@@ -232,7 +233,7 @@ class FloodProcessor:
         flood_state = np.zeros((flood_state_rows, flood_state_cols))
         # path_lengths = np.full((flood_state_rows, flood_state_cols), -9999)
 
-        print("Calculating flood")
+        logger.info("Calculating flood")
 
         for row in tqdm(range(flood_state_rows)):
             for column in range(flood_state_cols):
@@ -260,7 +261,6 @@ class FloodProcessor:
                 #       break
                 #
                 # path_lengths[row][column] = path_length
-                # print("Found path ! Length: " + str(path_length))
 
                 (is_flooded, water_height) = FloodProcessor.flood_height(
                     max_flood_height,

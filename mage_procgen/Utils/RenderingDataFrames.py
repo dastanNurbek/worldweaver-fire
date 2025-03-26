@@ -80,10 +80,10 @@ def clean_zones(
                         new_geom_b.append(geom_b)
 
                     new_geom_a.append(geom_a)
-                    zone_b.set_geometry(new_geom_b, inplace=True)
+                    zone_b = zone_b.set_geometry(new_geom_b)
                     list_zones[zone_b_ind] = zone_b
 
-                zone_a.set_geometry(new_geom_a, inplace=True)
+                zone_a = zone_a.set_geometry(new_geom_a)
                 list_zones[zone_a_ind] = zone_a
 
     return ZonesRenderingData(

@@ -2,7 +2,8 @@ from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
 from mage_procgen.Drivers.OSM.OsmChLoader import OsmChLoader
-from mage_procgen.Drivers.OSM.Preprocessor import Preprocessor
+from mage_procgen.Drivers.OSM.OSMPreprocessor import OSMPreprocessor
+from mage_procgen.Utils.Logging import logger
 
 
 class OSMDriver(BaseDriver):
@@ -11,7 +12,6 @@ class OSMDriver(BaseDriver):
 
     def __init__(self, config, project_path):
         super().__init__(config, project_path)
-
         match config.data_source:
             case "OSM-CH":
                 self.loader = OsmChLoader(config.base_folder, project_path)
@@ -24,13 +24,13 @@ class OSMDriver(BaseDriver):
                     "Invalid config: invalid data source type: ", config.data_source
                 )
         self.__compute_geo_window__()
-        self.processor = Preprocessor
+        self.processor = OSMPreprocessor
 
     def process(self):
 
         geo_data = self.loader.load(self.geo_window)
         self.terrain_data = geo_data[2]
-        print("Data loaded")
+        logger.info("Data loaded")
 
         rendering_data = self.processor.process(
             geo_data[0], geo_data[1], self.geo_window, self.config, self.internal_crs

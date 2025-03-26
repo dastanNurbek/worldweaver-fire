@@ -1,4 +1,5 @@
 import os
+from sys import exc_info
 
 import pandas as p
 import geopandas as g
@@ -15,6 +16,7 @@ from mage_procgen.Parser.WFSParser import WFSParser
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Drivers.IGN.Utils import GeoData
+from mage_procgen.Utils.Logging import logger
 
 import mage_procgen.Utils.DataFiles as df
 from mage_procgen.Drivers.IGN.Utils import WFS_FR
@@ -63,7 +65,7 @@ class StreamLoader(Loader):
         terrain_max_slab_size = 1000
         # TODO: check this value
         no_data = -9999
-        print("Loading data from stream")
+        logger.info("Loading data from stream")
 
         input_folder = os.path.join(self.project_folder, df.input_data_folder)
 
@@ -143,7 +145,10 @@ class StreamLoader(Loader):
                     try:
                         terrain_base_map = self.load_texture(current_box)
                     except Exception as e:
-                        print("Couldn't load texture image of terrain slab: " + str(e))
+                        logger.exception(
+                            "Couldn't load texture image of terrain slab.",
+                            exc_info=e,
+                        )
 
                 terrain_data.append(
                     TerrainData(
@@ -280,7 +285,7 @@ class StreamLoader(Loader):
                 columns=["id", "geometry"], geometry="geometry"
             )
 
-        # Treat the data to remove the homogenise column names between different data sources
+        # Treat the data to homogenise column names between different data sources
         building_data_dict = {
             BuildingDataFrame.ID: building_data[BuildingDataFrame.WFS.ID],
             BuildingDataFrame.nature: building_data[BuildingDataFrame.WFS.nature],

@@ -4,6 +4,8 @@ import re
 
 import funkybob
 
+from mage_procgen.Utils.Logging import logger
+
 rendering = "Rendering"
 
 temp_folder = "TMP"
@@ -73,6 +75,9 @@ assets_folder = "Assets"
 
 projects_folder = "Projects"
 input_data_folder = "Inputs"
+
+log_folder = "Logs"
+log_file_name = "worldweaver.log"
 
 
 file_coords_regex = re.compile("_[0-9]{4}_[0-9]{4}_")
@@ -493,7 +498,7 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
 def check_shapefiles_presence(base_folder: str):
 
     if not os.path.isfile(os.path.join(base_folder, ocean_file)):
-        print("Ocean file not found. Extracting it from archive")
+        logger.warn("Ocean file not found. Extracting it from archive")
 
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))
@@ -509,7 +514,7 @@ def check_shapefiles_presence(base_folder: str):
         subprocess.run([command_line], shell=True)
 
     if not os.path.isfile(os.path.join(base_folder, regions_file)):
-        print("Region file not found. Extracting it from archive")
+        logger.warn("Region file not found. Extracting it from archive")
 
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))

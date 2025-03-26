@@ -8,7 +8,8 @@ import addon_utils
 import random
 
 import mage_procgen.Utils.DataFiles as df
-
+from mage_procgen.Utils.Logging import logger, stdout_redirected
+from contextlib import redirect_stdout, redirect_stderr
 
 rendering_collection_name = "Rendering"
 terrain_collection_name = "Terrain"
@@ -26,7 +27,7 @@ def check_is_sun_activated():
         sc = C.scene
         a = sc.sun_pos_properties.latitude
     except Exception as _:
-        print("WARNING: Sun position addon was not enabled. Enabling it.")
+        logger.warn("Sun position addon was not enabled. Enabling it.")
 
         addon_utils.enable("sun_position", default_set=True)
 
@@ -117,8 +118,16 @@ def export_rendered_img(base_path, base_name):
     sc = C.scene
 
     sc.render.filepath = os.path.join(base_path, base_name + ".png")
-
-    O.render.render(write_still=True)
+    #with redirect_stdout(logger):
+    # with open("/home/AVerstraete/Work/maps/Logs/render.log", 'a') as flog:
+    #     with redirect_stdout(flog):
+    #         print("Is this redirected ?")
+    #         O.render.render(write_still=True)
+    #         print("What abt this ?")
+    with stdout_redirected("/home/AVerstraete/Work/maps/Logs/render.log"):
+        print("Is this redirected ?")
+        O.render.render(write_still=True)
+        print("What abt this ?")
 
 
 def setup_img_persp(resolution, pixel_size, center):

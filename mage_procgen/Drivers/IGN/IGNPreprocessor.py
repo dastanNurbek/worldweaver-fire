@@ -3,6 +3,7 @@ from typing import Union
 
 import geopandas as g
 import pandas as p
+
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
@@ -12,6 +13,7 @@ from mage_procgen.Utils.Utils import (
     safe_overlay,
     OverlayType,
 )
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Geometry import polygonise
 from functools import reduce
 from mage_procgen.Utils.Config import Config, window_type_town
@@ -31,7 +33,7 @@ from mage_procgen.Utils.RenderingDataFrames import (
 )
 
 
-class Preprocessor:
+class IGNPreprocessor:
     _window_threshold = 1e-2
     _minimal_size = 20
     _building_inter_threshold = 1
@@ -41,7 +43,7 @@ class Preprocessor:
         geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
     ) -> RenderingData:
 
-        print("Processing")
+        logger.info("Preprocessing")
         new_buildings = safe_overlay(
             geo_data.buildings, geowindow.dataframe, OverlayType.INTERSECTION
         )
@@ -144,15 +146,12 @@ class Preprocessor:
             .to_numpy()
             .tolist()
         ]
-
         roads_content = {}
         or_row_index = 0
 
         for index, row in roads_with_cars.iterrows():
             for geometry in roads_elements[or_row_index][0]:
                 new_row = row.to_dict()
-                # Saving the original line in another field to allow use of generators that work on lines
-                # new_row["line"] = new_row["geometry"]
                 new_row[RoadDataFrame.geometry] = geometry
 
                 for key, value in new_row.items():
@@ -161,7 +160,6 @@ class Preprocessor:
                     roads_content[key].append(value)
 
             or_row_index += 1
-
         roads_polygonised = g.GeoDataFrame(roads_content, crs=CRS_fr)
 
         roads_lanes = reduce(lambda x, y: x + y, [x[1] for x in roads_elements])
@@ -267,23 +265,17 @@ class Preprocessor:
             houses=houses,
             default_buildings=default_buildings,
         )
-
         zones_data = clean_zones(
             wheatfields=new_plots,
-            cornfields=g.GeoDataFrame(
-                columns=["id", "geometry"], geometry="geometry"
-            ),  # RPG
+            cornfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             grass=grass,
             developed=new_developed,
             tartan=tartan,
-            compacted=g.GeoDataFrame(
-                columns=["id", "geometry"], geometry="geometry"
-            ),  # BDTOPO Terrain sport
+            compacted=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             asphalt=asphalt,
             sand=sands,
             paths=paths,
         )
-
         rendering_data = RenderingData(
             forests=cleaned_forests,
             buildings=buildings_data,

@@ -19,9 +19,10 @@ from mage_procgen.Utils.RenderingDataFrames import (
     RenderingBuildingDataFrame,
     clean_zones,
 )
+from mage_procgen.Utils.Logging import logger
 
 
-class Preprocessor:
+class OSMPreprocessor:
     _window_threshold = 1e-2
     _minimal_size = 20
     _building_inter_threshold = 1
@@ -35,7 +36,7 @@ class Preprocessor:
         crs: int,
     ) -> RenderingData:
 
-        print("Processing OSM data")
+        logger.info("Processing OSM data")
 
         points = geo_dataframe[geo_dataframe.geom_type == OSM.point]
         multi_polys = geo_dataframe[geo_dataframe.geom_type == OSM.multi_polygon]

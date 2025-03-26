@@ -4,6 +4,7 @@ import geopandas as g
 from shapely.geometry import MultiPolygon, LineString, MultiLineString
 
 from mage_procgen.Utils.Utils import PolygonList, TerrainData
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import RenderingData, GeoWindow, safe_overlay, OverlayType
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Rendering import (
@@ -103,15 +104,16 @@ class RenderManager:
 
     def draw_flood_interactors(self):
         # Rendering objects that interact with flood
-        print("Rendering objects that interact with flood")
+        logger.info("Rendering objects that interact with flood")
         self.terrain_renderer.render(
             self.terrain_data,
             self.window,
             terrain_collection_name,
         )
-        print("Terrain rendered")
+        logger.info("Terrain rendered")
 
         # Drawing water
+        logger.info("Rendering flowing water")
         self.flowing_water_renderer.render(
             self.rendering_data.flowing_water,
             self.window.center,
@@ -223,7 +225,7 @@ class RenderManager:
                 self.path_renderer.get_mesh_obj(),
             )
 
-        print("Objects that interact with flood rendered")
+        logger.info("Objects that interact with flood rendered")
 
     def draw_flood(self, flood_data):
         self.flood_renderer.render(flood_data, rendering_collection_name)

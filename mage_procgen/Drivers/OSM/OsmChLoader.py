@@ -8,6 +8,7 @@ import math
 
 from mage_procgen.Utils.Utils import GeoWindow, CRS_ch
 from mage_procgen.Utils.Utils import TerrainData, TerrainDataList
+from mage_procgen.Utils.Logging import logger
 
 from mage_procgen.Drivers.OSM.Utils import SwissAlti
 
@@ -68,7 +69,7 @@ class OsmChLoader(OsmLoader):
         terrain_max_slab_size = 1000
         # TODO: check this value
         no_data = -9999
-        print("Loading terrain data from swissalti")
+        logger.info("Loading terrain data from swissalti")
 
         terrain_data = []
 

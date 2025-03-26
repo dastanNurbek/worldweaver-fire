@@ -15,6 +15,7 @@ from skimage import measure
 from scipy.interpolate import griddata
 from math import floor, ceil
 from mage_procgen.Utils.Geometry import interpolate_z
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import Point
 from tqdm import tqdm
 
@@ -148,6 +149,7 @@ class FlowingWaterRenderer(BaseRenderer):
         loop_count = 0
 
         # Fusing water polygons so that all contiguous polygons are in the same surface
+        max_fusion_loop_count = 10
         while loop_needed:
             fused_surfaces = []
             loop_needed = False
@@ -167,14 +169,17 @@ class FlowingWaterRenderer(BaseRenderer):
                     fused_surfaces.append(surface)
             surfaces = fused_surfaces
             loop_count += 1
-            if loop_count > 50:
-                raise ValueError("Water polygon fusion exceeded max loop count of 50")
+            if loop_count > max_fusion_loop_count:
+                raise ValueError(
+                    "Water polygon fusion exceeded max loop count of "
+                    + str(max_fusion_loop_count)
+                )
 
-        print("Fusion done in", loop_count, "loops")
+        logger.info("Fusion done in " + str(loop_count) + " loops")
         surface_count = 1
         for surface in surfaces:
 
-            print("Rendering surface", str(surface_count))
+            logger.info("Processing surface " + str(surface_count))
             # Transforming the polygon into a raster
             surface_box = surface.bounds
             surface_ll = (surface_box[0], surface_box[1])
@@ -206,7 +211,7 @@ class FlowingWaterRenderer(BaseRenderer):
                 dtype=rasterio.uint8,
             )
 
-            print("Init")
+            logger.info("Getting contour height")
 
             DSM = np.empty_like(water_mask, dtype=float)
 
@@ -253,7 +258,7 @@ class FlowingWaterRenderer(BaseRenderer):
                 water_countour_x_y, water_countour_z, interior_x_y, method="linear"
             )
 
-            print("Getting DSM")
+            logger.info("Initializing surface")
             # Next step is to smooth out the water surface with an algorithm based on https://github.com/brunovallet/LaplaceDTM/blob/master/LaplaceDTM.py
             # TODO: better init by array slicing and stitching (but maybe there needs to be requirements on resolutions)
             for row in tqdm(range(DSM.shape[0])):
@@ -300,7 +305,7 @@ class FlowingWaterRenderer(BaseRenderer):
             prev_u = DSM_vect
 
             for i_iter in range(max_iter):
-                print("Loop", i_iter + 1, "begins")
+                logger.info("Laplace smoothing loop " + str(i_iter + 1) + " begins")
                 # DSM attachment only on ground
                 ground_mask_diag = FlowingWaterRendererUtils.sparse_diag(
                     ground_mask_vect
@@ -318,7 +323,7 @@ class FlowingWaterRenderer(BaseRenderer):
                     ground_mask_vect = DSM_vect < (u + buffer)
 
                 error = np.sqrt(np.linalg.norm(u - prev_u) / u.shape[0])
-                print(error)
+                logger.info("Error at this step: " + str(error))
 
                 prev_u = u
 
@@ -326,7 +331,9 @@ class FlowingWaterRenderer(BaseRenderer):
                     DTM = np.reshape(u, DSM.shape)
                     break
                 elif i_iter == max_iter - 1:
-                    print("Could not converge in time")
+                    logger.error(
+                        "Could not converge in time. Using pre-smoothed surface model."
+                    )
                     DTM = DSM
 
             # Neighbors relative coordinates
@@ -340,7 +347,7 @@ class FlowingWaterRenderer(BaseRenderer):
             meshes_points = {}
 
             # Drawing the surface by looping again on the image and plotting all faces for which at least 3 points are inside the water mask
-            print("Drawing")
+            logger.info("Drawing")
             for y in tqdm(range(1, len(water_mask))):
 
                 for x in range(1, len(water_mask[y])):
@@ -364,7 +371,6 @@ class FlowingWaterRenderer(BaseRenderer):
                         )
 
                         if current_point_is_in_surface:
-                            # current_point_z = DSM[current_y][current_x]
                             current_point_z = DTM[current_y][current_x]
 
                             current_point_coords = (

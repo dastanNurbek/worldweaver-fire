@@ -2,9 +2,10 @@ from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 from mage_procgen.Drivers.IGN.StreamLoader import StreamLoader
 from mage_procgen.Drivers.IGN.FileLoader import FileLoader
-from mage_procgen.Drivers.IGN.Preprocessor import Preprocessor
+from mage_procgen.Drivers.IGN.IGNPreprocessor import IGNPreprocessor
 
 from mage_procgen.Utils.Utils import CRS_fr
+from mage_procgen.Utils.Logging import logger
 
 
 class IGNDriver(BaseDriver):
@@ -14,7 +15,6 @@ class IGNDriver(BaseDriver):
     def __init__(self, config, project_path):
 
         super().__init__(config, project_path)
-
         self.internal_crs = CRS_fr
 
         match config.data_source:
@@ -32,14 +32,14 @@ class IGNDriver(BaseDriver):
                 )
 
         self.__compute_geo_window__()
-        self.processor = Preprocessor
+        self.processor = IGNPreprocessor
 
     def process(self):
 
         geo_data = self.loader.load(self.geo_window)
         self.terrain_data = geo_data.terrain
 
-        print("Data loaded")
+        logger.info("Data loaded")
 
         rendering_data = self.processor.process(
             geo_data, self.geo_window, self.config, CRS_fr

@@ -1,4 +1,6 @@
 import os
+from sys import exc_info
+
 import bpy
 from bpy import data as D, context as C, ops as O
 import bmesh
@@ -6,6 +8,7 @@ import bmesh
 import math
 from numpy import arange
 
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
 from mage_procgen.Utils.Geometry import center_point
 
@@ -311,7 +314,9 @@ class TerrainRenderer:
                             os.path.basename(mesh_info.base_map_file)
                         ]
                     except Exception as e:
-                        print("Couldn't add texture image to slab: " + str(e))
+                        logger.exception(
+                            "Couldn't add texture image to slab.", exc_info=e
+                        )
 
                 mesh_data.materials.append(mesh_material)
             else:
@@ -344,9 +349,12 @@ class TerrainRenderer:
                         or vertex_uv[1] > 1
                         or vertex_uv[1] < 0
                     ):
-                        print("CAUTION: bad uv coord")
-                        print(str(vertex_real_coords))
-                        print(str(vertex_uv))
+                        raise ValueError(
+                            "Invalid uv coords. Vertex coords: "
+                            + str(vertex_real_coords)
+                            + ". Vertex UV: "
+                            + str(vertex_uv)
+                        )
 
                     vertex_loop_ind = face.loop_indices[v_ind]
                     uvlayer.data[vertex_loop_ind].uv = vertex_uv
