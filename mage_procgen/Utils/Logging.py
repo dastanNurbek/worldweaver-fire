@@ -3,6 +3,7 @@ import os
 import sys
 from contextlib import contextmanager
 
+
 def setup_logger(folder: str, file_name: str, add_debug: bool):
     log_formatter_file = logging.Formatter(
         "%(asctime)s [%(levelname)-5.5s] %(message)s"
@@ -30,7 +31,7 @@ def setup_logger(folder: str, file_name: str, add_debug: bool):
 
     # TODO: doesn't seem to work, delete it
     # For redirection purposes
-    #root_logger.write = lambda msg: root_logger.info(msg) if msg != "\n" else None
+    # root_logger.write = lambda msg: root_logger.info(msg) if msg != "\n" else None
 
 
 logger = logging.getLogger("worldweaver")
@@ -41,31 +42,32 @@ logger = logging.getLogger("worldweaver")
 # stdout_redirection = stdout_redirect(path_to_other_log_file)
 # et comme ça les éventuels autre modules qui en ont besoin peuvent juste import stdout_redirection
 
+
 @contextmanager
 def stdout_redirected(to=os.devnull):
-    '''
+    """
     import os
 
     with stdout_redirected(to=filename):
         print("from Python")
         os.system("echo non-Python applications are also supported")
-    '''
+    """
     fd = sys.stdout.fileno()
 
     ##### assert that Python and C stdio write using the same file descriptor
     ####assert libc.fileno(ctypes.c_void_p.in_dll(libc, "stdout")) == fd == 1
 
     def _redirect_stdout(to):
-        sys.stdout.close() # + implicit flush()
-        os.dup2(to.fileno(), fd) # fd writes to 'to' file
-        sys.stdout = os.fdopen(fd, 'w') # Python writes to fd
+        sys.stdout.close()  # + implicit flush()
+        os.dup2(to.fileno(), fd)  # fd writes to 'to' file
+        sys.stdout = os.fdopen(fd, "w")  # Python writes to fd
 
-    with os.fdopen(os.dup(fd), 'w') as old_stdout:
-        with open(to, 'w') as file:
+    with os.fdopen(os.dup(fd), "w") as old_stdout:
+        with open(to, "w") as file:
             _redirect_stdout(to=file)
         try:
-            yield # allow code to be run with the redirected stdout
+            yield  # allow code to be run with the redirected stdout
         finally:
-            _redirect_stdout(to=old_stdout) # restore stdout.
-                                            # buffering and flags such as
-                                            # CLOEXEC may be different
+            _redirect_stdout(to=old_stdout)  # restore stdout.
+            # buffering and flags such as
+            # CLOEXEC may be different

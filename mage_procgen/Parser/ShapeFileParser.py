@@ -1,4 +1,3 @@
-from mage_procgen.Parser.BaseParser import BaseParser
 from pyogrio import read_dataframe, read_info
 import geopandas as g
 import shapely

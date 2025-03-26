@@ -118,7 +118,7 @@ def export_rendered_img(base_path, base_name):
     sc = C.scene
 
     sc.render.filepath = os.path.join(base_path, base_name + ".png")
-    #with redirect_stdout(logger):
+    # with redirect_stdout(logger):
     # with open("/home/AVerstraete/Work/maps/Logs/render.log", 'a') as flog:
     #     with redirect_stdout(flog):
     #         print("Is this redirected ?")

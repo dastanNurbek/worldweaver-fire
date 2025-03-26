@@ -34,10 +34,6 @@ from mage_procgen.Utils.RenderingDataFrames import (
 
 
 class IGNPreprocessor:
-    _window_threshold = 1e-2
-    _minimal_size = 20
-    _building_inter_threshold = 1
-
     @staticmethod
     def process(
         geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
@@ -126,6 +122,9 @@ class IGNPreprocessor:
         )
 
         # Transform the Polylines into polygons to allow geometry operations with other dataframes
+        # TODO: check if polygonized roads are still in use somewhere.
+        # Forests uses raycast on road object to not spawn trees on roads,
+        # and we can window lines later during rendermanager.
         roads_elements = [
             polygonise(
                 x[0],
@@ -161,8 +160,6 @@ class IGNPreprocessor:
 
             or_row_index += 1
         roads_polygonised = g.GeoDataFrame(roads_content, crs=CRS_fr)
-
-        roads_lanes = reduce(lambda x, y: x + y, [x[1] for x in roads_elements])
 
         # Now that roads are polygons, we can apply the window on them and remove them from the background
         roads_polygonised = safe_overlay(

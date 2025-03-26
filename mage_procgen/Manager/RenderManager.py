@@ -461,18 +461,6 @@ class RenderManager:
 
         return to_return
 
-    # def __extract_road_geom(self, geometry_list: g.GeoSeries) -> LineStringList:
-    #     to_return = []
-    #     for x in geometry_list:
-    #         # If it's a multipolygon, it has multiple polygons inside of it that we need to separate for later
-    #         if type(x) == MultiPolygon:
-    #             for y in x.geoms:
-    #                 to_return.append(y)
-    #         else:
-    #             to_return.append(x)
-    #
-    #     return to_return
-
     def __extract_buildings_data(self, buildings: g.GeoDataFrame) -> PolygonList:
         to_return = []
 
@@ -517,41 +505,3 @@ class RenderManager:
                 to_return.append(x)
 
         return to_return
-
-    @staticmethod
-    def __window_lines(line_collection, zone_window):
-        windowed_lines = []
-
-        for line in line_collection:
-
-            if type(line) == MultiLineString:
-                for geom in line.geoms:
-                    windowed_line = []
-                    for point in geom.coords:
-
-                        if (
-                            zone_window.bounds[0] < point[0] < zone_window.bounds[2]
-                            and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
-                        ):
-                            windowed_line.append(point)
-
-                    if len(windowed_line) > 1:
-                        windowed_lines.append(LineString(windowed_line))
-            else:
-                windowed_line = []
-                for point in line.coords:
-
-                    if (
-                        zone_window.bounds[0] < point[0] < zone_window.bounds[2]
-                        and zone_window.bounds[1] < point[1] < zone_window.bounds[3]
-                    ):
-                        windowed_line.append(point)
-
-                if len(windowed_line) > 1:
-                    windowed_lines.append(LineString(windowed_line))
-
-        return windowed_lines
-
-    def __window_lanes(self, zone_window):
-
-        return RenderManager.__window_lines(self.rendering_data.lanes, zone_window)

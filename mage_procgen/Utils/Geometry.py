@@ -10,7 +10,7 @@ default_direction_code = 0
 max_point_distance = 1000
 directions = ["Double sens", "Sens direct", "Sens inverse"]
 
-
+# TODO: check if it has any use.
 def polygonise(
     poly_line: LineString,
     thickness: float,
