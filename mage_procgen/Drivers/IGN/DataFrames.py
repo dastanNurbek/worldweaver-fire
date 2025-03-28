@@ -1,3 +1,13 @@
+"""
+Module containing classes that describe the column names of different types of GeoDataFrame in IGN data.
+ESRI shapefiles and WFS protocol each has different requirements on column names, so we need a way to harmonize it.
+Each class has 3 sections:
+ - A "File" subclass, containing the name of the columns in IGN's shapefiles
+ - A "WFS" subclass, containing the name of the columns in IGN's WFS data
+ - A main section, containing the name of the columns that will be used in the IGN Driver.
+"""
+
+
 class BuildingDataFrame:
 
     ID = "ID"
@@ -6,10 +16,6 @@ class BuildingDataFrame:
     usage_2 = "Usage_2"
     number_housings = "Nb_Housing"
     geometry = "geometry"
-
-    churches_tags = ["Religieux"]
-    malls_tags = ["Commercial et services"]
-    factories_tags = ["Industriel"]
 
     class File:
         ID = "ID"
@@ -47,9 +53,6 @@ class BuildingDataFrame:
 
 
 class RoadDataFrame:
-
-    non_car_natures = ["Chemin", "Escalier", "Sentier"]
-    directions = ["Double sens", "Sens direct", "Sens inverse"]
 
     ID = "ID"
     nature = "Nature"
@@ -99,12 +102,6 @@ class RoadDataFrame:
 
 class ZoneInterestDataFrame:
 
-    industrial_commercial_tags = [
-        "Zone artisanale",
-        "Zone commerciale",
-        "Zone d'activités",
-    ]
-
     ID = "ID"
     detail_nature = "Detail_nature"
     geometry = "geometry"
@@ -129,8 +126,6 @@ class ZoneInterestDataFrame:
 
 
 class SportDataFrame:
-
-    tags = [""]
 
     ID = "ID"
     nature = "Nature"
@@ -161,8 +156,6 @@ class SportDataFrame:
 
 class LandUseDataFrame:
 
-    tags = [""]
-
     ID = "ID"
     nature = "Nature"
     geometry = "geometry"
@@ -187,8 +180,6 @@ class LandUseDataFrame:
 
 
 class PlotDataFrame:
-
-    tags = [""]
 
     ID = "ID"
     culture = "Culture"
@@ -218,8 +209,6 @@ class PlotDataFrame:
 
 
 class WaterDataFrame:
-
-    flowing_water_tags = ["Ecoulement naturel", "Ecoulement canalisé", "Canal"]
 
     ID = "ID"
     nature = "Nature"

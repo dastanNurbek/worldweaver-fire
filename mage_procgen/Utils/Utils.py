@@ -1,8 +1,10 @@
-import geopandas as g
-import pandas as p
-from shapely.geometry import Polygon, LineString, mapping
 from enum import Enum
 from dataclasses import dataclass
+
+import geopandas as g
+import pandas as p
+
+from shapely.geometry import Polygon, LineString, mapping
 
 from mage_procgen.Utils.Logging import logger
 
@@ -86,12 +88,12 @@ class GeoWindow:
 
     def to_crs(self, to_crs: int):
         return GeoWindow.from_square(
-            self.bounds[0],
-            self.bounds[2],
-            self.bounds[1],
-            self.bounds[3],
-            self.crs,
-            to_crs,
+            x_min=self.bounds[0],
+            x_max=self.bounds[2],
+            y_min=self.bounds[1],
+            y_max=self.bounds[3],
+            from_crs=self.crs,
+            to_crs=to_crs,
         )
 
 

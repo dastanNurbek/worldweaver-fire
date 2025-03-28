@@ -1,6 +1,6 @@
-import geopandas as g
-
 from dataclasses import dataclass
+
+import geopandas as g
 
 from mage_procgen.Utils.Utils import TerrainDataList
 
@@ -45,18 +45,31 @@ class WFS_FR:
     wms_alti_version = "1.3.0"
     rge_key_name = "RGEALTI-MNT_PYR-ZIP_FXX_LAMB93_WMS"
 
-    @staticmethod
-    def get_town_request_url(town_name: str, town_dpt: str):
-        return (
-            "https://geo.api.gouv.fr/communes?nom="
-            + town_name
-            + "&codeDepartement="
-            + town_dpt
-            + "&format=geojson&geometry=contour"
-        )
+    town_request_url = "https://geo.api.gouv.fr/communes"
+    town_request_name = "nom"
+    town_request_dpt = "codeDepartement"
+    town_request_format = "format"
+    town_request_geojson = "geojson"
+    town_request_geometry = "geometry"
+    town_request_contour = "contour"
 
 
 class IGN:
+
+    building_churches_tags = ["Religieux"]
+    building_malls_tags = ["Commercial et services"]
+    building_factories_tags = ["Industriel"]
+
+    road_non_car_natures = ["Chemin", "Escalier", "Sentier"]
+    road_directions = ["Double sens", "Sens direct", "Sens inverse"]
+
+    industrial_commercial_tags = [
+        "Zone artisanale",
+        "Zone commerciale",
+        "Zone d'activités",
+    ]
+
+    flowing_water_tags = ["Ecoulement naturel", "Ecoulement canalisé", "Canal"]
 
     # From https://geoservices.ign.fr/bd-cartor-descriptif-de-contenu
     bdcarto_landuses_values = [

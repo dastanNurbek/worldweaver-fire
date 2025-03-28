@@ -1,6 +1,7 @@
-import logging
 import os
+import logging
 import sys
+
 from contextlib import contextmanager
 
 

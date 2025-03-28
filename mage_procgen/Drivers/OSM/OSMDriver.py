@@ -1,8 +1,8 @@
 from mage_procgen.Drivers.BaseDriver import BaseDriver
-
 from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
 from mage_procgen.Drivers.OSM.OsmChLoader import OsmChLoader
 from mage_procgen.Drivers.OSM.OSMPreprocessor import OSMPreprocessor
+
 from mage_procgen.Utils.Logging import logger
 
 
@@ -33,7 +33,7 @@ class OSMDriver(BaseDriver):
         logger.info("Data loaded")
 
         rendering_data = self.processor.process(
-            geo_data[0], geo_data[1], self.geo_window, self.config, self.internal_crs
+            geo_data[0], geo_data[1], self.geo_window
         )
 
         return rendering_data

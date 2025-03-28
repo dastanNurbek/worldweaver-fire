@@ -1,16 +1,15 @@
 import os
-from sys import exc_info
+import warnings
 
 import bpy
-from bpy import data as D, context as C, ops as O
 import bmesh
+from bpy import data as D, context as C, ops as O
 
-import math
 from numpy import arange
 
+from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
-from mage_procgen.Utils.Geometry import center_point
 
 
 class TerrainRenderer:
@@ -64,7 +63,7 @@ class TerrainRenderer:
             self.decorating_geometry_node_name = data_to.node_groups[2].name
         except Exception as _:
             raise Exception(
-                "Unable to load the terrain material " + "from the file " + filepath
+                f"Unable to load the terrain material from the file {filepath}"
             )
 
         # TODO: put pass index in config just like the others
@@ -104,12 +103,12 @@ class TerrainRenderer:
 
         meshes = {
             x: TerrainMeshInfo(
-                bmesh.new(),
-                terrain_data[x].base_map_file,
-                terrain_data[x].x_min,
-                terrain_data[x].x_max,
-                terrain_data[x].y_min,
-                terrain_data[x].y_max,
+                mesh=bmesh.new(),
+                base_map_file=terrain_data[x].base_map_file,
+                base_map_x_min=terrain_data[x].x_min,
+                base_map_x_max=terrain_data[x].x_max,
+                base_map_y_min=terrain_data[x].y_min,
+                base_map_y_max=terrain_data[x].y_max,
             )
             for x in range(len(terrain_data))
         }
@@ -308,6 +307,14 @@ class TerrainRenderer:
                 mesh_material = D.materials[self._BaseMaterialName].copy()
                 if os.path.isfile(mesh_info.base_map_file):
                     try:
+                        # TODO: this line triggers prints such as
+                        # TIFFReadDirectory: Warning, Unknown field with tag 33550 (0x830e) encountered.
+                        # TIFFReadDirectory: Warning, Unknown field with tag 33922 (0x8482) encountered.
+                        # TIFFReadDirectory: Warning, Unknown field with tag 34735 (0x87af) encountered.
+                        # TIFFReadDirectory: Warning, Unknown field with tag 34737 (0x87b1) encountered.
+                        # Issue is described in https://stackoverflow.com/a/27609465 but unsure how to solve.
+                        # It's not a python warning so cannot filter it. We could redirect stdout (or stderr, unsure which is used)
+                        # During this load, or just filter those messages.
                         D.images.load(mesh_info.base_map_file)
 
                         mesh_material.node_tree.nodes["Basemap Image"].image = D.images[
@@ -350,10 +357,10 @@ class TerrainRenderer:
                         or vertex_uv[1] < 0
                     ):
                         raise ValueError(
-                            "Invalid uv coords. Vertex coords: "
-                            + str(vertex_real_coords)
-                            + ". Vertex UV: "
-                            + str(vertex_uv)
+                            f"Invalid uv coords. Vertex coords: "
+                            f"{vertex_real_coords}"
+                            f". Vertex UV: "
+                            f"{vertex_uv}"
                         )
 
                     vertex_loop_ind = face.loop_indices[v_ind]

@@ -14,3 +14,5 @@ funkybob
 overpass==0.7.2
 timezonefinder==6.5.3
 scikit-learn==1.6.1
+ladybug-geometry==1.32.6
+ladybug-geometry-polyskel==1.6.4

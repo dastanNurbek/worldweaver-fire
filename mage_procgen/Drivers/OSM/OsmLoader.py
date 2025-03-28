@@ -1,28 +1,26 @@
 import os
-import time
-
-import overpass
-import pandas as p
-import geopandas as g
-from PIL import Image
-import numpy as np
-import skimage
+import io
+import json
 import math
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_wgs84_m, CRS_degrees
-from mage_procgen.Utils.Utils import TerrainData
-from mage_procgen.Utils.perlin2d import generate_fractal_noise_2d
-from mage_procgen.Utils.Logging import logger
+import geopandas as g
+import pandas as p
+import numpy as np
 
-from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
+from PIL import Image
 
-import mage_procgen.Utils.DataFiles as df
+import overpass
+
+from owslib.wms import WebMapService
 
 from mage_procgen.Drivers.OSM.Utils import OSM, WFS
 
-import json
+from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
 
-from owslib.wms import WebMapService
+from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import GeoWindow, CRS_wgs84_m, CRS_degrees, TerrainData
+
+import mage_procgen.Utils.DataFiles as df
 
 
 class OsmLoader:
@@ -68,14 +66,7 @@ class OsmLoader:
 
         response_str = json.dumps(response, indent=2)
 
-        with open(os.path.join(input_folder, town_name + ".json"), "w") as town_file:
-            bytes_written = town_file.write(response_str)
-
-        town = (
-            g.read_file(os.path.join(input_folder, town_name + ".json"))
-            .to_crs(self.internal_crs)
-            .query("index==0")
-        )
+        town = g.read_file(response_str).to_crs(self.internal_crs).query("index==0")
 
         return town
 
@@ -100,12 +91,7 @@ class OsmLoader:
 
         response_str = json.dumps(response, indent=2)
 
-        with open(os.path.join(input_folder, "data.geojson"), "w") as data_file:
-            bytes_written = data_file.write(response_str)
-
-        geo_df = g.read_file(os.path.join(input_folder, "data.geojson")).to_crs(
-            self.internal_crs
-        )
+        geo_df = g.read_file(response_str).to_crs(self.internal_crs)
 
         # Due to defaults in osm2geojson, some polygons, which are inners of multipolygons but still objects of their own,
         # are not returned by a simple mapquery. To get around this, we query them separately
@@ -123,14 +109,9 @@ class OsmLoader:
         additional_response["features"] = filtered_features
         additional_response_str = json.dumps(additional_response, indent=2)
 
-        with open(
-            os.path.join(input_folder, "additional_data.geojson"), "w"
-        ) as data_file:
-            bytes_written = data_file.write(additional_response_str)
-
-        additional_geo_df = g.read_file(
-            os.path.join(input_folder, "additional_data.geojson")
-        ).to_crs(self.internal_crs)
+        additional_geo_df = g.read_file(additional_response_str).to_crs(
+            self.internal_crs
+        )
 
         # We are still missing some pieces, namely objects that include the window and contain landuse information
         additional_request2 = OSM.get_additional_request_landuses(bbox_wgs84)
@@ -138,21 +119,16 @@ class OsmLoader:
         additional_response2 = api.get(additional_request2)
 
         # For some reason there seem to be duplicated features in the response
-        filtered_features2 = []
+        filtered_features_query = []
         for feature in additional_response2["features"]:
-            if feature not in filtered_features2:
-                filtered_features2.append(feature)
-        additional_response2["features"] = filtered_features2
+            if feature not in filtered_features_query:
+                filtered_features_query.append(feature)
+        additional_response2["features"] = filtered_features_query
         additional_response_str2 = json.dumps(additional_response2, indent=2)
 
-        with open(
-            os.path.join(input_folder, "additional_data2.geojson"), "w"
-        ) as data_file:
-            bytes_written = data_file.write(additional_response_str2)
-
-        additional_geo_df2 = g.read_file(
-            os.path.join(input_folder, "additional_data2.geojson")
-        ).to_crs(self.internal_crs)
+        additional_geo_df2 = g.read_file(additional_response_str2).to_crs(
+            self.internal_crs
+        )
 
         geo_df = g.GeoDataFrame(
             p.concat([geo_df, additional_geo_df, additional_geo_df2], ignore_index=True)
@@ -229,32 +205,26 @@ class OsmLoader:
                     size=img_size,
                     format="image/geotiff",
                 )
-                terrain_file_name = "terrain" + str(terrain_index) + ".tif"
-                with open(
-                    os.path.join(input_folder, terrain_file_name), "wb"
-                ) as terrain_file:
-                    bytes_written = terrain_file.write(terrain_img.read())
 
-                terrain_image = Image.open(
-                    os.path.join(input_folder, terrain_file_name)
-                )
+                terrain_image = Image.open(io.BytesIO(terrain_img.read()))
 
                 terrain_im_array = np.array(terrain_image)
+                # Flipping terrain Y axis to ease up use.
                 terrain_im_array = np.flip(terrain_im_array, axis=0)
                 terrain_df = p.DataFrame(terrain_im_array)
 
                 terrain_data.append(
                     TerrainData(
-                        current_box[0],
-                        current_box[1],
-                        current_box[2],
-                        current_box[3],
-                        terrain_resolution,
-                        terrain_df.shape[1],
-                        terrain_df.shape[0],
-                        no_data,
-                        "",
-                        terrain_df,
+                        x_min=current_box[0],
+                        y_min=current_box[1],
+                        x_max=current_box[2],
+                        y_max=current_box[3],
+                        resolution=terrain_resolution,
+                        nbcol=terrain_df.shape[1],
+                        nbrow=terrain_df.shape[0],
+                        no_data=no_data,
+                        base_map_file="",
+                        data=terrain_df,
                     )
                 )
 

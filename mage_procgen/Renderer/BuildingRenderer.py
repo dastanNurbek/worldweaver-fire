@@ -1,14 +1,18 @@
+import os
 import math
 
-from mage_procgen.Renderer.BaseRenderer import BaseRenderer
-from bpy import data as D
-import bmesh
-from shapely.geometry import mapping
-from tqdm import tqdm
-from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
-from mage_procgen.Utils.Geometry import interpolate_z
-import os
 import bpy
+import bmesh
+from bpy import data as D
+
+from shapely.geometry import mapping
+
+from tqdm import tqdm
+
+from mage_procgen.Renderer.BaseRenderer import BaseRenderer
+
+from mage_procgen.Utils.Geometry import interpolate_z
+from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
 
 
 class BuildingRenderer(BaseRenderer):
@@ -33,12 +37,12 @@ class BuildingRenderer(BaseRenderer):
 
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self.config.geometry_node_name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self.config.geometry_node_name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
             )
 
         # Buildify does not realize instances of the objects it adds, so they have their own pass index.

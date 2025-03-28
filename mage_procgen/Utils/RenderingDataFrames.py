@@ -2,8 +2,9 @@
    Schema of what the dataframes need to have so that Renderers are able to work.
    Dataframes outputed by Drivers have to follow these schemas.
 """
-from mage_procgen.Utils.Utils import ZonesRenderingData, safe_overlay, OverlayType
 from shapely import area, difference, intersects, contains
+
+from mage_procgen.Utils.Utils import ZonesRenderingData, safe_overlay, OverlayType
 
 
 class RenderingBuildingDataFrame:

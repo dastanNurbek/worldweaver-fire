@@ -1,22 +1,8 @@
 import math
-from typing import Union
 
 import geopandas as g
 import pandas as p
 
-from mage_procgen.Utils.Utils import (
-    RenderingData,
-    GeoWindow,
-    CRS_fr,
-    BuildingRenderingData,
-    ZonesRenderingData,
-    safe_overlay,
-    OverlayType,
-)
-from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Geometry import polygonise
-from functools import reduce
-from mage_procgen.Utils.Config import Config, window_type_town
 from mage_procgen.Drivers.IGN.Utils import GeoData, IGN
 from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
@@ -27,9 +13,21 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     SportDataFrame,
     PlotDataFrame,
 )
+
+from mage_procgen.Utils.Config import Config, window_type_town
+from mage_procgen.Utils.Geometry import polygonise
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     clean_zones,
+)
+from mage_procgen.Utils.Utils import (
+    RenderingData,
+    GeoWindow,
+    CRS_fr,
+    BuildingRenderingData,
+    safe_overlay,
+    OverlayType,
 )
 
 
@@ -66,7 +64,7 @@ class IGNPreprocessor:
             geo_data.ocean, geowindow.dataframe, OverlayType.INTERSECTION
         )
 
-        industrial_commercial_tags = ZoneInterestDataFrame.industrial_commercial_tags
+        industrial_commercial_tags = IGN.industrial_commercial_tags
         industrial_and_commercial_zones = geo_data.interest_zones.query(
             "{} in @industrial_commercial_tags".format(
                 ZoneInterestDataFrame.detail_nature
@@ -83,7 +81,7 @@ class IGNPreprocessor:
 
         # TODO For now just pass the lists of geom, tagging will be handled later
 
-        non_car_natures = RoadDataFrame.non_car_natures
+        non_car_natures = IGN.road_non_car_natures
         roads_with_cars = new_roads.query(
             "{} not in @non_car_natures".format(RoadDataFrame.nature)
         )
@@ -187,7 +185,7 @@ class IGNPreprocessor:
         )
 
         # Splitting water between "still" and "flowing"
-        flowing_water_tags = WaterDataFrame.flowing_water_tags
+        flowing_water_tags = IGN.flowing_water_tags
         flowing_water = new_water.query(
             "{} in @flowing_water_tags".format(WaterDataFrame.nature)
         )
@@ -197,21 +195,21 @@ class IGNPreprocessor:
         still_water = safe_overlay(still_water, new_oceans, OverlayType.DIFFERENCE)
         flowing_water = safe_overlay(flowing_water, new_oceans, OverlayType.DIFFERENCE)
 
-        churches_tags = BuildingDataFrame.churches_tags
+        churches_tags = IGN.building_churches_tags
         churches = new_buildings.query(
             "{} in @churches_tags".format(BuildingDataFrame.usage_1)
         )
         non_churches = new_buildings.query(
             "{} not in @churches_tags".format(BuildingDataFrame.usage_1)
         )
-        malls_tags = BuildingDataFrame.malls_tags
+        malls_tags = IGN.building_malls_tags
         malls = non_churches.query(
             "{} in @malls_tags".format(BuildingDataFrame.usage_1)
         )
         non_malls = non_churches.query(
             "{} not in @malls_tags".format(BuildingDataFrame.usage_1)
         )
-        factories_tags = BuildingDataFrame.factories_tags
+        factories_tags = IGN.building_factories_tags
         factories = non_malls.query(
             "{} in @factories_tags".format(BuildingDataFrame.usage_1)
         )

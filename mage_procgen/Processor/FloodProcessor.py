@@ -1,40 +1,33 @@
-import math
+import os
+import array
 
-from bpy import data as D
-
-from scipy.sparse.csgraph import dijkstra
+from math import floor, ceil, exp, pow
 
 from mathutils import *
 
 import numpy as np
 
-from scipy.sparse import bsr_array
-from scipy.ndimage import gaussian_filter as gf
+import OpenEXR
+import Imath
 
 from PIL import Image
 
+from scipy.sparse.csgraph import dijkstra
+from scipy.sparse import bsr_array
+from scipy.ndimage import gaussian_filter as gf
+
+from tqdm import tqdm
+
+from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
-from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Rendering import (
     setup_compositing_height_map,
     setup_compositing_semantic_map,
     export_rendered_img,
     setup_img_ortho,
 )
-
-from math import floor, ceil
-
-from math import exp, pow
-
-from tqdm import tqdm
-
 import mage_procgen.Utils.DataFiles as df
-import os
-
-import OpenEXR
-import Imath
-import array
 
 
 class FloodProcessor:
@@ -221,7 +214,6 @@ class FloodProcessor:
             ),
         )
 
-        # limit=1.1 * flood_threshold,
         flood_graph_distances, predecessors, sources = dijkstra(
             flood_graph,
             indices=sources_index,
@@ -231,7 +223,6 @@ class FloodProcessor:
 
         flood_result = np.zeros((flood_state_rows, flood_state_cols))
         flood_state = np.zeros((flood_state_rows, flood_state_cols))
-        # path_lengths = np.full((flood_state_rows, flood_state_cols), -9999)
 
         logger.info("Calculating flood")
 
@@ -245,30 +236,12 @@ class FloodProcessor:
                 source_column = point_source % flood_state_cols
                 source_elevation = height_map[source_row][source_column]
 
-                # Finding the path length
-                # path_length = 0
-                # predecessor = predecessors[point_index]
-                #
-                # while predecessor != -9999:
-                #   path_length += 1
-                #   predecessor = predecessors[predecessor]
-                #   predecessor_row = predecessor // flood_state_cols
-                #   predecessor_column = predecessor % flood_state_cols
-                #
-                #   # If path length for a predecessor has been found
-                #   if path_lengths[predecessor_row][predecessor_column] != -9999:
-                #       path_length = path_length + path_lengths[predecessor_row][predecessor_column]
-                #       break
-                #
-                # path_lengths[row][column] = path_length
-
                 (is_flooded, water_height) = FloodProcessor.flood_height(
                     max_flood_height,
                     flood_threshold,
                     flood_graph_distances[point_index],
                     height_map[row][column],
                     source_elevation,
-                    # path_length,
                 )
 
                 flood_state[row][column] = is_flooded
@@ -291,7 +264,6 @@ class FloodProcessor:
     @staticmethod
     def distance_function(point_a, point_b):
         return exp(point_b - point_a)
-        # return 1
 
     @staticmethod
     def flood_height(
@@ -299,9 +271,7 @@ class FloodProcessor:
         flood_threshold,
         distance_to_source,
         terrain_height,
-        # building_height,
         source_height,
-        # path_length,
     ):
 
         water_height = terrain_height
@@ -316,30 +286,9 @@ class FloodProcessor:
             (distance_to_source - flood_threshold) / flood_threshold, 2
         )
 
-        # Correcting for terrain
-        # flood_value += source_height - terrain_height
-
-        # water_height = terrain_height + flood_value
-
-        # Clamping. Don't know if it's still necessary
-
-        # if flood_value + terrain_height > source_height + max_flood_height:
-        #    # Water cannot be above the source height
-        #    corrected_flood_value = (
-        #        source_height + max_flood_height - terrain_height
-        #    )
-        #    if corrected_flood_value < 0:
-        #        is_flooded = 0
-        #    else:
-        #        water_height = terrain_height + corrected_flood_value
-        # elif flood_value < 0:
-        #    is_flooded = 0
-        # else:
-        #    water_height = terrain_height + flood_value
-
         water_height = flood_value + source_height
 
         if water_height < terrain_height + 1e-1:
             is_flooded = 0
 
-        return (is_flooded, water_height)
+        return is_flooded, water_height

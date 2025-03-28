@@ -1,6 +1,6 @@
-import subprocess
 import os
 import re
+import subprocess
 
 import funkybob
 
@@ -71,6 +71,7 @@ default_config_file = "config.json"
 
 hash_file_extenstion = ".md5"
 
+# TODO: remove all "self.__AssetFolder in renderers and use this instead
 assets_folder = "Assets"
 
 projects_folder = "Projects"
@@ -122,9 +123,9 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
 
     archive_name = os.path.basename(archive_file).split(".")[0]
 
-    out_file_option = "-o" + current_base_folder
+    out_file_option = f"-o{current_base_folder}"
 
-    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+    command_line = f"{get_installed_7z()} x {archive_file} {out_file_option}"
 
     subprocess.run([command_line], shell=True)
 
@@ -188,9 +189,9 @@ def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
 
     archive_name = os.path.basename(archive_file).split(".")[0]
 
-    out_file_option = "-o" + current_base_folder
+    out_file_option = f"-o{current_base_folder}"
 
-    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+    command_line = f"{get_installed_7z()} x {archive_file} {out_file_option}"
 
     subprocess.run([command_line], shell=True)
 
@@ -252,9 +253,9 @@ def setup_rpg(base_folder: str, departement: str, archive_file: str):
 
     archive_name = os.path.basename(archive_file).split(".")[0]
 
-    out_file_option = "-o" + current_base_folder
+    out_file_option = f"-o{current_base_folder}"
 
-    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+    command_line = f"{get_installed_7z()} x {archive_file} {out_file_option}"
 
     subprocess.run([command_line], shell=True)
 
@@ -323,9 +324,9 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
 
     archive_name = os.path.basename(archive_file).split(".")[0]
 
-    out_file_option = "-o" + current_base_folder
+    out_file_option = f"-o{current_base_folder}"
 
-    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+    command_line = f"{get_installed_7z()} x {archive_file} {out_file_option}"
 
     subprocess.run([command_line], shell=True)
 
@@ -428,9 +429,9 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
 
     archive_name = os.path.basename(archive_file).split(".")[0]
 
-    out_file_option = "-o" + current_base_folder
+    out_file_option = f"-o{current_base_folder}"
 
-    command_line = get_installed_7z() + " x " + archive_file + " " + out_file_option
+    command_line = f"{get_installed_7z()} x {archive_file} {out_file_option}"
 
     subprocess.run([command_line], shell=True)
 
@@ -507,9 +508,9 @@ def check_shapefiles_presence(base_folder: str):
             os.path.join(_location, "..", shapefiles_folder, ocean_archive)
         )
 
-        out_file_option = "-o" + base_folder
+        out_file_option = f"-o{base_folder}"
 
-        command_line = get_installed_7z() + " x " + archive_path + " " + out_file_option
+        command_line = f"{get_installed_7z()} x {archive_path} {out_file_option}"
 
         subprocess.run([command_line], shell=True)
 
@@ -523,9 +524,9 @@ def check_shapefiles_presence(base_folder: str):
             os.path.join(_location, "..", shapefiles_folder, regions_archive)
         )
 
-        out_file_option = "-o" + base_folder
+        out_file_option = f"-o{base_folder}"
 
-        command_line = get_installed_7z() + " x " + archive_path + " " + out_file_option
+        command_line = f"{get_installed_7z()} x {archive_path} {out_file_option}"
 
         subprocess.run([command_line], shell=True)
 

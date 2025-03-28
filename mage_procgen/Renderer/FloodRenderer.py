@@ -1,7 +1,9 @@
 import os
+
 import bpy
-from bpy import data as D
 import bmesh
+from bpy import data as D
+
 from tqdm import tqdm
 
 from mage_procgen.Utils.Logging import logger
@@ -33,12 +35,12 @@ class FloodRenderer:
 
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self.config.geometry_node_name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self.config.geometry_node_name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
             )
 
     # TODO: fix issue where only parts of the edge cells are made. currently, it does one where specifically the topright exists

@@ -1,8 +1,12 @@
+import os
+
+import xml.etree.ElementTree as ET
+
 import pandas as p
 import geopandas as g
-import os
-import xml.etree.ElementTree as ET
+
 from owslib.wfs import WebFeatureService
+
 import warnings
 
 
@@ -28,9 +32,7 @@ class WFSParser:
         data_response = wfs.getfeature(typename=key, bbox=bbox)
         data_str = data_response.read()
 
-        file_name = os.path.join(
-            folder, key + "_" + str(file_index) + WFSParser.GML_extension
-        )
+        file_name = os.path.join(folder, f"{key}_{file_index}{WFSParser.GML_extension}")
         with open(file_name, "wb") as file:
             file.write(data_str)
             data_files.append(file_name)
@@ -48,7 +50,7 @@ class WFSParser:
             data_str = data_response.read()
 
             file_name = os.path.join(
-                folder, key + "_" + str(file_index) + WFSParser.GML_extension
+                folder, f"{key}_{file_index}{WFSParser.GML_extension}"
             )
             with open(file_name, "wb") as file:
                 file.write(data_str)

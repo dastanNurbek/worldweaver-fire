@@ -1,10 +1,13 @@
-from mage_procgen.Renderer.BaseRenderer import BaseRenderer
-from bpy import data as D
 import bmesh
+from bpy import data as D
+
 from shapely.geometry import mapping, MultiLineString
+
 from tqdm import tqdm
-from mage_procgen.Utils.Utils import TerrainData
+
 from mage_procgen.Utils.Geometry import interpolate_z
+from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 
 class HiddenPolygonRenderer(BaseRenderer):

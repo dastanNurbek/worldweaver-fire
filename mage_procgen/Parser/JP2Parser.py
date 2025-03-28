@@ -1,11 +1,14 @@
 import os
 
 import numpy as np
+
 import rasterio
 from rasterio.windows import Window
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, safe_overlay, OverlayType
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
+from mage_procgen.Utils.Logging import logger
+
+from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, safe_overlay, OverlayType
 
 
 # TODO: Maybe this should'nt be called Parser since it does more than that ?
@@ -130,6 +133,10 @@ class JP2Parser:
         # Switching back to channel first and changing type to be able to write the image
         img_full = np.rollaxis(img_full, axis=2).astype(rasterio.uint8)
 
+        transform = rasterio.transform.from_bounds(
+            *geo_window.bounds, img_full.shape[1], img_full.shape[2]
+        )
+
         # TODO: currently YCBCR requires jpeg compression. Evaluate if there is a better way
         with rasterio.open(
             texture_file_path,
@@ -141,5 +148,7 @@ class JP2Parser:
             dtype=rasterio.uint8,
             compress="JPEG",
             photometric="YCBCR",
+            crs=CRS_fr,
+            transform=transform,
         ) as dst:
             dst.write(img_full)

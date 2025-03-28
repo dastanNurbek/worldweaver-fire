@@ -1,4 +1,5 @@
 from mage_procgen.Renderer.HiddenPolygonRenderer import HiddenPolygonRenderer
+
 from mage_procgen.Utils.Utils import Point
 
 

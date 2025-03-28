@@ -1,13 +1,18 @@
 import os
-import bpy
-from bpy import data as D
-import bmesh
-from shapely.geometry import mapping
-from tqdm import tqdm
 import math
+
 from collections import deque
-from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData
+
+import bpy
+import bmesh
+from bpy import data as D
+
+from shapely.geometry import mapping
+
+from tqdm import tqdm
+
 from mage_procgen.Utils.Geometry import interpolate_z
+from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData
 
 
 class BaseRenderer:
@@ -33,12 +38,12 @@ class BaseRenderer:
 
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self.config.geometry_node_name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self.config.geometry_node_name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
             )
 
         self._terrain_data = terrain_data

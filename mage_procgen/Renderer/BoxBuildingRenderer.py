@@ -1,15 +1,21 @@
+import os
 import math
+import random
+
+import bpy
+import bmesh
+from bpy import data as D
+
+from shapely.geometry import mapping
+
+from tqdm import tqdm
+
+from ladybug_geometry.geometry2d.polygon import Polygon2D
+from ladybug_geometry.geometry2d.pointvector import Point2D
+from ladybug_geometry_polyskel.polyskel import skeleton_as_edge_list
+from ladybug_geometry.triangulation import earcut
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
-from bpy import data as D, context as C
-import bmesh
-from shapely.geometry import mapping
-from tqdm import tqdm
-from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
-from mage_procgen.Utils.Rendering import additionals_collection_name
-from mage_procgen.Utils.Logging import logger
-import os
-import bpy
 
 from mage_procgen.Utils.Geometry import (
     point_2d_almost_equal,
@@ -17,14 +23,9 @@ from mage_procgen.Utils.Geometry import (
     point_2d_value_in_dict,
     interpolate_z,
 )
-from ladybug_geometry.geometry2d.polygon import Polygon2D
-from ladybug_geometry.geometry2d.pointvector import Point2D
-from ladybug_geometry.geometry2d.line import LineSegment2D
-from ladybug_geometry_polyskel.polyskel import skeleton_as_edge_list
-from ladybug_geometry.triangulation import earcut
-
-
-import random
+from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.Rendering import additionals_collection_name
 
 
 class BoxBuildingRenderer(BaseRenderer):
@@ -67,12 +68,12 @@ class BoxBuildingRenderer(BaseRenderer):
 
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self.config.geometry_node_name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self.config.geometry_node_name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
             )
 
         # PBGen does not realize instances of the objects it adds, so they have their own pass index.
@@ -114,8 +115,8 @@ class BoxBuildingRenderer(BaseRenderer):
             #   Correct behavior and move the init of mesh data lower
             mesh_name = self._mesh_name
             mesh_data = D.meshes.new(mesh_name)
-            # Kind of hack because Polygon.coords is not implemented
 
+            # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(building[1])["coordinates"]
             points_coords = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
@@ -171,7 +172,6 @@ class BoxBuildingRenderer(BaseRenderer):
             digit_precision = 8
             tolerance = math.pow(10, -digit_precision)
 
-            quit_after_loop = False
             # Building straight skeleton roof
             # TODO: find out if rounding is necessary. Should not be, but a segfault was observed on the first run after
             #   it was disabled (only the first so far, others ran fine)
@@ -371,12 +371,12 @@ class BoxBuildingRenderer(BaseRenderer):
         """
         trace_msg = []
         trace_msg.append(
-            "Trying to find path between "
-            + str(origin)
-            + " and "
-            + str(destinations)
-            + " inside "
-            + str(graph)
+            f"Trying to find path between "
+            f"{origin}"
+            f" and "
+            f"{destinations}"
+            f" inside "
+            f"{graph}"
         )
         exploration_queue = []
         nodes_status = {}
@@ -388,10 +388,10 @@ class BoxBuildingRenderer(BaseRenderer):
             for pt in exploration_queue:
                 if nodes_status[pt][1] < nodes_status[v][1]:
                     v = pt
-            trace_msg.append("Exploring node " + str(v))
+            trace_msg.append(f"Exploring node {v}")
             exploration_queue.remove(v)
             if point_2d_in_collection(v, destinations, tolerance):
-                trace_msg.append("Found point in destination: " + str(v))
+                trace_msg.append(f"Found point in destination: {v}")
                 path = []
                 current_point = v
                 while current_point != origin:
@@ -405,13 +405,13 @@ class BoxBuildingRenderer(BaseRenderer):
                 if point_2d_almost_equal(
                     line.p1, v, tolerance
                 ) or point_2d_almost_equal(line.p2, v, tolerance):
-                    trace_msg.append("Adding line " + str(line))
+                    trace_msg.append(f"Adding line {line}")
                     possibles_edges.append(line)
             for line in possibles_edges:
                 new_point = (
                     line.p2 if point_2d_almost_equal(line.p1, v, tolerance) else line.p1
                 )
-                trace_msg.append("Evaluating new point " + str(new_point))
+                trace_msg.append(f"Evaluating new point {new_point}")
                 if new_point in nodes_status:
                     # If new_point already has been seen
                     if nodes_status[v][1] + line.length < nodes_status[new_point][1]:

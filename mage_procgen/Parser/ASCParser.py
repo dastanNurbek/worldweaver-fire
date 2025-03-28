@@ -1,9 +1,9 @@
 import os
 
+from dataclasses import dataclass
+
 import pandas as p
 import numpy as np
-
-from dataclasses import dataclass
 
 from mage_procgen.Utils.Logging import logger
 
@@ -52,19 +52,20 @@ class ASCParser:
             terrain_pts_list.append(point_list)
 
         terrain_im_array = np.array(terrain_pts_list)
+        # Flipping terrain Y axis to ease up use.
         terrain_im_array = np.flip(terrain_im_array, axis=0)
         terrain_data = p.DataFrame(terrain_im_array)
 
-        logger.info("Loaded slab : " + os.path.basename(file_path))
+        logger.info(f"Loaded slab: {os.path.basename(file_path)}")
 
         return ASCData(
-            x_min,
-            y_min,
-            x_max,
-            y_max,
-            resolution,
-            nbcols,
-            nbrows,
-            no_data,
-            terrain_data,
+            x_min=x_min,
+            y_min=y_min,
+            x_max=x_max,
+            y_max=y_max,
+            resolution=resolution,
+            nbcol=nbcols,
+            nbrow=nbrows,
+            no_data=no_data,
+            data=terrain_data,
         )

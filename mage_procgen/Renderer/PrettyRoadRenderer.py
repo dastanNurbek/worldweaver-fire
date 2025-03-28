@@ -1,24 +1,26 @@
 import os
-import bpy
-import geopandas as g
-from bpy import data as D, ops as O, context as C
-import bmesh
 import math
 
-from tqdm import tqdm
-from mage_procgen.Utils.Utils import (
-    PolygonList,
-    Point,
-    TerrainData,
-    LineStringList,
-    GeoWindow,
-)
+import bpy
+import bmesh
+from bpy import data as D, ops as O, context as C
+
+import geopandas as g
+
+from ladybug_geometry.geometry2d.pointvector import Point2D
 
 from shapely.geometry import MultiLineString
+
+from tqdm import tqdm
+
+from mage_procgen.Utils.Geometry import interpolate_z
+from mage_procgen.Utils.Utils import (
+    Point,
+    TerrainData,
+    GeoWindow,
+)
 from mage_procgen.Utils.Rendering import terrain_collection_name
 from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
-from mage_procgen.Utils.Geometry import interpolate_z
-from ladybug_geometry.geometry2d.pointvector import Point2D
 
 
 # TODO: find common paths with BaseRenderer
@@ -58,12 +60,12 @@ class PrettyRoadRenderer:
             self.geometry_node_name = data_to.node_groups[0].name
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self._GN_Name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self._GN_Name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
             )
 
         filepath_bridge = os.path.realpath(
@@ -77,12 +79,12 @@ class PrettyRoadRenderer:
             self.bridge_geometry_node_name = data_to.node_groups[0].name
         except Exception as _:
             raise Exception(
-                'Unable to load the Geometry Nodes setup with the name "'
-                + self._Bridge_GN_Name
-                + '"'
-                + "from the file "
-                + filepath
-                + " . Please check that the name is correct."
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self._Bridge_GN_Name}"
+                f"'"
+                f" from the file "
+                f"{filepath_bridge}"
+                f". Please check that the name is correct."
             )
 
         self._terrain_data = terrain_data

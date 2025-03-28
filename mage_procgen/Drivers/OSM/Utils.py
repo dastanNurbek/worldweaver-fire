@@ -16,42 +16,57 @@ class OSM:
         )
 
     @staticmethod
+    def get_map_query(bbox: tuple[float, float, float, float]):
+        # Order of coords for query is south, west, north, east
+        return (
+            f"nwr("
+            f"{bbox[1]:.5f}"
+            f","
+            f"{bbox[0]:.5f}"
+            f","
+            f"{bbox[3]:.5f}"
+            f","
+            f"{bbox[2]:.5f});"
+            f"out;"
+        )
+
+    @staticmethod
     def get_additional_request_inners(bbox: tuple[float, float, float, float]):
         # Order of coords for query is south, west, north, east
         return (
-            "nwr("
-            + "{:.5f}".format(bbox[1])
-            + ","
-            + "{:.5f}".format(bbox[0])
-            + ","
-            + "{:.5f}".format(bbox[3])
-            + ","
-            + "{:.5f}".format(bbox[2])
-            + ")->.a;"
-            + 'way(r.a:"inner")-> .b;'
-            + 'way.b["landuse"]->.c;'
-            + "(.c;.c>;);"
-            + "out;"
+            f"nwr("
+            f"{bbox[1]:.5f}"
+            f","
+            f"{bbox[0]:.5f}"
+            f","
+            f"{bbox[3]:.5f}"
+            f","
+            f"{bbox[2]:.5f}"
+            f")->.a;"
+            f'way(r.a:"inner")-> .b;'
+            f'way.b["landuse"]->.c;'
+            f"(.c;.c>;);"
+            f"out;"
         )
 
     @staticmethod
     def get_additional_request_landuses(bbox: tuple[float, float, float, float]):
         # Order of coords for query is south, west, north, east
         return (
-            "nwr("
-            + "{:.5f}".format(bbox[1])
-            + ","
-            + "{:.5f}".format(bbox[0])
-            + ","
-            + "{:.5f}".format(bbox[3])
-            + ","
-            + "{:.5f}".format(bbox[2])
-            + ")->.a;"
-            + ".a is_in ->.d;"
-            + ".d < ->.e;"
-            + 'nwr.e["landuse"]->.f;'
-            + "(.f;.f>;);"
-            + "out;"
+            f"nwr("
+            f"{bbox[1]:.5f}"
+            f","
+            f"{bbox[0]:.5f}"
+            f","
+            f"{bbox[3]:.5f}"
+            f","
+            f"{bbox[2]:.5f}"
+            f")->.a;"
+            f".a is_in ->.d;"
+            f".d < ->.e;"
+            f'nwr.e["landuse"]->.f;'
+            f"(.f;.f>;);"
+            f"out;"
         )
 
     # General
@@ -183,15 +198,15 @@ class SwissAlti:
     @staticmethod
     def get_terrain_request_url(x: int, y: int):
         return (
-            "https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_"
-            + str(x // 1000)
-            + "-"
-            + str(y // 1000)
-            + "/swissalti3d_2019_"
-            + str(x // 1000)
-            + "-"
-            + str(y // 1000)
-            + "_0.5_2056_5728.tif"
+            f"https://data.geo.admin.ch/ch.swisstopo.swissalti3d/swissalti3d_2019_"
+            f"{x // 1000}"
+            f"-"
+            f"{y // 1000}"
+            f"/swissalti3d_2019_"
+            f"{x // 1000}"
+            f"-"
+            f"{y // 1000}"
+            f"_0.5_2056_5728.tif"
         )
 
 

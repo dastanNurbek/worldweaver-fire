@@ -1,16 +1,10 @@
 import os
 
-import pandas as p
 import geopandas as g
-
-from mage_procgen.Parser.ShapeFileParser import ShapeFileParser, RoadShapeFileParser
-from mage_procgen.Parser.ASCParser import ASCParser, ASCData
-from mage_procgen.Parser.JP2Parser import JP2Parser
+import pandas as p
 
 from mage_procgen.Drivers.IGN.Loader import Loader
-from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
 from mage_procgen.Drivers.IGN.Utils import GeoData
-import mage_procgen.Utils.DataFiles as df
 from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
     RoadDataFrame,
@@ -20,12 +14,25 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     LandUseDataFrame,
     PlotDataFrame,
 )
+
+from mage_procgen.Parser.ShapeFileParser import ShapeFileParser, RoadShapeFileParser
+from mage_procgen.Parser.ASCParser import ASCParser
+from mage_procgen.Parser.JP2Parser import JP2Parser
+
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
-from mage_procgen.Utils.Utils import TerrainData, safe_overlay, OverlayType
-from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import (
+    GeoWindow,
+    CRS_fr,
+    CRS_degrees,
+    TerrainData,
+    safe_overlay,
+    OverlayType,
+)
+import mage_procgen.Utils.DataFiles as df
 
 
 class FileLoader(Loader):
@@ -61,7 +68,12 @@ class FileLoader(Loader):
         # TODO: this "= geo_window" is weird, look into it
         # Specifically for terrain, we have to make sure it loads a complete rectangle
         terrain_window = geo_window = GeoWindow.from_square(
-            bbox[0], bbox[2], bbox[1], bbox[3], CRS_fr, CRS_fr
+            x_min=bbox[0],
+            x_max=bbox[2],
+            y_min=bbox[1],
+            y_max=bbox[3],
+            from_crs=CRS_fr,
+            to_crs=CRS_fr,
         )
 
         for current_departement in departements_names:
@@ -295,7 +307,7 @@ class FileLoader(Loader):
                 columns=["id", "geometry"], geometry="geometry"
             )
 
-        # Treat the data to remove the homogenise column names between different data sources
+        # Treat the data to homogenise column names between different data sources
         building_data_dict = {
             BuildingDataFrame.ID: building_data[BuildingDataFrame.File.ID],
             BuildingDataFrame.nature: building_data[BuildingDataFrame.File.nature],
@@ -387,7 +399,7 @@ class FileLoader(Loader):
 
         return geo_data
 
-    def load_town_shape(self, departement_nbr: int, town_name: str):
+    def load_town_shape(self, departement_nbr: int, town_name: str) -> g.GeoDataFrame:
 
         towns = ShapeFileParser.load_no_window(
             os.path.join(
@@ -436,7 +448,7 @@ class FileLoader(Loader):
         loaded_files = []
 
         for index, row in slab_parts.iterrows():
-            file_name = os.path.basename(row["NOM_DALLE"]) + ".asc"
+            file_name = f"{os.path.basename(row['NOM_DALLE'])}.asc"
 
             file_full_path = os.path.join(file_folder, file_name)
 
@@ -470,16 +482,16 @@ class FileLoader(Loader):
 
             loaded_files.append(
                 TerrainData(
-                    asc_data.x_min,
-                    asc_data.y_min,
-                    asc_data.x_max,
-                    asc_data.y_max,
-                    asc_data.resolution,
-                    asc_data.nbcol,
-                    asc_data.nbrow,
-                    asc_data.no_data,
-                    terrain_base_map,
-                    asc_data.data,
+                    x_min=asc_data.x_min,
+                    y_min=asc_data.y_min,
+                    x_max=asc_data.x_max,
+                    y_max=asc_data.y_max,
+                    resolution=asc_data.resolution,
+                    nbcol=asc_data.nbcol,
+                    nbrow=asc_data.nbrow,
+                    no_data=asc_data.no_data,
+                    base_map_file=terrain_base_map,
+                    data=asc_data.data,
                 )
             )
 
@@ -530,16 +542,16 @@ class FileLoader(Loader):
 
                 loaded_files.append(
                     TerrainData(
-                        current_x,
-                        current_y,
-                        current_x + resolution * nbcols,
-                        current_y + resolution * nbrows,
-                        resolution,
-                        nbcols,
-                        nbrows,
-                        no_data,
-                        terrain_base_map,
-                        terrain_data,
+                        x_min=current_x,
+                        y_min=current_y,
+                        x_max=current_x + resolution * nbcols,
+                        y_max=current_y + resolution * nbrows,
+                        resolution=resolution,
+                        nbcol=nbcols,
+                        nbrow=nbrows,
+                        no_data=no_data,
+                        base_map_file=terrain_base_map,
+                        data=terrain_data,
                     )
                 )
 
@@ -573,16 +585,11 @@ class FileLoader(Loader):
             os.makedirs(current_texture_folder, exist_ok=True)
 
         texture_file_name = (
-            "Texture_"
-            + str(int(mesh_box[0]))
-            + "_"
-            + str(int(mesh_box[1]))
-            + "_"
-            + str(int(mesh_box[2]))
-            + "_"
-            + str(int(mesh_box[3]))
-            + "_"
-            + ".tif"
+            f"Texture_"
+            f"{int(mesh_box[0])}_"
+            f"{int(mesh_box[1])}_"
+            f"{int(mesh_box[2])}_"
+            f"{int(mesh_box[3])}_.tif"
         )
 
         texture_full_path = os.path.join(current_texture_folder, texture_file_name)
@@ -606,20 +613,20 @@ class FileLoader(Loader):
         )
 
         current_terrain_window = GeoWindow.from_square(
-            mesh_box[0],
-            mesh_box[2],
-            mesh_box[1],
-            mesh_box[3],
-            CRS_fr,
-            CRS_fr,
+            x_min=mesh_box[0],
+            x_max=mesh_box[2],
+            y_min=mesh_box[1],
+            y_max=mesh_box[3],
+            from_crs=CRS_fr,
+            to_crs=CRS_fr,
         )
 
         if not os.path.isfile(texture_full_path):
             JP2Parser.create_texture_img(
-                current_texture_image_folder,
-                current_terrain_window,
-                current_texture_image_slab_file,
-                texture_full_path,
+                file_folder=current_texture_image_folder,
+                geo_window=current_terrain_window,
+                slab_file=current_texture_image_slab_file,
+                texture_file_path=texture_full_path,
             )
 
         return texture_full_path

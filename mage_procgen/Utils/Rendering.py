@@ -1,15 +1,16 @@
 import os
 import math
-from bpy import context as C, data as D, ops as O
+
 from datetime import datetime
+
+from bpy import context as C, data as D, ops as O
+import addon_utils
+
 from timezonefinder import TimezoneFinder
 import pytz
-import addon_utils
-import random
 
-import mage_procgen.Utils.DataFiles as df
 from mage_procgen.Utils.Logging import logger, stdout_redirected
-from contextlib import redirect_stdout, redirect_stderr
+import mage_procgen.Utils.DataFiles as df
 
 rendering_collection_name = "Rendering"
 terrain_collection_name = "Terrain"
@@ -25,6 +26,7 @@ ortho_camera_name = "Camera_Ortho"
 def check_is_sun_activated():
     try:
         sc = C.scene
+        # Trying to access Sun Position addon to find out if it's activated or not
         a = sc.sun_pos_properties.latitude
     except Exception as _:
         logger.warn("Sun position addon was not enabled. Enabling it.")

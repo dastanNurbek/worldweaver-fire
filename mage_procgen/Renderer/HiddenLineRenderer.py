@@ -1,10 +1,14 @@
-from bpy import data as D
 import bmesh
+from bpy import data as D
+
+import geopandas as g
+
 from shapely.geometry import mapping, MultiLineString
+
 from tqdm import tqdm
+
 from mage_procgen.Utils.Utils import TerrainData, GeoWindow, Point
 from mage_procgen.Utils.Geometry import interpolate_z
-import geopandas as g
 
 
 class HiddenLineRenderer:

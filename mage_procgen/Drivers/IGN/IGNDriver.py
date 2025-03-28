@@ -1,11 +1,13 @@
+import geopandas as g
+
 from mage_procgen.Drivers.BaseDriver import BaseDriver
 
 from mage_procgen.Drivers.IGN.StreamLoader import StreamLoader
 from mage_procgen.Drivers.IGN.FileLoader import FileLoader
 from mage_procgen.Drivers.IGN.IGNPreprocessor import IGNPreprocessor
 
-from mage_procgen.Utils.Utils import CRS_fr
 from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import CRS_fr
 
 
 class IGNDriver(BaseDriver):
@@ -42,7 +44,7 @@ class IGNDriver(BaseDriver):
         logger.info("Data loaded")
 
         rendering_data = self.processor.process(
-            geo_data, self.geo_window, self.config, CRS_fr
+            geo_data=geo_data, geowindow=self.geo_window, config=self.config, crs=CRS_fr
         )
 
         return rendering_data
@@ -51,6 +53,6 @@ class IGNDriver(BaseDriver):
 
         return self.loader.load_texture(mesh_box)
 
-    def __compute_geo_window_town__(self):
+    def __compute_geo_window_town__(self) -> g.GeoDataFrame:
 
         return self.loader.load_town_shape(self.config.town_dpt, self.config.town_name)

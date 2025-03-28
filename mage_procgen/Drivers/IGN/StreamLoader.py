@@ -1,24 +1,19 @@
 import os
-from sys import exc_info
-
-import pandas as p
-import geopandas as g
-from PIL import Image
-import numpy as np
+import io
 import math
+import requests
+
+import geopandas as g
+import pandas as p
+import numpy as np
+
+from owslib.wms import WebMapService
+from owslib.wfs import WebFeatureService
+
+from PIL import Image
 
 from mage_procgen.Drivers.IGN.Loader import Loader
-
-from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
-
-from mage_procgen.Parser.WFSParser import WFSParser
-
-from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
-from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Drivers.IGN.Utils import GeoData
-from mage_procgen.Utils.Logging import logger
-
-import mage_procgen.Utils.DataFiles as df
 from mage_procgen.Drivers.IGN.Utils import WFS_FR
 from mage_procgen.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
@@ -30,15 +25,18 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     LandUseDataFrame,
     PlotDataFrame,
 )
+
+from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
+from mage_procgen.Parser.WFSParser import WFSParser
+
+from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
+from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
-
-from owslib.wms import WebMapService
-from owslib.wfs import WebFeatureService
-
-import requests
+import mage_procgen.Utils.DataFiles as df
 
 
 class StreamLoader(Loader):
@@ -126,17 +124,11 @@ class StreamLoader(Loader):
                     size=img_size,
                     format="image/geotiff",
                 )
-                terrain_file_name = "terrain" + str(terrain_index) + ".tif"
-                with open(
-                    os.path.join(input_folder, terrain_file_name), "wb"
-                ) as terrain_file:
-                    bytes_written = terrain_file.write(terrain_img.read())
 
-                terrain_image = Image.open(
-                    os.path.join(input_folder, terrain_file_name)
-                )
+                terrain_image = Image.open(io.BytesIO(terrain_img.read()))
 
                 terrain_im_array = np.array(terrain_image)
+                # Flipping terrain Y axis to ease up use.
                 terrain_im_array = np.flip(terrain_im_array, axis=0)
                 terrain_df = p.DataFrame(terrain_im_array)
 
@@ -152,121 +144,126 @@ class StreamLoader(Loader):
 
                 terrain_data.append(
                     TerrainData(
-                        current_box[0],
-                        current_box[1],
-                        current_box[2],
-                        current_box[3],
-                        terrain_resolution,
-                        terrain_df.shape[1],
-                        terrain_df.shape[0],
-                        no_data,
-                        terrain_base_map,
-                        terrain_df,
+                        x_min=current_box[0],
+                        y_min=current_box[1],
+                        x_max=current_box[2],
+                        y_max=current_box[3],
+                        resolution=terrain_resolution,
+                        nbcol=terrain_df.shape[1],
+                        nbrow=terrain_df.shape[0],
+                        no_data=no_data,
+                        base_map_file=terrain_base_map,
+                        data=terrain_df,
                     )
                 )
 
                 terrain_index += 1
 
+        # TODO : logs are getting duplicated here, find out why
+        logger.info("Terrain done")
+
         wfs = WebFeatureService(url=WFS_FR.wfs_url, version=WFS_FR.wfs_version)
 
         building_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.buildings_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            BuildingDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.buildings_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=BuildingDataFrame.WFS.get_columns(),
         )
 
         forest_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.forests_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            DefaultDataFrame.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.forests_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=DefaultDataFrame.get_columns(),
         )
 
         road_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.road_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            RoadDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.road_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=RoadDataFrame.WFS.get_columns(),
         )
 
         water_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.water_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            WaterDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.water_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=WaterDataFrame.WFS.get_columns(),
         )
 
         residential_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.residential_zone_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            DefaultDataFrame.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.residential_zone_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=DefaultDataFrame.get_columns(),
         )
 
         interest_zone_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.activity_zone_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            ZoneInterestDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.activity_zone_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=ZoneInterestDataFrame.WFS.get_columns(),
         )
 
         departements_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.departement_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            DefaultDataFrame.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.departement_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=DefaultDataFrame.get_columns(),
         )
 
         shore_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.shore_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            DefaultDataFrame.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.shore_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=DefaultDataFrame.get_columns(),
         )
 
         sport_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.sport_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            SportDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.sport_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=SportDataFrame.WFS.get_columns(),
         )
 
         landuse_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.landuse_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            LandUseDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.landuse_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=LandUseDataFrame.WFS.get_columns(),
         )
 
         plot_data = WFSParser.load(
-            wfs,
-            input_folder,
-            WFS_FR.plot_key_name,
-            bbox_wgs84,
-            geo_window.crs,
-            PlotDataFrame.WFS.get_columns(),
+            wfs=wfs,
+            folder=input_folder,
+            key=WFS_FR.plot_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=PlotDataFrame.WFS.get_columns(),
         )
+
+        logger.info("Features done")
 
         if len(shore_data) > 0:
             load_oceans = True
@@ -377,23 +374,22 @@ class StreamLoader(Loader):
 
         return geo_data
 
-    def load_town_shape(self, departement_nbr: int, town_name: str):
+    def load_town_shape(self, departement_nbr: int, town_name: str) -> g.GeoDataFrame:
+
+        town_request_parameters = {
+            WFS_FR.town_request_name: town_name,
+            WFS_FR.town_request_dpt: str(departement_nbr),
+            WFS_FR.town_request_format: WFS_FR.town_request_geojson,
+            WFS_FR.town_request_geometry: WFS_FR.town_request_contour,
+        }
 
         town_request_response = requests.get(
-            WFS_FR.get_town_request_url(town_name, str(departement_nbr))
+            WFS_FR.town_request_url, params=town_request_parameters
         )
 
-        input_folder = os.path.join(self.project_folder, df.input_data_folder)
+        town_data = town_request_response.content.decode("ascii")
 
-        if not os.path.isdir(input_folder):
-            os.makedirs(input_folder, exist_ok=True)
-
-        with open(os.path.join(input_folder, town_name + ".json"), "wb") as town_file:
-            town_file.write(town_request_response.content)
-
-        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
-            CRS_fr
-        )
+        town = g.read_file(town_data).to_crs(CRS_fr)
 
         return town
 
@@ -418,16 +414,11 @@ class StreamLoader(Loader):
         )
 
         texture_file_name = (
-            "Texture_"
-            + str(int(mesh_box[0]))
-            + "_"
-            + str(int(mesh_box[1]))
-            + "_"
-            + str(int(mesh_box[2]))
-            + "_"
-            + str(int(mesh_box[3]))
-            + "_"
-            + ".tif"
+            f"Texture_"
+            f"{int(mesh_box[0])}_"
+            f"{int(mesh_box[1])}_"
+            f"{int(mesh_box[2])}_"
+            f"{int(mesh_box[3])}_.tif"
         )
 
         texture_folder = os.path.join(self.project_folder, df.texture_folder)

@@ -1,44 +1,37 @@
 import math
+import warnings
 from random import random
 
 import geopandas as g
 import pandas as p
 
+from mage_procgen.Drivers.OSM.Utils import OSM
+
+from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
     BuildingRenderingData,
-    ZonesRenderingData,
     safe_overlay,
     OverlayType,
 )
-from mage_procgen.Utils.Config import Config
-from mage_procgen.Drivers.OSM.Utils import OSM
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
     clean_zones,
 )
-from mage_procgen.Utils.Logging import logger
 
 
 class OSMPreprocessor:
-    _window_threshold = 1e-2
-    _minimal_size = 20
-    _building_inter_threshold = 1
-
     @staticmethod
     def process(
         geo_dataframe: g.geodataframe,
         oceans_data: g.geodataframe,
         geowindow: GeoWindow,
-        config: Config,
-        crs: int,
     ) -> RenderingData:
 
         logger.info("Processing OSM data")
 
-        points = geo_dataframe[geo_dataframe.geom_type == OSM.point]
         multi_polys = geo_dataframe[geo_dataframe.geom_type == OSM.multi_polygon]
         polys = geo_dataframe[geo_dataframe.geom_type == OSM.polygon]
         all_polys = p.concat([polys, multi_polys])
@@ -116,7 +109,7 @@ class OSMPreprocessor:
                 if OSM.landuse in all_polys[OSM.tags][ind]:
                     landused_ids.append(ind)
 
-        landused = geo_dataframe.query("index in @landused_ids")
+        landused = all_polys.query("index in @landused_ids")
 
         surfaces_ids = []
         for ind in all_polys[OSM.tags].index:
@@ -245,16 +238,17 @@ class OSMPreprocessor:
         compacted = surfaces.query("index in @compacted_ids")
         asphalt = surfaces.query("index in @asphalt_ids")
         sands = surfaces.query("index in @sand_ids")
-
         leisure_tartan_ids = []
         for ind in all_polys[OSM.tags].index:
             if OSM.leisure in all_polys[OSM.tags][ind]:
                 if all_polys[OSM.tags][ind][OSM.leisure] == OSM.playground:
                     leisure_tartan_ids.append(ind)
-
         leisure_tartan = all_polys.query("index in @leisure_tartan_ids")
-        tartan = safe_overlay(tartan, leisure_tartan, OverlayType.UNION)
 
+        # TODO: find out why a warning is thrown here
+        with warnings.catch_warnings():
+            warnings.simplefilter(action="ignore", category=FutureWarning)
+            tartan = safe_overlay(tartan, leisure_tartan, OverlayType.UNION)
         beaches_ids = []
         sand_natures_ids = []
         for ind in natures[OSM.tags].index:
@@ -265,14 +259,11 @@ class OSMPreprocessor:
         beaches = natures.query("index in @beaches_ids")
         sand_natures = natures.query("index in @sand_natures_ids")
         sands = safe_overlay(sands, beaches, OverlayType.UNION)
-
         sands = safe_overlay(sands, sand_natures, OverlayType.UNION)
-
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
         multi_lines = geo_dataframe[geo_dataframe.geom_type == OSM.multi_line_string]
-        all_lines = p.concat([lines, multi_lines])
-
+        all_lines = p.concat([lines, multi_lines], ignore_index=True)
         highway_ids = []
         paths_ids = []
         for line_ind in all_lines.index:
@@ -395,9 +386,6 @@ class OSMPreprocessor:
         flowing_water = waters.query("index not in @non_flowing_water_ids")
         still_water = safe_overlay(still_water, oceans_data, OverlayType.DIFFERENCE)
         flowing_water = safe_overlay(flowing_water, oceans_data, OverlayType.DIFFERENCE)
-
-        # Lanes deprecated
-        roads_lanes = None
 
         forests = safe_overlay(forests, waters, OverlayType.DIFFERENCE)
 

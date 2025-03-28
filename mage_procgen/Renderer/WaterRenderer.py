@@ -1,24 +1,27 @@
 import math
+from math import floor, ceil
+
+import bmesh
+from bpy import data as D
 
 import geopandas as g
-from bpy import data as D
-import bmesh
-from shapely import intersection, LineString, union
 import numpy as np
+
+from shapely import intersection, LineString, union
 
 import scipy as sp
 import scipy.sparse.linalg as ssl
-from rasterio.features import rasterize
-import rasterio
-
-from skimage import measure
 from scipy.interpolate import griddata
-from math import floor, ceil
+from skimage import measure
+
+import rasterio
+from rasterio.features import rasterize
+
+from tqdm import tqdm
+
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import Point
-from tqdm import tqdm
-
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
@@ -171,15 +174,14 @@ class FlowingWaterRenderer(BaseRenderer):
             loop_count += 1
             if loop_count > max_fusion_loop_count:
                 raise ValueError(
-                    "Water polygon fusion exceeded max loop count of "
-                    + str(max_fusion_loop_count)
+                    f"Water polygon fusion exceeded max loop count of {max_fusion_loop_count}"
                 )
 
-        logger.info("Fusion done in " + str(loop_count) + " loops")
+        logger.info(f"Fusion done in {loop_count} loops")
         surface_count = 1
         for surface in surfaces:
 
-            logger.info("Processing surface " + str(surface_count))
+            logger.info(f"Processing surface {surface_count}")
             # Transforming the polygon into a raster
             surface_box = surface.bounds
             surface_ll = (surface_box[0], surface_box[1])
@@ -305,7 +307,7 @@ class FlowingWaterRenderer(BaseRenderer):
             prev_u = DSM_vect
 
             for i_iter in range(max_iter):
-                logger.info("Laplace smoothing loop " + str(i_iter + 1) + " begins")
+                logger.info(f"Laplace smoothing loop {i_iter + 1} begins")
                 # DSM attachment only on ground
                 ground_mask_diag = FlowingWaterRendererUtils.sparse_diag(
                     ground_mask_vect
@@ -323,7 +325,7 @@ class FlowingWaterRenderer(BaseRenderer):
                     ground_mask_vect = DSM_vect < (u + buffer)
 
                 error = np.sqrt(np.linalg.norm(u - prev_u) / u.shape[0])
-                logger.info("Error at this step: " + str(error))
+                logger.info(f"Error at this step: {error}")
 
                 prev_u = u
 

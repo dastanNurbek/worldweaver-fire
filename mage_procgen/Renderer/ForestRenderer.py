@@ -1,8 +1,9 @@
 from bpy import data as D
 
+from mage_procgen.Renderer.BaseRenderer import BaseRenderer
+
 from mage_procgen.Utils.Rendering import ortho_camera_name
 from mage_procgen.Utils.Utils import Point
-from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 
 class ForestRenderer(BaseRenderer):

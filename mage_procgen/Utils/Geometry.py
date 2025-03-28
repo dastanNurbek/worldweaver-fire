@@ -1,4 +1,5 @@
 import math
+
 from shapely.geometry import Polygon, LineString, Point
 
 from mage_procgen.Utils.Logging import logger

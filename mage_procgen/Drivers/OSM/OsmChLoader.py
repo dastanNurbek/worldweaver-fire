@@ -1,26 +1,25 @@
 import os
+import io
+import json
+import math
+import requests
 
 import geopandas as g
 import pandas as p
-from PIL import Image
 import numpy as np
-import math
 
-from mage_procgen.Utils.Utils import GeoWindow, CRS_ch
-from mage_procgen.Utils.Utils import TerrainData, TerrainDataList
-from mage_procgen.Utils.Logging import logger
+from PIL import Image
 
-from mage_procgen.Drivers.OSM.Utils import SwissAlti
+import overpass
 
 from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
+from mage_procgen.Drivers.OSM.Utils import SwissAlti, OSM
 
-import requests
-import overpass
-import json
+from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import GeoWindow, CRS_ch
+from mage_procgen.Utils.Utils import TerrainData, TerrainDataList
 
 import mage_procgen.Utils.DataFiles as df
-
-from mage_procgen.Drivers.OSM.Utils import OSM
 
 
 class OsmChLoader(OsmLoader):
@@ -43,12 +42,7 @@ class OsmChLoader(OsmLoader):
 
         response_str = json.dumps(response, indent=2)
 
-        with open(os.path.join(input_folder, town_name + ".json"), "w") as town_file:
-            bytes_written = town_file.write(response_str)
-
-        town = g.read_file(os.path.join(input_folder, town_name + ".json")).to_crs(
-            self.internal_crs
-        )
+        town = g.read_file(response_str).to_crs(self.internal_crs)
 
         return town
 
@@ -110,32 +104,26 @@ class OsmChLoader(OsmLoader):
                 terrain_img = requests.get(
                     SwissAlti.get_terrain_request_url(int(x_ll), int(y_ll))
                 )
-                terrain_file_name = "terrain" + str(terrain_index) + ".tif"
-                with open(
-                    os.path.join(input_folder, terrain_file_name), "wb"
-                ) as terrain_file:
-                    bytes_written = terrain_file.write(terrain_img.content)
 
-                terrain_image = Image.open(
-                    os.path.join(input_folder, terrain_file_name)
-                )
+                terrain_image = Image.open(io.BytesIO(terrain_img.content))
 
                 terrain_im_array = np.array(terrain_image)
+                # Flipping terrain Y axis to ease up use.
                 terrain_im_array = np.flip(terrain_im_array, axis=0)
                 terrain_df = p.DataFrame(terrain_im_array)
 
                 terrain_data.append(
                     TerrainData(
-                        current_box[0],
-                        current_box[1],
-                        current_box[2],
-                        current_box[3],
-                        terrain_resolution,
-                        terrain_df.shape[1],
-                        terrain_df.shape[0],
-                        no_data,
-                        "",
-                        terrain_df,
+                        x_min=current_box[0],
+                        y_min=current_box[1],
+                        x_max=current_box[2],
+                        y_max=current_box[3],
+                        resolution=terrain_resolution,
+                        nbcol=terrain_df.shape[1],
+                        nbrow=terrain_df.shape[0],
+                        no_data=no_data,
+                        base_map_file="",
+                        data=terrain_df,
                     )
                 )
 

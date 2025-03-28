@@ -1,22 +1,10 @@
-from bpy import data as D
 import math
-import geopandas as g
-from shapely.geometry import MultiPolygon, LineString, MultiLineString
 
-from mage_procgen.Utils.Utils import PolygonList, TerrainData
-from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import RenderingData, GeoWindow, safe_overlay, OverlayType
-from mage_procgen.Utils.Config import Config
-from mage_procgen.Utils.Rendering import (
-    configure_render,
-    rendering_collection_name,
-    terrain_collection_name,
-    buildings_collection_name,
-    additionals_collection_name,
-    persp_camera_name,
-    ortho_camera_name,
-)
-from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
+from bpy import data as D
+
+import geopandas as g
+
+from shapely.geometry import MultiPolygon, LineString, MultiLineString
 
 from mage_procgen.Renderer import (
     BuildingRenderer,
@@ -29,6 +17,21 @@ from mage_procgen.Renderer import (
     FloodRenderer,
     ZoneRenderer,
     LineZoneRenderer,
+)
+
+from mage_procgen.Utils.Config import Config
+from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.Utils import PolygonList, TerrainData
+from mage_procgen.Utils.Utils import RenderingData, GeoWindow, safe_overlay, OverlayType
+from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
+from mage_procgen.Utils.Rendering import (
+    configure_render,
+    rendering_collection_name,
+    terrain_collection_name,
+    buildings_collection_name,
+    additionals_collection_name,
+    persp_camera_name,
+    ortho_camera_name,
 )
 
 
@@ -203,26 +206,27 @@ class RenderManager:
             additionals_collection_name,
         )
 
+        # Once everything is rendered, it can be plugged into the terrain's geometrynodes
         self.terrain_renderer.config_geometry_node(
-            self.road_renderer.get_mesh_obj(),
-            self.flowing_water_renderer.get_mesh_obj(),
-            self.still_water_renderer.get_mesh_obj(),
-            self.ocean_renderer.get_mesh_obj(),
-            self.building_footprint_renderer.get_mesh_obj(),
+            road_object=self.road_renderer.get_mesh_obj(),
+            water_object=self.flowing_water_renderer.get_mesh_obj(),
+            still_water_object=self.still_water_renderer.get_mesh_obj(),
+            ocean_object=self.ocean_renderer.get_mesh_obj(),
+            building_object=self.building_footprint_renderer.get_mesh_obj(),
         )
 
         if not self.config.use_sat_img:
             self.terrain_renderer.config_tagging_node(
-                self.wheatfields_renderer.get_mesh_obj(),
-                self.cornfields_renderer.get_mesh_obj(),
-                self.grass_renderer.get_mesh_obj(),
-                self.developed_renderer.get_mesh_obj(),
-                self.tartan_renderer.get_mesh_obj(),
-                self.compacted_renderer.get_mesh_obj(),
-                self.asphalt_renderer.get_mesh_obj(),
-                self.sand_renderer.get_mesh_obj(),
-                self.road_renderer.get_mesh_obj(),
-                self.path_renderer.get_mesh_obj(),
+                wheatfields_object=self.wheatfields_renderer.get_mesh_obj(),
+                cornields_object=self.cornfields_renderer.get_mesh_obj(),
+                grass_object=self.grass_renderer.get_mesh_obj(),
+                developed_object=self.developed_renderer.get_mesh_obj(),
+                tartan_object=self.tartan_renderer.get_mesh_obj(),
+                compacted_object=self.compacted_renderer.get_mesh_obj(),
+                asphalt_object=self.asphalt_renderer.get_mesh_obj(),
+                sand_object=self.sand_renderer.get_mesh_obj(),
+                roads_object=self.road_renderer.get_mesh_obj(),
+                path_object=self.path_renderer.get_mesh_obj(),
             )
 
         logger.info("Objects that interact with flood rendered")
@@ -239,6 +243,8 @@ class RenderManager:
             # To draw more than the actual view
             vector_multiplier = 1.2
 
+            # Calculating an area that is roughly vector_multiplier times bigger than the field of view of the camera
+            # So that we only draw objects that are inside this area
             if use_camera_presp:
                 camera = D.objects[persp_camera_name]
                 origin = camera.location
@@ -291,12 +297,12 @@ class RenderManager:
                     )
 
                     zone_window = GeoWindow.from_square(
-                        zone_x_min,
-                        zone_x_max,
-                        zone_y_min,
-                        zone_y_max,
-                        self.crs,
-                        self.crs,
+                        x_min=zone_x_min,
+                        x_max=zone_x_max,
+                        y_min=zone_y_min,
+                        y_max=zone_y_max,
+                        from_crs=self.crs,
+                        to_crs=self.crs,
                     )
 
                 except:
@@ -330,7 +336,12 @@ class RenderManager:
                 )
 
                 zone_window = GeoWindow.from_square(
-                    zone_x_min, zone_x_max, zone_y_min, zone_y_max, self.crs, self.crs
+                    x_min=zone_x_min,
+                    x_max=zone_x_max,
+                    y_min=zone_y_min,
+                    y_max=zone_y_max,
+                    from_crs=self.crs,
+                    to_crs=self.crs,
                 )
 
         buildings_zone = safe_overlay(
