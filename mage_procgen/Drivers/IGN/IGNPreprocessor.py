@@ -14,17 +14,14 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     PlotDataFrame,
 )
 
-from mage_procgen.Utils.Config import Config, window_type_town
-from mage_procgen.Utils.Geometry import polygonise
+from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import (
-    RenderingRoadDataFrame,
     clean_zones,
 )
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
-    CRS_fr,
     BuildingRenderingData,
     safe_overlay,
     OverlayType,
@@ -33,9 +30,7 @@ from mage_procgen.Utils.Utils import (
 
 class IGNPreprocessor:
     @staticmethod
-    def process(
-        geo_data: GeoData, geowindow: GeoWindow, config: Config, crs: int
-    ) -> RenderingData:
+    def process(geo_data: GeoData, geowindow: GeoWindow) -> RenderingData:
 
         logger.info("Preprocessing")
         new_buildings = safe_overlay(
@@ -117,61 +112,6 @@ class IGNPreprocessor:
         roads_guardrails = p.Series(road_has_guardrails)
         roads_with_cars = roads_with_cars.assign(
             has_sidewalks=roads_sidewalks, has_guardrails=roads_guardrails
-        )
-
-        # Transform the Polylines into polygons to allow geometry operations with other dataframes
-        # TODO: check if polygonized roads are still in use somewhere.
-        # Forests uses raycast on road object to not spawn trees on roads,
-        # and we can window lines later during rendermanager.
-        roads_elements = [
-            polygonise(
-                x[0],
-                x[1],
-                x[2],
-                x[3],
-                config.window_type == window_type_town,
-                geowindow,
-            )
-            for x in roads_with_cars[
-                [
-                    RoadDataFrame.geometry,
-                    RenderingRoadDataFrame.width,
-                    RoadDataFrame.number_lanes,
-                    RoadDataFrame.direction,
-                ]
-            ]
-            .to_numpy()
-            .tolist()
-        ]
-        roads_content = {}
-        or_row_index = 0
-
-        for index, row in roads_with_cars.iterrows():
-            for geometry in roads_elements[or_row_index][0]:
-                new_row = row.to_dict()
-                new_row[RoadDataFrame.geometry] = geometry
-
-                for key, value in new_row.items():
-                    if key not in roads_content.keys():
-                        roads_content[key] = []
-                    roads_content[key].append(value)
-
-            or_row_index += 1
-        roads_polygonised = g.GeoDataFrame(roads_content, crs=CRS_fr)
-
-        # Now that roads are polygons, we can apply the window on them and remove them from the background
-        roads_polygonised = safe_overlay(
-            roads_polygonised, geowindow.dataframe, OverlayType.INTERSECTION
-        )
-
-        roads_polygonised_ids = roads_polygonised[RoadDataFrame.ID]
-        roads_selected = roads_with_cars.query(
-            "{} in @roads_polygonised_ids".format(RoadDataFrame.ID)
-        )
-
-        # Removing roads from forests so we don't have trees on the road
-        new_forests = safe_overlay(
-            new_forests, roads_polygonised, OverlayType.DIFFERENCE
         )
 
         # Forests can intersect buildings, which we don't want
@@ -274,7 +214,7 @@ class IGNPreprocessor:
         rendering_data = RenderingData(
             forests=cleaned_forests,
             buildings=buildings_data,
-            roads=roads_selected,
+            roads=roads_with_cars,
             still_water=still_water,
             flowing_water=flowing_water,
             ocean=new_oceans,

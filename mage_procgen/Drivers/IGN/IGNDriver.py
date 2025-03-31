@@ -44,7 +44,7 @@ class IGNDriver(BaseDriver):
         logger.info("Data loaded")
 
         rendering_data = self.processor.process(
-            geo_data=geo_data, geowindow=self.geo_window, config=self.config, crs=CRS_fr
+            geo_data=geo_data, geowindow=self.geo_window
         )
 
         return rendering_data
