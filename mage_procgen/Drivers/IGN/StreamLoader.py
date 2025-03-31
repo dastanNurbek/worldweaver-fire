@@ -159,7 +159,6 @@ class StreamLoader(Loader):
 
                 terrain_index += 1
 
-        # TODO : logs are getting duplicated here, find out why
         logger.info("Terrain done")
 
         wfs = WebFeatureService(url=WFS_FR.wfs_url, version=WFS_FR.wfs_version)
