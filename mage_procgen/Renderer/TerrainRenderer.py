@@ -7,6 +7,8 @@ from bpy import data as D, context as C, ops as O
 
 from numpy import arange
 
+from tqdm import tqdm
+
 from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
@@ -152,7 +154,8 @@ class TerrainRenderer:
 
         ind_y = 0
 
-        for y in range_y:
+        logger.info("Drawing terrain")
+        for y in tqdm(range_y):
 
             current_terrain_line = []
 
@@ -292,6 +295,7 @@ class TerrainRenderer:
 
             ind_y += 1
 
+        logger.info("Texturing terrain")
         for index, mesh_info in meshes.items():
 
             mesh_name = self._mesh_name + "_" + str(index)
