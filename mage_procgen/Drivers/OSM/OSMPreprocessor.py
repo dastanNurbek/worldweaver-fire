@@ -14,11 +14,11 @@ from mage_procgen.Utils.Utils import (
     BuildingRenderingData,
     safe_overlay,
     OverlayType,
+    ZonesRenderingData,
 )
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
-    clean_zones,
 )
 
 
@@ -430,7 +430,7 @@ class OSMPreprocessor:
             default_buildings=buildings,
         )
 
-        zones_data = clean_zones(
+        zones_data = ZonesRenderingData(
             wheatfields=wheatfields,
             cornfields=cornfields,
             grass=grass,

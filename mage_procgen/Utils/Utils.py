@@ -5,6 +5,7 @@ import geopandas as g
 import pandas as p
 
 from shapely.geometry import Polygon, LineString, mapping
+from shapely import area, difference, intersects, contains
 
 from mage_procgen.Utils.Logging import logger
 
@@ -56,7 +57,9 @@ class GeoWindow:
         if from_crs != to_crs:
             # TODO: refine this. Users should be warned when the base window is modified but this seems to happen more than it should
             logger.warn("Window was modified to be a rectangle in the destination crs")
-            logger.warn(f"(window was given in crs:{from_crs} and needs to be in crs:{to_crs}")
+            logger.warn(
+                f"(window was given in crs:{from_crs} and needs to be in crs:{to_crs}"
+            )
             to_crs_box = self.dataframe.to_crs(to_crs).geometry[0].bounds
             window_s = g.GeoSeries(
                 [
@@ -107,17 +110,69 @@ class BuildingRenderingData:
     default_buildings: g.GeoDataFrame
 
 
-@dataclass
 class ZonesRenderingData:
-    wheatfields: g.GeoDataFrame
-    cornfields: g.GeoDataFrame
-    grass: g.GeoDataFrame
-    developed: g.GeoDataFrame
-    tartan: g.GeoDataFrame
-    compacted: g.GeoDataFrame
-    asphalt: g.GeoDataFrame
-    sand: g.GeoDataFrame
-    paths: g.GeoDataFrame
+    def __init__(
+        self,
+        wheatfields: g.GeoDataFrame,
+        cornfields: g.GeoDataFrame,
+        grass: g.GeoDataFrame,
+        developed: g.GeoDataFrame,
+        tartan: g.GeoDataFrame,
+        compacted: g.GeoDataFrame,
+        asphalt: g.GeoDataFrame,
+        sand: g.GeoDataFrame,
+        paths: g.GeoDataFrame,
+    ):
+        list_zones = [
+            wheatfields,
+            cornfields,
+            grass,
+            developed,
+            tartan,
+            compacted,
+            asphalt,
+            sand,
+        ]
+        for zone_a_ind in range(len(list_zones)):
+            zone_a = list_zones[zone_a_ind]
+            for zone_b_ind in range(zone_a_ind + 1, len(list_zones)):
+                if zone_a_ind == 0 and zone_b_ind == 1:
+                    continue
+                zone_b = list_zones[zone_b_ind]
+                # If either zone in empty, no point in comparing anything
+                if zone_a.empty or zone_b.empty:
+                    continue
+                zone_inter = safe_overlay(zone_a, zone_b, OverlayType.INTERSECTION)
+                if not zone_inter.empty:
+                    new_geom_a = []
+                    for geom_a in zone_a.geometry:
+                        new_geom_b = []
+                        for geom_b in zone_b.geometry:
+                            if intersects(geom_a, geom_b):
+                                if contains(geom_a, geom_b):
+                                    geom_a = difference(geom_a, geom_b)
+                                elif contains(geom_b, geom_a):
+                                    geom_b = difference(geom_b, geom_a)
+                                elif area(geom_a) <= area(geom_b):
+                                    geom_b = difference(geom_b, geom_a)
+                                else:
+                                    geom_a = difference(geom_a, geom_b)
+                            new_geom_b.append(geom_b)
+                        new_geom_a.append(geom_a)
+                        zone_b = zone_b.set_geometry(new_geom_b)
+                        list_zones[zone_b_ind] = zone_b
+                    zone_a = zone_a.set_geometry(new_geom_a)
+                    list_zones[zone_a_ind] = zone_a
+
+        self.wheatfields = list_zones[0]
+        self.cornfields = list_zones[1]
+        self.grass = list_zones[2]
+        self.developed = list_zones[3]
+        self.tartan = list_zones[4]
+        self.compacted = list_zones[5]
+        self.asphalt = list_zones[6]
+        self.sand = list_zones[7]
+        self.paths = paths
 
 
 @dataclass

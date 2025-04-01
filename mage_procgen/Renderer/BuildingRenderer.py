@@ -25,9 +25,7 @@ class BuildingRenderer(BaseRenderer):
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         filepath = os.path.realpath(
-            os.path.join(
-                _location, "..", assets_folder, self.config.geometry_node_file
-            )
+            os.path.join(_location, "..", assets_folder, self.config.geometry_node_file)
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):

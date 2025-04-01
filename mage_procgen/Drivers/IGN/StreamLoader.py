@@ -45,7 +45,7 @@ class StreamLoader(Loader):
         bbox = geo_window.bounds
 
         # TODO: check if this one is necessary because the window should already be in lambert93
-        if (geo_window.crs != CRS_fr):
+        if geo_window.crs != CRS_fr:
             logger.warn(f"IGN StreamLoader: Provided window was not in CRS {CRS_fr}")
         geo_window_lamb93 = geo_window.to_crs(CRS_fr)
         bbox_lamb93 = geo_window_lamb93.bounds

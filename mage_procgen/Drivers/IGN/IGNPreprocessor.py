@@ -14,17 +14,15 @@ from mage_procgen.Drivers.IGN.DataFrames import (
     PlotDataFrame,
 )
 
-from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.RenderingDataFrames import (
-    clean_zones,
-)
+
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
     BuildingRenderingData,
     safe_overlay,
     OverlayType,
+    ZonesRenderingData,
 )
 
 
@@ -198,7 +196,7 @@ class IGNPreprocessor:
             houses=houses,
             default_buildings=default_buildings,
         )
-        zones_data = clean_zones(
+        zones_data = ZonesRenderingData(
             wheatfields=new_plots,
             cornfields=g.GeoDataFrame(columns=["id", "geometry"], geometry="geometry"),
             grass=grass,
