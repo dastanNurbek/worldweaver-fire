@@ -74,8 +74,6 @@ class IGNPreprocessor:
         # Related thread: https://github.com/geopandas/geopandas/issues/1724
         new_roads = geo_data.roads
 
-        # TODO For now just pass the lists of geom, tagging will be handled later
-
         non_car_natures = IGN.road_non_car_natures
         roads_with_cars = new_roads.query(
             "{} not in @non_car_natures".format(RoadDataFrame.nature)

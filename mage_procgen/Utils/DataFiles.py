@@ -71,7 +71,6 @@ default_config_file = "config.json"
 
 hash_file_extenstion = ".md5"
 
-# TODO: remove all "self.__AssetFolder in renderers and use this instead
 assets_folder = "Assets"
 
 projects_folder = "Projects"

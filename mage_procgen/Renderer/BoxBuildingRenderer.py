@@ -26,6 +26,7 @@ from mage_procgen.Utils.Geometry import (
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
 from mage_procgen.Utils.Rendering import additionals_collection_name
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class BoxBuildingRenderer(BaseRenderer):
@@ -56,7 +57,7 @@ class BoxBuildingRenderer(BaseRenderer):
         )
         filepath = os.path.realpath(
             os.path.join(
-                _location, "..", self._AssetsFolder, self.config.geometry_node_file
+                _location, "..", assets_folder, self.config.geometry_node_file
             )
         )
         try:

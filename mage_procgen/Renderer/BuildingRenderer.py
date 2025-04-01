@@ -13,6 +13,7 @@ from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class BuildingRenderer(BaseRenderer):
@@ -25,7 +26,7 @@ class BuildingRenderer(BaseRenderer):
         )
         filepath = os.path.realpath(
             os.path.join(
-                _location, "..", self._AssetsFolder, self.config.geometry_node_file
+                _location, "..", assets_folder, self.config.geometry_node_file
             )
         )
         try:

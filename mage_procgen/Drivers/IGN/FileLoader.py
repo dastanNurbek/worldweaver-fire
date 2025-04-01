@@ -39,7 +39,8 @@ class FileLoader(Loader):
     def load(self, geo_window: GeoWindow) -> GeoData:
 
         bbox = geo_window.bounds
-
+        if (geo_window.crs != CRS_fr):
+            logger.warn(f"IGN FileLoader: Provided window was not in CRS {CRS_fr}")
         logger.info("Loading shp files")
 
         arrondissements = ShapeFileParser.load(

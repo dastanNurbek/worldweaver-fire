@@ -13,10 +13,10 @@ from tqdm import tqdm
 
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class BaseRenderer:
-    _AssetsFolder = "Assets"
     _mesh_name = ""
 
     def __init__(self, terrain_data: list[TerrainData], object_config):
@@ -26,7 +26,7 @@ class BaseRenderer:
         )
         filepath = os.path.realpath(
             os.path.join(
-                _location, "..", self._AssetsFolder, self.config.geometry_node_file
+                _location, "..", assets_folder, self.config.geometry_node_file
             )
         )
         try:

@@ -7,6 +7,7 @@ from bpy import data as D
 from tqdm import tqdm
 
 from mage_procgen.Utils.Logging import logger
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class FloodRenderer:
@@ -23,7 +24,7 @@ class FloodRenderer:
         # Render
         filepath = os.path.realpath(
             os.path.join(
-                _location, "..", self._AssetsFolder, self.config.geometry_node_file
+                _location, "..", assets_folder, self.config.geometry_node_file
             )
         )
         try:

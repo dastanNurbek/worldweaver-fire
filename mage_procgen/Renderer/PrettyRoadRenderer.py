@@ -21,6 +21,7 @@ from mage_procgen.Utils.Utils import (
 )
 from mage_procgen.Utils.Rendering import terrain_collection_name
 from mage_procgen.Utils.RenderingDataFrames import RenderingRoadDataFrame
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 # TODO: find common paths with BaseRenderer
@@ -50,7 +51,7 @@ class PrettyRoadRenderer:
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         filepath = os.path.realpath(
-            os.path.join(_location, "..", self._AssetsFolder, self._Asset_File)
+            os.path.join(_location, "..", assets_folder, self._Asset_File)
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
@@ -69,7 +70,7 @@ class PrettyRoadRenderer:
             )
 
         filepath_bridge = os.path.realpath(
-            os.path.join(_location, "..", self._AssetsFolder, self._Bridge_Asset_File)
+            os.path.join(_location, "..", assets_folder, self._Bridge_Asset_File)
         )
         try:
             with bpy.data.libraries.load(filepath_bridge) as (data_from, data_to):

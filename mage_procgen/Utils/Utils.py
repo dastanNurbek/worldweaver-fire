@@ -56,6 +56,7 @@ class GeoWindow:
         if from_crs != to_crs:
             # TODO: refine this. Users should be warned when the base window is modified but this seems to happen more than it should
             logger.warn("Window was modified to be a rectangle in the destination crs")
+            logger.warn(f"(window was given in crs:{from_crs} and needs to be in crs:{to_crs}")
             to_crs_box = self.dataframe.to_crs(to_crs).geometry[0].bounds
             window_s = g.GeoSeries(
                 [

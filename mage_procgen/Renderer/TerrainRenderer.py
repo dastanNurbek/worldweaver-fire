@@ -12,6 +12,7 @@ from tqdm import tqdm
 from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow
+from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class TerrainRenderer:
@@ -24,7 +25,6 @@ class TerrainRenderer:
     _BaseMaterialName = "Base_Terrain"
     _TaggedMaterialName = "Tagged_Terrain"
     _MaterialFile = "Terrain_2Tests.blend"
-    _AssetsFolder = "Assets"
 
     def __init__(
         self,
@@ -47,7 +47,7 @@ class TerrainRenderer:
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         filepath = os.path.realpath(
-            os.path.join(_location, "..", self._AssetsFolder, self._MaterialFile)
+            os.path.join(_location, "..", assets_folder, self._MaterialFile)
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
