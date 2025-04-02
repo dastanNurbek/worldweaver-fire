@@ -42,8 +42,14 @@ class BaseDriver(ABC):
             case "TOWN":
                 town = self.__compute_geo_window_town__()
 
-                self.geo_window = GeoWindow(
-                    town.geometry[0], self.internal_crs, self.internal_crs
+                town_bounds = town.geometry[0].bounds
+                self.geo_window = GeoWindow.from_square(
+                    x_min=town_bounds[0],
+                    x_max=town_bounds[2],
+                    y_min=town_bounds[1],
+                    y_max=town_bounds[3],
+                    from_crs=self.internal_crs,
+                    to_crs=self.internal_crs,
                 )
             case "FILE":
                 file_window = fiona.open(self.config.window_shapefile)
