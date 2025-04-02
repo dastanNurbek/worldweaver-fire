@@ -2,6 +2,8 @@ import os
 import io
 import json
 import math
+from io import StringIO
+from contextlib import redirect_stdout, redirect_stderr
 
 import geopandas as g
 import pandas as p
@@ -87,7 +89,16 @@ class OsmLoader:
             bbox_wgs84[2],
         )
 
-        response = api.get(map_query)
+        redirected_stderr = StringIO()
+
+        with redirect_stderr(redirected_stderr):
+            response = api.get(map_query)
+
+        if len(redirected_stderr.getvalue()) > 0:
+            logger.info(
+                "Overpass MaqQuery: Some objects were not able to be loaded. See debug log for more info."
+            )
+            logger.debug(redirected_stderr.getvalue())
 
         response_str = json.dumps(response, indent=2)
 

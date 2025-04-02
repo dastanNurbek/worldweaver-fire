@@ -1,5 +1,4 @@
 import os
-import warnings
 
 import bpy
 import bmesh
@@ -317,8 +316,9 @@ class TerrainRenderer:
                         # TIFFReadDirectory: Warning, Unknown field with tag 34735 (0x87af) encountered.
                         # TIFFReadDirectory: Warning, Unknown field with tag 34737 (0x87b1) encountered.
                         # Issue is described in https://stackoverflow.com/a/27609465 but unsure how to solve.
-                        # It's not a python warning so cannot filter it. We could redirect stdout (or stderr, unsure which is used)
-                        # During this load, or just filter those messages.
+                        # It's not a python warning so cannot filter it, nor can we capture stdout or stderr to filter.
+                        # https://gitlab.ign.fr/averstraete/worldweaver/-/issues/6 related issue.
+
                         D.images.load(mesh_info.base_map_file)
 
                         mesh_material.node_tree.nodes["Basemap Image"].image = D.images[

@@ -140,15 +140,41 @@ class RenderManager:
             rendering_collection_name,
         )
 
-        buildings = self.__extract_geom(
-            self.rendering_data.buildings.default_buildings.geometry
+        buildings_zone = safe_overlay(
+            self.rendering_data.buildings.default_buildings,
+            self.window.dataframe,
+            OverlayType.INTERSECTION,
         )
-        houses = self.__extract_geom(self.rendering_data.buildings.houses.geometry)
-        churches = self.__extract_geom(self.rendering_data.buildings.churches.geometry)
-        factories = self.__extract_geom(
-            self.rendering_data.buildings.factories.geometry
+        buildings = self.__extract_geom(buildings_zone.geometry)
+
+        houses_zone = safe_overlay(
+            self.rendering_data.buildings.houses,
+            self.window.dataframe,
+            OverlayType.INTERSECTION,
         )
-        malls = self.__extract_geom(self.rendering_data.buildings.malls.geometry)
+        houses = self.__extract_geom(houses_zone.geometry)
+
+        churches_zone = safe_overlay(
+            self.rendering_data.buildings.churches,
+            self.window.dataframe,
+            OverlayType.INTERSECTION,
+        )
+        churches = self.__extract_geom(churches_zone.geometry)
+
+        factories_zone = safe_overlay(
+            self.rendering_data.buildings.factories,
+            self.window.dataframe,
+            OverlayType.INTERSECTION,
+        )
+        factories = self.__extract_geom(factories_zone.geometry)
+
+        malls_zone = safe_overlay(
+            self.rendering_data.buildings.malls,
+            self.window.dataframe,
+            OverlayType.INTERSECTION,
+        )
+        malls = self.__extract_geom(malls_zone.geometry)
+
         buildings.extend(houses)
         buildings.extend(churches)
         buildings.extend(factories)
