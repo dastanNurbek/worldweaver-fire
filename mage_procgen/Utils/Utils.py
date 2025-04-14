@@ -3,9 +3,10 @@ from dataclasses import dataclass
 
 import geopandas as g
 import pandas as p
+import numpy as np
 
 from shapely.geometry import Polygon, LineString, mapping
-from shapely import area, difference, intersects, contains
+from shapely import area, difference, intersects, contains, intersection
 
 from mage_procgen.Utils.Logging import logger
 
@@ -208,6 +209,9 @@ class TerrainData:
     data: p.DataFrame
 
 
+TerrainDataList = list[TerrainData]
+
+
 class OverlayType(Enum):
 
     DIFFERENCE = 1
@@ -254,4 +258,42 @@ def safe_overlay(
             return df1.overlay(df2, how="intersection", keep_geom_type=True)
 
 
-TerrainDataList = list[TerrainData]
+def get_class(tag: str, synonym_dict: dict, default_value: str):
+    for key, value in synonym_dict.items():
+        if tag in value:
+            return key
+
+    return default_value
+
+
+def tag_water(geometry, water_types, default_name):
+    for water_type, water_geometry in water_types.items():
+        if not intersection(geometry, water_geometry).is_empty:
+            return water_type
+
+    return default_name
+
+
+def reduce_columns(gdf, list_cols):
+    gdf_e = ensure_columns_existence(gdf, list_cols)
+    return gdf_e[list_cols]
+
+
+def ensure_columns_existence(gdf, list_cols):
+    for col_name in list_cols:
+        if col_name not in gdf.columns:
+            # https://stackoverflow.com/questions/60115806/pd-na-vs-np-nan-for-pandas
+            gdf[col_name] = np.nan
+    return gdf
+
+
+# TODO: pareil qu'à la fin de OSMPreprocessor, le nom des geometries c'est toujours le meme en pratique, du coup est-ce qu'on devrait faire que ce soit paramétrable ou pas ?
+# Pour le moment on le laisse comme ça
+def safe_get_group(group_by, base_gdf, key):
+    # Needed because GroupBy.get_group() fails if key is missing
+    if key in group_by.groups:
+        return group_by.get_group(key)
+    else:
+        return g.GeoDataFrame(
+            columns=base_gdf.columns, geometry="geometry", crs=base_gdf.crs
+        )

@@ -1,11 +1,11 @@
 import os
-import math
 
 import bpy
 import bmesh
 from bpy import data as D, ops as O, context as C
 
 import geopandas as g
+import pandas as p
 
 from ladybug_geometry.geometry2d.pointvector import Point2D
 
@@ -160,19 +160,8 @@ class PrettyRoadRenderer:
                 for x in windowed_line
             ]
 
-            is_bridge = False
-            is_tunnel = False
-
-            road_pos_to_ground = roads[RenderingRoadDataFrame.position_rel_to_ground][
-                road_index
-            ]
-            is_int = road_pos_to_ground.isdigit()
-            if is_int:
-                road_pos_to_ground_value = int(
-                    roads[RenderingRoadDataFrame.position_rel_to_ground][road_index]
-                )
-                is_bridge = road_pos_to_ground_value >= 1
-                is_tunnel = road_pos_to_ground_value <= -1
+            is_bridge = roads[RenderingRoadDataFrame.is_bridge][road_index]
+            is_tunnel = roads[RenderingRoadDataFrame.is_tunnel][road_index]
 
             # Adapting the coordinates for rendering purposes
             centered_points_coords = self.adapt_coords(
@@ -275,7 +264,7 @@ class PrettyRoadRenderer:
 
             lane_nbr = (
                 self._default_road_lanes
-                if math.isnan(edge_config[2])
+                if p.isnull(edge_config[2])
                 else int(edge_config[2])
             )
 

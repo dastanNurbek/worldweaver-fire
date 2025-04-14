@@ -1,9 +1,10 @@
-import math
-import warnings
-from random import random
+import random
 
 import geopandas as g
 import pandas as p
+
+from shapely import union, Polygon
+from shapely.geometry import mapping
 
 from mage_procgen.Drivers.OSM.Utils import OSM
 
@@ -13,6 +14,11 @@ from mage_procgen.Utils.Utils import (
     GeoWindow,
     BuildingRenderingData,
     safe_overlay,
+    reduce_columns,
+    ensure_columns_existence,
+    tag_water,
+    get_class,
+    safe_get_group,
     OverlayType,
     ZonesRenderingData,
 )
@@ -29,363 +35,237 @@ class OSMPreprocessor:
         oceans_data: g.geodataframe,
         geowindow: GeoWindow,
     ) -> RenderingData:
-
         logger.info("Processing OSM data")
+        # TODO: keep this, but justify it (and restore the warning after ?)
+        # Avoids the "SettingWithCopyWarning: A value is trying to be set on a copy of a slice from a DataFrame"warning,
+        # which would be triggered a lot here.
+        # https://stackoverflow.com/a/20627316
+        p.options.mode.chained_assignment = None
+
+        # Fill no values with empty JSON dicts to avoid errors when parsing
+        geo_dataframe[OSM.tags] = geo_dataframe[OSM.tags].fillna({})
+        # Flatten the nested JSON dicts into a proper DataFrame
+        normalized_tags = p.json_normalize(geo_dataframe[OSM.tags])
+        # Join the DataFrames to keep the geometry
+        geo_dataframe = geo_dataframe[[OSM.id, OSM.geometry]].join(
+            normalized_tags, validate="one_to_one"
+        )
 
         multi_polys = geo_dataframe[geo_dataframe.geom_type == OSM.multi_polygon]
         polys = geo_dataframe[geo_dataframe.geom_type == OSM.polygon]
         all_polys = p.concat([polys, multi_polys])
 
         # Buildings
-        churches_ind = []
-        factories_ind = []
-        malls_ind = []
-        houses_ind = []
-        buildings_ind = []
-        buildings_height = {}
-        buildings_levels = {}
-        for ind in all_polys[OSM.tags].index:
-            if OSM.building_tag in geo_dataframe[OSM.tags][ind]:
+        # We have to make sure that a certain column exist in order to use it for filtering, and it only exists if at least one feature in the scene has this tag
+        all_polys = ensure_columns_existence(all_polys, [OSM.building_tag])
+        buildings = all_polys[all_polys[OSM.building_tag].notnull()]
 
-                building_tag = geo_dataframe[OSM.tags][ind][OSM.building_tag]
-                if building_tag in OSM.churches_types:
-                    churches_ind.append(ind)
-                elif building_tag in OSM.factories_types:
-                    factories_ind.append(ind)
-                elif building_tag in OSM.malls_types:
-                    malls_ind.append(ind)
-                elif building_tag in OSM.houses_types:
-                    houses_ind.append(ind)
-                else:
-                    buildings_ind.append(ind)
-
-                buildings_height[ind] = math.nan
-                buildings_levels[ind] = math.nan
-                if OSM.height in geo_dataframe[OSM.tags][ind]:
-                    height = geo_dataframe[OSM.tags][ind][OSM.height]
-                    if height.isdigit():
-                        buildings_height[ind] = float(height)
-                if OSM.levels in geo_dataframe[OSM.tags][ind]:
-                    levels = geo_dataframe[OSM.tags][ind][OSM.levels]
-                    if levels.isdigit():
-                        buildings_levels[ind] = int(levels)
-
-        all_buildings_ind = []
-        all_buildings_ind.extend(churches_ind)
-        all_buildings_ind.extend(factories_ind)
-        all_buildings_ind.extend(malls_ind)
-        all_buildings_ind.extend(houses_ind)
-        all_buildings_ind.extend(buildings_ind)
-        all_buildings = geo_dataframe.query("index in @all_buildings_ind")
-        buildings_height_s = p.Series(buildings_height)
-        buildings_levels_s = p.Series(buildings_levels)
-        all_buildings = all_buildings.assign(
-            height=buildings_height_s, Nb_floors=buildings_levels_s
+        # Trimming columns (base geodataframe has hundreds of columns)
+        buildings = reduce_columns(
+            buildings, [OSM.id, OSM.geometry, OSM.building_tag, OSM.height, OSM.levels]
         )
+        buildings[OSM.height] = buildings[OSM.height].astype(p.Float64Dtype())
+        buildings[OSM.levels] = buildings[OSM.levels].astype(p.Int8Dtype())
 
-        all_building_data_dict = {
-            RenderingBuildingDataFrame.height: all_buildings[
-                RenderingBuildingDataFrame.height
-            ],
-            RenderingBuildingDataFrame.number_floors: all_buildings[
-                RenderingBuildingDataFrame.number_floors
-            ],
-            RenderingBuildingDataFrame.geometry: all_buildings[
-                RenderingBuildingDataFrame.geometry
-            ],
-        }
-        all_building_data = g.GeoDataFrame(all_building_data_dict)
+        # Splitting buildigns into the different categories
+        buildings[OSM.building_class] = buildings[OSM.building_tag].map(
+            lambda x: get_class(x, OSM.building_class_synonyms, OSM.default_building)
+        )
+        # Transforming column names to fit what renderers need
+        buildings = buildings.rename(
+            columns={
+                OSM.geometry: RenderingBuildingDataFrame.geometry,
+                OSM.height: RenderingBuildingDataFrame.height,
+                OSM.levels: RenderingBuildingDataFrame.number_floors,
+            }
+        )
+        buildings_groups = buildings.groupby(OSM.building_class)
 
-        churches = all_building_data.query("index in @churches_ind")
-        factories = all_building_data.query("index in @factories_ind")
-        malls = all_building_data.query("index in @malls_ind")
-        houses = all_building_data.query("index in @houses_ind")
-        buildings = all_building_data.query("index in @buildings_ind")
+        churches = safe_get_group(buildings_groups, buildings, OSM.church)
+        factories = safe_get_group(buildings_groups, buildings, OSM.factory)
+        malls = safe_get_group(buildings_groups, buildings, OSM.mall)
+        houses = safe_get_group(buildings_groups, buildings, OSM.house)
+        buildings = safe_get_group(buildings_groups, buildings, OSM.default_building)
 
         # Landmasses
-        landused_ids = []
-        for ind in all_polys[OSM.tags].index:
-            if all_polys[OSM.tags][ind] is not None:
-                if OSM.landuse in all_polys[OSM.tags][ind]:
-                    landused_ids.append(ind)
+        all_polys = ensure_columns_existence(
+            all_polys, [OSM.landuse, OSM.surface, OSM.leisure, OSM.natural, OSM.water]
+        )
+        # All those landuse elements will be split into different categories that fit our purpose
+        landused = all_polys[all_polys[OSM.landuse].notnull()]
+        surfaces = all_polys[all_polys[OSM.surface].notnull()]
+        leisures = all_polys[all_polys[OSM.leisure].notnull()]
+        natures = all_polys[all_polys[OSM.natural].notnull()]
+        waters = all_polys[all_polys[OSM.water].notnull()]
 
-        landused = all_polys.query("index in @landused_ids")
+        landused[OSM.landuse_class] = landused[OSM.landuse].map(
+            lambda x: get_class(x, OSM.landuse_class_synonyms, OSM.other)
+        )
+        landuse_groups = landused.groupby(OSM.landuse_class)
 
-        surfaces_ids = []
-        for ind in all_polys[OSM.tags].index:
-            if all_polys[OSM.tags][ind] is not None:
-                if OSM.surface in all_polys[OSM.tags][ind]:
-                    surfaces_ids.append(ind)
+        surfaces[OSM.surface_class] = surfaces[OSM.surface].map(
+            lambda x: get_class(x, OSM.surface_class_synonyms, OSM.other)
+        )
+        surface_groups = surfaces.groupby(OSM.surface_class)
 
-        surfaces = all_polys.query("index in @surfaces_ids")
+        leisures[OSM.leisure_class] = leisures[OSM.leisure].map(
+            lambda x: get_class(x, OSM.leisure_class_synonyms, OSM.other)
+        )
+        leisure_groups = leisures.groupby(OSM.leisure_class)
 
-        nature_ids = []
-        for ind in all_polys[OSM.tags].index:
-            if all_polys[OSM.tags][ind] is not None:
-                if OSM.natural in all_polys[OSM.tags][ind]:
-                    nature_ids.append(ind)
+        natures[OSM.nature_class] = natures[OSM.natural].map(
+            lambda x: get_class(x, OSM.nature_class_synonyms, OSM.other)
+        )
+        nature_groups = natures.groupby(OSM.nature_class)
 
-        natures = all_polys.query("index in @nature_ids")
+        forests = safe_get_group(landuse_groups, landused, OSM.usage_forests_tags)
 
-        # Forests
-        selected_forest_tags = [OSM.usage_forests_tags]
-        forests_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_forest_tags:
-                forests_ids.append(ind)
+        fields = safe_get_group(landuse_groups, landused, OSM.field)
+        fields = reduce_columns(fields, [OSM.id, OSM.geometry, OSM.field_crop])
 
-        forests = landused.query("index in @forests_ids")
-
-        # Residential
-        selected_residential_tags = [OSM.usage_residential_tags]
-        residential_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_residential_tags:
-                residential_ids.append(ind)
-
-        residentials = landused.query("index in @residential_ids")
-
-        # Interest zones
-        selected_interest_tags = [OSM.usage_commercial_tags, OSM.usage_commercial_tags]
-
-        interest_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_interest_tags:
-                interest_ids.append(ind)
-
-        interest_zones = landused.query("index in @interest_ids")
-
-        # Fields
-        selected_field_tags = OSM.field_landuses
-
-        field_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_field_tags:
-                field_ids.append(ind)
-
-        fields = landused.query("index in @field_ids")
-        wheatfields_ids = []
-        cornfields_ids = []
-        wheat_interval = [0, 0.5]
-        corn_interval = [0.5, 1]
-        for ind in fields[OSM.tags].index:
-            if OSM.field_crop in fields[OSM.tags][ind]:
-                if fields[OSM.tags][ind][OSM.field_crop] == OSM.wheat_crop:
-                    wheatfields_ids.append(ind)
-                elif fields[OSM.tags][ind][OSM.field_crop] == OSM.corn_crop:
-                    cornfields_ids.append(ind)
-                else:
-                    random_nbr = random()
-                    if wheat_interval[0] <= random_nbr <= wheat_interval[1]:
-                        wheatfields_ids.append(ind)
-                    elif corn_interval[0] <= random_nbr <= corn_interval[1]:
-                        cornfields_ids.append(ind)
-            else:
-                random_nbr = random()
-                if wheat_interval[0] <= random_nbr <= wheat_interval[1]:
-                    wheatfields_ids.append(ind)
-                elif corn_interval[0] <= random_nbr <= corn_interval[1]:
-                    cornfields_ids.append(ind)
-
-        wheatfields = fields.query("index in @wheatfields_ids")
-        cornfields = fields.query("index in @cornfields_ids")
+        # Since crops are not well tagged, we randomly split the non-tagged into the available categories
+        fields_crops_choices = list(OSM.crop_class_synonyms.keys())
+        fields[OSM.crop_class] = fields[OSM.field_crop].map(
+            lambda x: get_class(
+                x, OSM.crop_class_synonyms, random.choice(fields_crops_choices)
+            )
+        )
+        field_groups = fields.groupby(OSM.crop_class)
+        wheat_fields = safe_get_group(field_groups, fields, OSM.wheat_crop)
+        corn_fields = safe_get_group(field_groups, fields, OSM.corn_crop)
 
         # Grass
         selected_grass_tags = OSM.grass_landuses.copy()
         selected_grass_tags.extend(OSM.leisure_landuses)
 
-        grass_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_grass_tags:
-                grass_ids.append(ind)
+        grass = safe_get_group(landuse_groups, landused, OSM.grass)
+        leisures = safe_get_group(landuse_groups, landused, OSM.leisure)
+        # We want to display leisure elements in grass
+        grass = p.concat([grass, leisures])
 
-        grass = landused.query("index in @grass_ids")
-
-        grass_surface_ids = []
-        for ind in surfaces[OSM.tags].index:
-            if surfaces[OSM.tags][ind][OSM.surface] == OSM.grass_surface:
-                grass_surface_ids.append(ind)
-
-        grass_surface = surfaces.query("index in @grass_surface_ids")
+        grass_surface = safe_get_group(surface_groups, surfaces, OSM.grass)
+        # Grass can be tagged in landuse or surface, we want both
         grass = safe_overlay(grass, grass_surface, OverlayType.UNION)
 
-        # Developed
-        selected_developed_tags = OSM.developed_landuses
+        developed = safe_get_group(landuse_groups, landused, OSM.developed)
 
-        developed_ids = []
-        for ind in landused[OSM.tags].index:
-            if landused[OSM.tags][ind][OSM.landuse] in selected_developed_tags:
-                developed_ids.append(ind)
+        # Asphalt used to exclude highway surfaces. Unclear why.
+        # TODO: find out if it should do it or not
+        asphalt = safe_get_group(surface_groups, surfaces, OSM.asphalt_surface)
+        tartan = safe_get_group(surface_groups, surfaces, OSM.tartan_surface)
+        compacted = safe_get_group(surface_groups, surfaces, OSM.compacted_surface)
+        sands = safe_get_group(surface_groups, surfaces, OSM.sand_surface)
 
-        developed = landused.query("index in @developed_ids")
+        leisure_tartan = safe_get_group(leisure_groups, leisures, OSM.playground)
+        # Tartan can be either a surface or a specific leisure
+        tartan = safe_overlay(tartan, leisure_tartan, OverlayType.UNION)
 
-        tartan_ids = []
-        compacted_ids = []
-        asphalt_ids = []
-        sand_ids = []
-        for ind in surfaces[OSM.tags].index:
-            if surfaces[OSM.tags][ind][OSM.surface] == OSM.tartan_surface:
-                tartan_ids.append(ind)
-            elif surfaces[OSM.tags][ind][OSM.surface] == OSM.compacted_surface:
-                compacted_ids.append(ind)
-            elif surfaces[OSM.tags][ind][OSM.surface] in OSM.asphalt_surface:
-                if OSM.highway_tag not in surfaces[OSM.tags][ind]:
-                    asphalt_ids.append(ind)
-            elif surfaces[OSM.tags][ind][OSM.surface] in OSM.sand_surface:
-                sand_ids.append(ind)
+        beaches = safe_get_group(nature_groups, natures, OSM.beach)
+        sand_natures = safe_get_group(nature_groups, natures, OSM.sand_surface)
 
-        tartan = surfaces.query("index in @tartan_ids")
-        compacted = surfaces.query("index in @compacted_ids")
-        asphalt = surfaces.query("index in @asphalt_ids")
-        sands = surfaces.query("index in @sand_ids")
-        leisure_tartan_ids = []
-        for ind in all_polys[OSM.tags].index:
-            if OSM.leisure in all_polys[OSM.tags][ind]:
-                if all_polys[OSM.tags][ind][OSM.leisure] == OSM.playground:
-                    leisure_tartan_ids.append(ind)
-        leisure_tartan = all_polys.query("index in @leisure_tartan_ids")
-
-        # TODO: find out why a warning is thrown here
-        with warnings.catch_warnings():
-            warnings.simplefilter(action="ignore", category=FutureWarning)
-            tartan = safe_overlay(tartan, leisure_tartan, OverlayType.UNION)
-        beaches_ids = []
-        sand_natures_ids = []
-        for ind in natures[OSM.tags].index:
-            if all_polys[OSM.tags][ind][OSM.natural] == OSM.beach:
-                beaches_ids.append(ind)
-            if all_polys[OSM.tags][ind][OSM.natural] == OSM.sand_surface:
-                sand_natures_ids.append(ind)
-        beaches = natures.query("index in @beaches_ids")
-        sand_natures = natures.query("index in @sand_natures_ids")
+        # Sands can also be tagged in multiple ways
         sands = safe_overlay(sands, beaches, OverlayType.UNION)
         sands = safe_overlay(sands, sand_natures, OverlayType.UNION)
+
         # Roads
         lines = geo_dataframe[geo_dataframe.geom_type == OSM.line_string]
         multi_lines = geo_dataframe[geo_dataframe.geom_type == OSM.multi_line_string]
         all_lines = p.concat([lines, multi_lines], ignore_index=True)
-        highway_ids = []
-        paths_ids = []
-        for line_ind in all_lines.index:
-            if all_lines[OSM.tags][line_ind] is not None:
-                if OSM.highway_tag in all_lines[OSM.tags][line_ind]:
-                    if all_lines[OSM.tags][line_ind][OSM.highway_tag] in OSM.path_tags:
-                        paths_ids.append(line_ind)
-                    else:
-                        highway_ids.append(line_ind)
 
-        highways = all_lines.query("index in @highway_ids")
-        paths = all_lines.query("index in @paths_ids")
+        all_lines = ensure_columns_existence(all_lines, [OSM.highway_tag])
 
-        road_has_sidewalk = []
-        road_has_guardrails = []
-        road_number_lanes = []
-        road_position_rel_to_ground = []
-        road_geometry = []
+        roads = all_lines[all_lines[OSM.highway_tag].notnull()]
+        roads[OSM.road_class] = roads[OSM.highway_tag].map(
+            lambda x: get_class(x, OSM.roads_synonyms, OSM.highway_tag)
+        )
+        road_groups = roads.groupby(OSM.road_class)
 
-        for road_index in highways.index:
-            road_geom = highways.geometry[road_index]
-            road_tags = highways[OSM.tags][road_index]
-            road_lane_nbr = 1
-            if OSM.lanes in road_tags.keys():
-                if road_tags[OSM.lanes].isdigit():
-                    road_lane_nbr = int(road_tags[OSM.lanes])
+        paths = safe_get_group(road_groups, roads, OSM.path)
+        highways_data = safe_get_group(road_groups, roads, OSM.highway_tag)
 
-            speed = 0
-            # max_speed can either be without units (in kmh) or with unit indicated:
-            # cf https://wiki.openstreetmap.org/wiki/Key:maxspeed
-            # some values are not parsed and ignored
-            if OSM.max_speed in road_tags.keys():
-                if road_tags[OSM.max_speed].isdigit():
-                    speed = int(road_tags[OSM.max_speed])
-                else:
-                    try:
-                        speed_value = float(road_tags[OSM.max_speed].split()[0])
-                        speed_unit = road_tags[OSM.max_speed].split()[1]
-                        if speed_unit == OSM.mph_key:
-                            speed = speed_value * OSM.mph_mult
-                        elif speed_unit == OSM.knot_key:
-                            speed = speed_value * OSM.knot_mult
-                        elif speed_unit in OSM.kmh_keys:
-                            speed = speed_value
-                    except ValueError:
-                        pass
+        highways_data = ensure_columns_existence(
+            highways_data,
+            [
+                OSM.max_speed,
+                OSM.sidewalk,
+                OSM.lanes,
+                OSM.bridge,
+                OSM.tunnel,
+            ],
+        )
+        highways_tagged = highways_data.apply(
+            lambda x: OSMPreprocessor.tag_roads(
+                x[OSM.max_speed],
+                x[OSM.sidewalk],
+                x[OSM.lanes],
+                x[OSM.bridge],
+                x[OSM.tunnel],
+            ),
+            axis=1,
+            result_type="expand",
+        )
+        highways_tagged = highways_tagged.rename(
+            columns={
+                0: RenderingRoadDataFrame.has_sidewalks,
+                1: RenderingRoadDataFrame.has_guardrails,
+                2: RenderingRoadDataFrame.is_bridge,
+                3: RenderingRoadDataFrame.is_tunnel,
+                4: RenderingRoadDataFrame.number_lanes,
+            }
+        )
+        highways = g.GeoDataFrame(
+            highways_tagged, geometry=highways_data.geometry, crs=geowindow.crs
+        )
 
-            has_sidewalk = False
-            has_guardrails = False
-            if OSM.sidewalk in road_tags.keys():
-                if road_tags[OSM.sidewalk] in OSM.has_sidewalk_list:
-                    has_sidewalk = True
+        # Water.
+        # Algorithm is the same as in IGNPreprocessor.
+        waters[OSM.water_class] = waters[OSM.water].map(
+            lambda x: get_class(x, OSM.waters_synonyms, OSM.flowing)
+        )
+        water_groups = waters.groupby(OSM.water_class)
 
-            if not has_sidewalk:
-                if speed > 90 or road_lane_nbr >= 5:
-                    has_guardrails = True
+        base_still_water = safe_get_group(water_groups, waters, OSM.still)
+        base_flowing_water = safe_get_group(water_groups, waters, OSM.flowing)
 
-            pos_rel_to_ground = "0"
-            if OSM.bridge in road_tags.keys():
-                pos_rel_to_ground = "1"
-            elif OSM.tunnel in road_tags.keys():
-                pos_rel_to_ground = "-1"
+        still_geometry = base_still_water.geometry.union_all()
+        flowing_geometry = base_flowing_water.geometry.union_all()
 
-            road_has_sidewalk.append(has_sidewalk)
-            road_has_guardrails.append(has_guardrails)
-            road_number_lanes.append(road_lane_nbr)
-            road_position_rel_to_ground.append(pos_rel_to_ground)
-            road_geometry.append(road_geom)
+        ocean_geometry = oceans_data.geometry.union_all()
 
-        road_data_dict = {
-            RenderingRoadDataFrame.number_lanes: road_number_lanes,
-            RenderingRoadDataFrame.position_rel_to_ground: road_position_rel_to_ground,
-            RenderingRoadDataFrame.has_sidewalks: road_has_sidewalk,
-            RenderingRoadDataFrame.has_guardrails: road_has_guardrails,
-            RenderingRoadDataFrame.geometry: road_geometry,
-        }
-        road_data = g.GeoDataFrame(road_data_dict)
+        all_water = union(still_geometry, flowing_geometry)
+        all_water = union(all_water, ocean_geometry)
 
-        # Water
-        water_tags = [OSM.water]
-        water_ids = []
-        for ind in geo_dataframe[OSM.tags].index:
-            if geo_dataframe[OSM.tags][ind] is not None:
-                if OSM.landuse in geo_dataframe[OSM.tags][ind]:
-                    if geo_dataframe[OSM.tags][ind][OSM.landuse] in water_tags:
-                        if ind not in water_ids:
-                            water_ids.append(ind)
-                if OSM.natural in geo_dataframe[OSM.tags][ind]:
-                    if geo_dataframe[OSM.tags][ind][OSM.natural] in water_tags:
-                        if ind not in water_ids:
-                            water_ids.append(ind)
+        if not all_water.is_empty:
+            # mapping(all_water)["coordinates"] raises a KeyError if geometry is empty
+            water_geometry = mapping(all_water)["coordinates"]
+            # Have to distinguish if it's a multipolygon or a regular polygon
+            if all_water.geom_type == OSM.multi_polygon:
 
-        waters = geo_dataframe.query("index in @water_ids")
-
-        # Tagging is not great on waters, so we consider any body of water "flowing" unless there is a tag that explicits it
-        # Also, we filter for things like fountains that should not be displayed.
-        still_water_tags = ["lagoon", "lake", "oxbow", "basin", "pond", "reservoir"]
-        still_water_ban_list = ["fountain"]
-        still_water_ids = []
-        still_water_banned_ids = []
-
-        for ind in waters[OSM.tags].index:
-            if OSM.water in waters[OSM.tags][ind]:
-                if waters[OSM.tags][ind][OSM.water] in still_water_tags:
-                    if OSM.amenity in waters[OSM.tags][ind]:
-                        if waters[OSM.tags][ind][OSM.amenity] in still_water_ban_list:
-                            still_water_banned_ids.append(ind)
-                        else:
-                            still_water_ids.append(ind)
-                    else:
-                        still_water_ids.append(ind)
+                split_water = g.GeoDataFrame(
+                    geometry=[Polygon(geom[0], geom[1:]) for geom in water_geometry],
+                    crs=geowindow.crs,
+                )
             else:
-                if OSM.amenity in waters[OSM.tags][ind]:
-                    if waters[OSM.tags][ind][OSM.amenity] in still_water_ban_list:
-                        still_water_banned_ids.append(ind)
+                split_water = g.GeoDataFrame(
+                    geometry=[Polygon(water_geometry[0], water_geometry[1:])],
+                    crs=geowindow.crs,
+                )
+        else:
+            split_water = g.GeoDataFrame(geometry=[], crs=geowindow.crs)
 
-        non_flowing_water_ids = still_water_ids.copy()
-        non_flowing_water_ids.extend(still_water_banned_ids)
-        still_water = waters.query("index in @still_water_ids")
-        flowing_water = waters.query("index not in @non_flowing_water_ids")
-        still_water = safe_overlay(still_water, oceans_data, OverlayType.DIFFERENCE)
-        flowing_water = safe_overlay(flowing_water, oceans_data, OverlayType.DIFFERENCE)
+        water_types = {
+            OSM.flowing: flowing_geometry,
+            OSM.ocean: ocean_geometry,
+            OSM.still: still_geometry,
+        }
+        split_water[OSM.water_class] = split_water[OSM.geometry].map(
+            lambda x: tag_water(x, water_types, OSM.other)
+        )
+        split_water_groups = split_water.groupby(OSM.water_class)
+
+        still_water = safe_get_group(split_water_groups, split_water, OSM.still)
+        flowing_water = safe_get_group(split_water_groups, split_water, OSM.flowing)
+        ocean_water = safe_get_group(split_water_groups, split_water, OSM.ocean)
 
         forests = safe_overlay(forests, waters, OverlayType.DIFFERENCE)
 
@@ -402,14 +282,14 @@ class OSMPreprocessor:
         flowing_water = safe_overlay(
             flowing_water, geowindow.dataframe, OverlayType.INTERSECTION
         )
-        new_oceans = safe_overlay(
-            oceans_data, geowindow.dataframe, OverlayType.INTERSECTION
+        ocean_water = safe_overlay(
+            ocean_water, geowindow.dataframe, OverlayType.INTERSECTION
         )
         wheatfields = safe_overlay(
-            wheatfields, geowindow.dataframe, OverlayType.INTERSECTION
+            wheat_fields, geowindow.dataframe, OverlayType.INTERSECTION
         )
         cornfields = safe_overlay(
-            cornfields, geowindow.dataframe, OverlayType.INTERSECTION
+            corn_fields, geowindow.dataframe, OverlayType.INTERSECTION
         )
         grass = safe_overlay(grass, geowindow.dataframe, OverlayType.INTERSECTION)
         developed = safe_overlay(
@@ -429,27 +309,65 @@ class OSMPreprocessor:
             houses=houses,
             default_buildings=buildings,
         )
-
+        # TODO: trim dataframes
+        # TODO: pour que ce soit vrai faut forcément que OSM.geometry soit egal a RenderingDataFrame.geometry ...
+        # Est-ce qu'on dit que c'est le cas parce que c'est une convention respectée ? et du coup pas de pb a utiliser OSM.geometry ici ?
+        # Sinon faut trim le dataframe pour laisser que la geometrie PUIS changer le nom de la col de OSM.geometry en RenderingDataFrame.geometry (et les deux seront a priori toujours egaux)
         zones_data = ZonesRenderingData(
-            wheatfields=wheatfields,
-            cornfields=cornfields,
-            grass=grass,
-            developed=developed,
-            tartan=tartan,
-            compacted=compacted,
-            asphalt=asphalt,
-            sand=sands,
-            paths=paths,
+            wheatfields=reduce_columns(wheatfields, [OSM.geometry]),
+            cornfields=reduce_columns(cornfields, [OSM.geometry]),
+            grass=reduce_columns(grass, [OSM.geometry]),
+            developed=reduce_columns(developed, [OSM.geometry]),
+            tartan=reduce_columns(tartan, [OSM.geometry]),
+            compacted=reduce_columns(compacted, [OSM.geometry]),
+            asphalt=reduce_columns(asphalt, [OSM.geometry]),
+            sand=reduce_columns(sands, [OSM.geometry]),
+            paths=reduce_columns(paths, [OSM.geometry]),
         )
 
         rendering_data = RenderingData(
-            forests=forests,
+            forests=reduce_columns(forests, [OSM.geometry]),
             buildings=buildings_data,
-            roads=road_data,
+            roads=highways,
             still_water=still_water,
             flowing_water=flowing_water,
-            ocean=new_oceans,
+            ocean=ocean_water,
             zones=zones_data,
         )
 
         return rendering_data
+
+    @staticmethod
+    def tag_roads(max_speed, sidewalk_tag, road_lane_tag, bridge_tag, tunnel_tag):
+        road_lane_nbr = 1
+        if not p.isnull(road_lane_tag):
+            road_lane_nbr = int(road_lane_tag)
+
+        # Speed is not always filled, and sometimes it also has a unit attached to it.
+        # In case it doesn't fit the formats we filter for, we just ignore its value and treat it as if it wasn't filled
+        speed = 0
+        if not p.isnull(max_speed):
+            if max_speed.isdigit():
+                speed = int(max_speed)
+            else:
+                try:
+                    speed_value = float(max_speed.split()[0])
+                    speed_unit = max_speed.split()[1]
+                    if speed_unit == OSM.mph_key:
+                        speed = speed_value * OSM.mph_mult
+                    elif speed_unit == OSM.knot_key:
+                        speed = speed_value * OSM.knot_mult
+                    elif speed_unit in OSM.kmh_keys:
+                        speed = speed_value
+                except ValueError:
+                    pass
+
+        has_sidewalk = sidewalk_tag in OSM.has_sidewalk_list
+        has_guardrails = False
+        if not has_sidewalk:
+            if speed > 90 or road_lane_nbr >= 5:
+                has_guardrails = True
+
+        is_bridge = not p.isnull(bridge_tag)
+        is_tunnel = not p.isnull(tunnel_tag)
+        return [has_sidewalk, has_guardrails, is_bridge, is_tunnel, road_lane_nbr]

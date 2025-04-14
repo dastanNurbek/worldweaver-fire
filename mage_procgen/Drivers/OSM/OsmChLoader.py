@@ -59,10 +59,14 @@ class OsmChLoader(OsmLoader):
             math.ceil(bbox_lv95[3] / 1000) * 1000,
         )
 
+        # Requesting terrain at a .5m resolution since SwissAlti data is at this resolution
         terrain_resolution = 0.5
+        # Need to impose a limit on the size of slabs of terrain requested because of the webservices limits,
+        # so we fix a kind of arbitrary 1km limit
         terrain_max_slab_size = 1000
-        # TODO: check this value
+        # Arbitrary value
         no_data = -9999
+
         logger.info("Loading terrain data from swissalti")
 
         terrain_data = []

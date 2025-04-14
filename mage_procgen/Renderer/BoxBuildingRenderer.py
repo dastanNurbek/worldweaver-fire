@@ -6,6 +6,8 @@ import bpy
 import bmesh
 from bpy import data as D
 
+import pandas as p
+
 from shapely.geometry import mapping
 
 from tqdm import tqdm
@@ -107,7 +109,7 @@ class BoxBuildingRenderer(BaseRenderer):
             # TODO: make those parametric
             building_height = random.uniform(2.5, 6)
             # If we have the info in the database, use it here
-            if not math.isnan(building[0]):
+            if not p.isnull(building[0]):
                 building_height = float(building[0])
 
             # TODO: Have to create the mesh data here because of the "face already exists" traces.

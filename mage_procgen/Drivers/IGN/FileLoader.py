@@ -21,7 +21,6 @@ from mage_procgen.Parser.JP2Parser import JP2Parser
 
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import (
-    RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
 from mage_procgen.Utils.Utils import (
@@ -336,7 +335,7 @@ class FileLoader(Loader):
             RoadDataFrame.position_rel_to_ground: road_data[
                 RoadDataFrame.File.position_rel_to_ground
             ],
-            RenderingRoadDataFrame.width: road_data[RoadDataFrame.File.width],
+            RoadDataFrame.width: road_data[RoadDataFrame.File.width],
             RoadDataFrame.urban: road_data[RoadDataFrame.File.urban],
             RoadDataFrame.geometry: road_data[RoadDataFrame.File.geometry],
         }

@@ -56,7 +56,9 @@ class BaseRenderer:
 
         for polygon in tqdm(polygons):
             # Kind of hack because Polygon.coords is not implemented
+            # TODO : shapely.get_coordinates(polygon)
             polygon_geometry = mapping(polygon)["coordinates"]
+
             points_coords = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]

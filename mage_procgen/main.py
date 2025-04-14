@@ -71,7 +71,9 @@ def main(filepath):
             os.path.join(_location, config.base_folder)
         )
 
-    setup_logger(os.path.join(config.base_folder, log_folder), log_file_name, False)
+    setup_logger(
+        os.path.join(config.base_folder, log_folder), log_file_name, add_debug=False
+    )
     logger.info("Worldweaver starting")
     for log_message in log_messages:
         logger.info(log_message)

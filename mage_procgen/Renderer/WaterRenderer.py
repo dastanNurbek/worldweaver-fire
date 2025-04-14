@@ -1,4 +1,3 @@
-import math
 from math import floor, ceil
 
 import bmesh
@@ -6,8 +5,6 @@ from bpy import data as D
 
 import geopandas as g
 import numpy as np
-
-from shapely import intersection, LineString, union
 
 import scipy as sp
 import scipy.sparse.linalg as ssl
@@ -21,7 +18,7 @@ from tqdm import tqdm
 
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import Point
+from mage_procgen.Utils.Utils import Point, GeoWindow, safe_overlay, OverlayType
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
@@ -135,51 +132,26 @@ class FlowingWaterRenderer(BaseRenderer):
     # Laplace smoothing of surface. Very much still WIP
     def render(
         self,
-        water_polygons: g.GeoDataFrame,
+        water_data: g.GeoDataFrame,
+        ocean_data: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
         parent_collection_name: str,
     ):
+        # TODO: also take oceans, do a mask, and oceans edges are init at z=0
+        # Doesn't work because oceans and flowing cannt overlap, we need the "base ocean" geometry ....
         mesh = bmesh.new()
 
         water_render_resolution = 1
+
+        # Variables to pilot the Laplace smoothing
         l_water = 1.0e-9  # amount of smoothing in the water
         l_ground = 0  # amount of smoothing on the ground
         buffer = 10
         max_iter = 10
         max_error = 1e-1
-        surfaces = [water_polygons.geometry[i] for i in water_polygons.index]
-        loop_needed = True
-        loop_count = 0
 
-        # Fusing water polygons so that all contiguous polygons are in the same surface
-        max_fusion_loop_count = 10
-        while loop_needed:
-            fused_surfaces = []
-            loop_needed = False
-            for surface in surfaces:
-                has_fused = False
-                for f_surface_ind in range(len(fused_surfaces)):
-                    if not intersection(
-                        surface, fused_surfaces[f_surface_ind]
-                    ).is_empty:
-                        fused_surfaces[f_surface_ind] = union(
-                            surface, fused_surfaces[f_surface_ind]
-                        )
-                        has_fused = True
-                        loop_needed = True
-                        break
-                if not has_fused:
-                    fused_surfaces.append(surface)
-            surfaces = fused_surfaces
-            loop_count += 1
-            if loop_count > max_fusion_loop_count:
-                raise ValueError(
-                    f"Water polygon fusion exceeded max loop count of {max_fusion_loop_count}"
-                )
-
-        logger.info(f"Fusion done in {loop_count} loops")
         surface_count = 1
-        for surface in surfaces:
+        for surface in water_data.geometry:
 
             logger.info(f"Processing surface {surface_count}")
             # Transforming the polygon into a raster
@@ -189,13 +161,21 @@ class FlowingWaterRenderer(BaseRenderer):
             rounded_surface_ll = (ceil(surface_ll[0]), ceil(surface_ll[1]), 0)
             rounded_surface_ur = (floor(surface_ur[0]), floor(surface_ur[1]), 0)
 
-            rounded_surface_bounds = (
+            current_window = GeoWindow.from_square(
                 rounded_surface_ll[0],
-                rounded_surface_ll[1],
                 rounded_surface_ur[0],
+                rounded_surface_ll[1],
                 rounded_surface_ur[1],
+                water_data.crs,
+                water_data.crs,
             )
+            rounded_surface_bounds = current_window.bounds
+            current_oceans = safe_overlay(
+                ocean_data, current_window.dataframe, OverlayType.INTERSECTION
+            )
+            current_ocean_geometry = current_oceans.geometry.union_all()
 
+            # Need to rasterize the geometries in order to render them
             surface_size_x = rounded_surface_ur[0] - rounded_surface_ll[0]
             surface_size_y = rounded_surface_ur[1] - rounded_surface_ll[1]
             surface_pts_nbr_x = surface_size_x * water_render_resolution + 1
@@ -212,6 +192,18 @@ class FlowingWaterRenderer(BaseRenderer):
                 all_touched=True,
                 dtype=rasterio.uint8,
             )
+            if not current_ocean_geometry.is_empty:
+                # Rasterize does not work on empty geometries
+                ocean_mask = rasterize(
+                    [current_ocean_geometry],
+                    out_shape=(surface_pts_nbr_y, surface_pts_nbr_x),
+                    transform=transform,
+                    fill=0,
+                    all_touched=True,
+                    dtype=rasterio.uint8,
+                )
+            else:
+                ocean_mask = np.zeros_like(water_mask)
 
             logger.info("Getting contour height")
 
@@ -225,19 +217,30 @@ class FlowingWaterRenderer(BaseRenderer):
             # Getting all the countour points as control points for the linear interpolation that will serve as the initialisation of the surface
             water_countour_x_y = np.array(
                 [
-                    (
-                        rounded_surface_ll[0]
-                        + pt_countour[1] * water_render_resolution,
-                        rounded_surface_ur[1]
-                        - pt_countour[0] * water_render_resolution,
+                    FlowingWaterRenderer.raster_to_real_coords(
+                        pt_countour,
+                        rounded_surface_ll,
+                        rounded_surface_ur,
+                        water_render_resolution,
                     )
                     for pt_countour in water_contours
                 ]
             )
+            # Have to treat points in ocean differently and put them at z=0
             water_countour_z = np.array(
                 [
-                    interpolate_z(self._terrain_data, pt_countour[0], pt_countour[1])
-                    for pt_countour in water_countour_x_y
+                    interpolate_z(
+                        self._terrain_data,
+                        *FlowingWaterRenderer.raster_to_real_coords(
+                            pt_countour,
+                            rounded_surface_ll,
+                            rounded_surface_ur,
+                            water_render_resolution,
+                        ),
+                    )
+                    if not ocean_mask[int(pt_countour[0])][int(pt_countour[1])]
+                    else 0
+                    for pt_countour in water_contours
                 ]
             )
 
@@ -249,8 +252,12 @@ class FlowingWaterRenderer(BaseRenderer):
                 for col in range(water_mask.shape[1]):
                     if water_mask[row][col] > 0:
                         current_point_coords = (
-                            rounded_surface_ll[0] + col * water_render_resolution,
-                            rounded_surface_ur[1] - row * water_render_resolution,
+                            FlowingWaterRenderer.raster_to_real_coords(
+                                (row, col),
+                                rounded_surface_ll,
+                                rounded_surface_ur,
+                                water_render_resolution,
+                            )
                         )
                         water_interior_indexes[row][col] = len(interior_x_y)
                         interior_x_y.append(current_point_coords)
@@ -266,7 +273,7 @@ class FlowingWaterRenderer(BaseRenderer):
             for row in tqdm(range(DSM.shape[0])):
                 for col in range(DSM.shape[1]):
                     # Apparently there are some "nan" returned by griddata, unsure why at the moment
-                    if water_mask[row][col] > 0 and not math.isnan(
+                    if water_mask[row][col] > 0 and not np.isnan(
                         interior_z_pred[water_interior_indexes[row][col]]
                     ):
                         # If the point is strictly inside the water, its z is interpolated from the edge points
@@ -276,8 +283,12 @@ class FlowingWaterRenderer(BaseRenderer):
                     else:
                         # If not, it's just the DSM
                         current_point_coords = (
-                            rounded_surface_ll[0] + col * water_render_resolution,
-                            rounded_surface_ur[1] - row * water_render_resolution,
+                            FlowingWaterRenderer.raster_to_real_coords(
+                                (row, col),
+                                rounded_surface_ll,
+                                rounded_surface_ur,
+                                water_render_resolution,
+                            )
                         )
                         DSM[row][col] = interpolate_z(
                             self._terrain_data,
@@ -426,3 +437,12 @@ class FlowingWaterRenderer(BaseRenderer):
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]
+
+    @staticmethod
+    def raster_to_real_coords(
+        raster_coords, lower_left, upper_right, raster_resolution
+    ):
+        return (
+            lower_left[0] + raster_coords[1] * raster_resolution,
+            upper_right[1] - raster_coords[0] * raster_resolution,
+        )

@@ -3,7 +3,7 @@ import io
 import json
 import math
 from io import StringIO
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr
 
 import geopandas as g
 import pandas as p
@@ -91,18 +91,19 @@ class OsmLoader:
 
         redirected_stderr = StringIO()
 
+        # Redirecting stderr because overpass sometimes shows very long error messages that are benign, so we log them in debug.
         with redirect_stderr(redirected_stderr):
             response = api.get(map_query)
 
         if len(redirected_stderr.getvalue()) > 0:
             logger.info(
-                "Overpass MaqQuery: Some objects were not able to be loaded. See debug log for more info."
+                "Overpass MapQuery: Some objects were not able to be loaded. See debug log for more info."
             )
             logger.debug(redirected_stderr.getvalue())
 
-        response_str = json.dumps(response, indent=2)
-
-        geo_df = g.read_file(response_str).to_crs(self.internal_crs)
+        geo_df = g.GeoDataFrame.from_features(
+            response["features"], crs=CRS_degrees
+        ).to_crs(self.internal_crs)
 
         # Due to defaults in osm2geojson, some polygons, which are inners of multipolygons but still objects of their own,
         # are not returned by a simple mapquery. To get around this, we query them separately
@@ -118,11 +119,16 @@ class OsmLoader:
             if feature not in filtered_features:
                 filtered_features.append(feature)
         additional_response["features"] = filtered_features
-        additional_response_str = json.dumps(additional_response, indent=2)
 
-        additional_geo_df = g.read_file(additional_response_str).to_crs(
-            self.internal_crs
-        )
+        # Have to check for feature count because setting crs on a geodataframe without geometry raises an error
+        if len(additional_response["features"]) > 0:
+            additional_geo_df = g.GeoDataFrame.from_features(
+                additional_response["features"], crs=CRS_degrees
+            ).to_crs(self.internal_crs)
+        else:
+            additional_geo_df = g.GeoDataFrame(
+                columns=geo_df.columns, geometry=OSM.geometry, crs=geo_df.crs
+            )
 
         # We are still missing some pieces, namely objects that include the window and contain landuse information
         additional_request2 = OSM.get_additional_request_landuses(bbox_wgs84)
@@ -135,14 +141,18 @@ class OsmLoader:
             if feature not in filtered_features_query:
                 filtered_features_query.append(feature)
         additional_response2["features"] = filtered_features_query
-        additional_response_str2 = json.dumps(additional_response2, indent=2)
 
-        additional_geo_df2 = g.read_file(additional_response_str2).to_crs(
-            self.internal_crs
-        )
+        if len(additional_response2["features"]) > 0:
+            additional_geo_df2 = g.GeoDataFrame.from_features(
+                additional_response2["features"], crs=CRS_degrees
+            ).to_crs(self.internal_crs)
+        else:
+            additional_geo_df2 = g.GeoDataFrame(
+                columns=geo_df.columns, geometry=OSM.geometry, crs=geo_df.crs
+            )
 
-        geo_df = g.GeoDataFrame(
-            p.concat([geo_df, additional_geo_df, additional_geo_df2], ignore_index=True)
+        geo_df = p.concat(
+            [geo_df, additional_geo_df, additional_geo_df2], ignore_index=True
         )
 
         return geo_df
@@ -161,9 +171,12 @@ class OsmLoader:
             math.ceil(bbox[3]),
         )
 
+        # Requesting terrain at a 1m resolution
         terrain_resolution = 1
+        # Need to impose a limit on the size of slabs of terrain requested because of the webservices limits,
+        # so we fix a kind of arbitrary 1km limit
         terrain_max_slab_size = 1000
-        # TODO: check this value
+        # Arbitrary value
         no_data = -9999
 
         wms = WebMapService(WFS.srtm_url, version=WFS.srtm_version)

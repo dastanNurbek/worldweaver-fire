@@ -16,6 +16,7 @@ class BuildingDataFrame:
     usage_2 = "Usage_2"
     number_housings = "Nb_Housing"
     geometry = "geometry"
+    type = "type"
 
     class File:
         ID = "ID"
@@ -59,9 +60,11 @@ class RoadDataFrame:
     importance = "Importance"
     number_lanes = "Nb_lanes"
     position_rel_to_ground = "Position_rel_to_ground"
+    width = "Width"
     direction = "Direction"
     urban = "Urban"
     geometry = "geometry"
+    type = "type"
 
     class File:
         ID = "ID"
@@ -131,6 +134,7 @@ class SportDataFrame:
     nature = "Nature"
     detail_nature = "Detail_nature"
     geometry = "geometry"
+    type = "type"
 
     class File:
         ID = "ID"
@@ -213,6 +217,7 @@ class WaterDataFrame:
     ID = "ID"
     nature = "Nature"
     geometry = "geometry"
+    type = "type"
 
     class File:
         ID = "ID"

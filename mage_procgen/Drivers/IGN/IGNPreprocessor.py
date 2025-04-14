@@ -1,7 +1,8 @@
-import math
-
 import geopandas as g
 import pandas as p
+
+from shapely import union, Polygon
+from shapely.geometry import mapping
 
 from mage_procgen.Drivers.IGN.Utils import GeoData, IGN
 from mage_procgen.Drivers.IGN.DataFrames import (
@@ -15,12 +16,17 @@ from mage_procgen.Drivers.IGN.DataFrames import (
 )
 
 from mage_procgen.Utils.Logging import logger
-
+from mage_procgen.Utils.RenderingDataFrames import (
+    RenderingRoadDataFrame,
+)
 from mage_procgen.Utils.Utils import (
     RenderingData,
     GeoWindow,
     BuildingRenderingData,
     safe_overlay,
+    tag_water,
+    get_class,
+    safe_get_group,
     OverlayType,
     ZonesRenderingData,
 )
@@ -31,6 +37,7 @@ class IGNPreprocessor:
     def process(geo_data: GeoData, geowindow: GeoWindow) -> RenderingData:
 
         logger.info("Preprocessing")
+        # Windowing all dataframes because they contain objects that might have points outside the strict window
         new_buildings = safe_overlay(
             geo_data.buildings, geowindow.dataframe, OverlayType.INTERSECTION
         )
@@ -57,137 +64,162 @@ class IGNPreprocessor:
             geo_data.ocean, geowindow.dataframe, OverlayType.INTERSECTION
         )
 
-        industrial_commercial_tags = IGN.industrial_commercial_tags
         industrial_and_commercial_zones = geo_data.interest_zones.query(
-            "{} in @industrial_commercial_tags".format(
-                ZoneInterestDataFrame.detail_nature
-            )
+            f"{ZoneInterestDataFrame.detail_nature} in {IGN.industrial_commercial_tags}"
         )
 
+        # TODO: faire un union_all des geometries plutot qu'une geoseries ? Aucune idée de ce qui est le plus idiomatique/efficace
         sidewalks_zone_list = list(geo_data.residentials.geometry)
         sidewalks_zone_list.extend(list(industrial_and_commercial_zones.geometry))
         sidewalks_zone = g.GeoSeries(sidewalks_zone_list)
 
-        # Windowing the roads before polygonising them leads to errors
+        # Windowing the roads leads to errors because geometries are not the same type (Lines vs Polygons)
         # Related thread: https://github.com/geopandas/geopandas/issues/1724
         new_roads = geo_data.roads
 
-        non_car_natures = IGN.road_non_car_natures
-        roads_with_cars = new_roads.query(
-            "{} not in @non_car_natures".format(RoadDataFrame.nature)
+        # Splitting roads into those with cars and those without (paths)
+        new_roads[RoadDataFrame.type] = new_roads[RoadDataFrame.nature].map(
+            lambda x: get_class(x, IGN.roads_synonyms, IGN.other)
         )
-        paths = new_roads.query("{} in @non_car_natures".format(RoadDataFrame.nature))
+        road_groups = new_roads.groupby(RoadDataFrame.type)
+        paths = safe_get_group(road_groups, new_roads, IGN.path)
+        roads_with_cars = safe_get_group(road_groups, new_roads, IGN.with_car_tag)
 
-        road_has_sidewalk = {}
-        road_has_guardrails = {}
-
-        for road_index in roads_with_cars.index:
-            road_geom = roads_with_cars.geometry[road_index]
-            road_importance = int(roads_with_cars[RoadDataFrame.importance][road_index])
-            road_lane_nbr = (
-                int(roads_with_cars[RoadDataFrame.number_lanes][road_index])
-                if not math.isnan(
-                    (roads_with_cars[RoadDataFrame.number_lanes][road_index])
-                )
-                else 1
-            )
-
-            can_have_sidewalk = any(sidewalks_zone.intersects(road_geom))
-
-            if can_have_sidewalk and (road_importance == 4 or road_importance == 5):
-                road_has_sidewalk[road_index] = True
-                road_has_guardrails[road_index] = False
-            elif road_importance < 2 or road_lane_nbr >= 3:
-                road_has_sidewalk[road_index] = False
-                road_has_guardrails[road_index] = True
-            else:
-                road_has_sidewalk[road_index] = False
-                road_has_guardrails[road_index] = False
-
-        roads_sidewalks = p.Series(road_has_sidewalk)
-        roads_guardrails = p.Series(road_has_guardrails)
-        roads_with_cars = roads_with_cars.assign(
-            has_sidewalks=roads_sidewalks, has_guardrails=roads_guardrails
+        # Using roads attributes to define whether they have sidewalks or guardrails, and whether they are bridges or tunnels
+        roads_tagged = roads_with_cars.apply(
+            lambda x: IGNPreprocessor.tag_roads(
+                x[RoadDataFrame.geometry],
+                x[RoadDataFrame.importance],
+                x[RoadDataFrame.number_lanes],
+                x[RoadDataFrame.position_rel_to_ground],
+                sidewalks_zone,
+            ),
+            axis=1,
+            result_type="expand",
+        )
+        roads_tagged = roads_tagged.rename(
+            columns={
+                0: RenderingRoadDataFrame.has_sidewalks,
+                1: RenderingRoadDataFrame.has_guardrails,
+                2: RenderingRoadDataFrame.is_bridge,
+                3: RenderingRoadDataFrame.is_tunnel,
+                4: RenderingRoadDataFrame.number_lanes,
+            }
+        )
+        # Fusing the data we calculated with the geometries
+        roads_full = g.GeoDataFrame(
+            roads_tagged, geometry=roads_with_cars.geometry, crs=geowindow.crs
         )
 
-        # Forests can intersect buildings, which we don't want
-        cleaned_forests = safe_overlay(
-            new_forests, new_buildings, OverlayType.DIFFERENCE
+        # Removing forests from water
+        cleaned_forests = safe_overlay(new_forests, new_water, OverlayType.DIFFERENCE)
+
+        # Splitting buildings into the different categories
+        new_buildings[BuildingDataFrame.type] = new_buildings[
+            BuildingDataFrame.usage_1
+        ].map(lambda x: get_class(x, IGN.building_class_synonyms, IGN.default_building))
+        buildings_groups = new_buildings.groupby(BuildingDataFrame.type)
+
+        churches = safe_get_group(buildings_groups, new_buildings, IGN.church)
+        factories = safe_get_group(buildings_groups, new_buildings, IGN.factory)
+        malls = safe_get_group(buildings_groups, new_buildings, IGN.mall)
+        buildings = safe_get_group(
+            buildings_groups, new_buildings, IGN.default_building
         )
 
-        # Removing water from forests
-        cleaned_forests = safe_overlay(
-            cleaned_forests, new_water, OverlayType.DIFFERENCE
-        )
+        # House filtering is done differently (it depends on the number of housings in the building)
+        houses = buildings.query(f"{BuildingDataFrame.number_housings} < 4")
+        # Default buildings are those whose index are not in the houses dataframe
+        default_buildings = buildings.loc[buildings.index.difference(houses.index)]
 
-        # Splitting water between "still" and "flowing"
-        flowing_water_tags = IGN.flowing_water_tags
-        flowing_water = new_water.query(
-            "{} in @flowing_water_tags".format(WaterDataFrame.nature)
-        )
-        still_water = new_water.query(
-            "{} not in @flowing_water_tags".format(WaterDataFrame.nature)
-        )
-        still_water = safe_overlay(still_water, new_oceans, OverlayType.DIFFERENCE)
-        flowing_water = safe_overlay(flowing_water, new_oceans, OverlayType.DIFFERENCE)
-
-        churches_tags = IGN.building_churches_tags
-        churches = new_buildings.query(
-            "{} in @churches_tags".format(BuildingDataFrame.usage_1)
-        )
-        non_churches = new_buildings.query(
-            "{} not in @churches_tags".format(BuildingDataFrame.usage_1)
-        )
-        malls_tags = IGN.building_malls_tags
-        malls = non_churches.query(
-            "{} in @malls_tags".format(BuildingDataFrame.usage_1)
-        )
-        non_malls = non_churches.query(
-            "{} not in @malls_tags".format(BuildingDataFrame.usage_1)
-        )
-        factories_tags = IGN.building_factories_tags
-        factories = non_malls.query(
-            "{} in @factories_tags".format(BuildingDataFrame.usage_1)
-        )
-        non_factories = non_malls.query(
-            "{} not in @factories_tags".format(BuildingDataFrame.usage_1)
-        )
-        houses = non_factories.query("{} < 4".format(BuildingDataFrame.number_housings))
-        default_buildings = non_factories.query(
-            "{} not in @houses.ID".format(BuildingDataFrame.ID)
-        )
-
+        # Landuse part:
         if not new_plots.empty:
             new_plots = safe_overlay(new_plots, new_buildings, OverlayType.DIFFERENCE)
 
             # Prairies should be grass and not plots
             prairie_tags = IGN.prairie_codes
             new_plots = new_plots.query(
-                "{} not in @prairie_tags".format(PlotDataFrame.group)
+                f"{PlotDataFrame.group} not in {IGN.prairie_codes}"
             )
 
             # Orchards should be added to forests
-            orchards_tags = IGN.orchard_codes
-            orchards = new_plots.query(
-                "{} in @orchards_tags".format(PlotDataFrame.group)
-            )
+            orchards = new_plots.query(f"{PlotDataFrame.group} in {IGN.orchard_codes}")
             new_plots = new_plots.query(
-                "{} not in @orchards_tags".format(PlotDataFrame.group)
+                f"{PlotDataFrame.group} not in {IGN.orchard_codes}"
             )
 
             cleaned_forests = safe_overlay(cleaned_forests, orchards, OverlayType.UNION)
 
-        sand_tags = IGN.bdcarto_sand_values
-        sands = new_landuse.query("{} in @sand_tags".format(LandUseDataFrame.nature))
+        sands = new_landuse.query(
+            f"{LandUseDataFrame.nature} in {IGN.bdcarto_sand_values}"
+        )
 
-        tartan_tags = IGN.tartan_values
-        tartan = new_sport.query("{} in @tartan_tags".format(SportDataFrame.nature))
+        new_sport[SportDataFrame.type] = new_sport[SportDataFrame.nature].map(
+            lambda x: get_class(x, IGN.sport_surface_class_synonyms, IGN.other)
+        )
+        sports_groups = new_sport.groupby(SportDataFrame.type)
+        tartan = safe_get_group(sports_groups, new_sport, IGN.tartan)
+        grass = safe_get_group(sports_groups, new_sport, IGN.grass)
+        asphalt = safe_get_group(sports_groups, new_sport, IGN.asphalt)
 
-        grass_tags = IGN.grass_values
-        grass = new_sport.query("{} in @grass_tags".format(SportDataFrame.nature))
+        # Treating water. We first want to split individual features into "still" and "flowing", then fuse each category,
+        # Then fuse all water in the window into a single polygon, and split it into its different connex components
+        # https://gis.stackexchange.com/questions/225368/understanding-difference-between-polygon-and-multipolygon-for-shapefiles-in-qgis
+        # Then, each component is again tagged as "flowing", "still" or "ocean" depending on what it intersects.
+        # This way a connex surface only has a single type
 
-        asphalt_tags = IGN.asphalt_values
-        asphalt = new_sport.query("{} in @asphalt_tags".format(SportDataFrame.nature))
+        # Splitting features into different types
+        new_water[WaterDataFrame.type] = new_water[WaterDataFrame.nature].map(
+            lambda x: get_class(x, IGN.water_types_synonnyms, IGN.still)
+        )
+        water_groups = new_water.groupby(WaterDataFrame.type)
+
+        base_still_water = safe_get_group(water_groups, new_water, IGN.still)
+        base_flowing_water = safe_get_group(water_groups, new_water, IGN.flowing)
+
+        # Fusing geometries
+        still_geometry = base_still_water.geometry.union_all()
+        flowing_geometry = base_flowing_water.geometry.union_all()
+        ocean_geometry = new_oceans.geometry.union_all()
+
+        # TODO: supposedly from there it's the same as OSMPreprocessor for water. Should it be factorised ? if so, how ?
+        all_water = union(still_geometry, flowing_geometry)
+        all_water = union(all_water, ocean_geometry)
+
+        # Splitting into the connex components
+        if not all_water.is_empty:
+            # mapping(all_water)["coordinates"] raises a KeyError if geometry is empty
+            water_geometry = mapping(all_water)["coordinates"]
+            # Have to distinguish if it's a multipolygon or a regular polygon
+            if all_water.geom_type == IGN.multi_polygon:
+
+                split_water = g.GeoDataFrame(
+                    geometry=[Polygon(geom[0], geom[1:]) for geom in water_geometry],
+                    crs=geowindow.crs,
+                )
+            else:
+                split_water = g.GeoDataFrame(
+                    geometry=[Polygon(water_geometry[0], water_geometry[1:])],
+                    crs=geowindow.crs,
+                )
+        else:
+            split_water = g.GeoDataFrame(geometry=[], crs=geowindow.crs)
+
+        # Tagging the connex components water types
+        water_types = {
+            IGN.flowing: flowing_geometry,
+            IGN.ocean: ocean_geometry,
+            IGN.still: still_geometry,
+        }
+        split_water[WaterDataFrame.type] = split_water[WaterDataFrame.geometry].map(
+            lambda x: tag_water(x, water_types, IGN.other)
+        )
+        split_water_groups = split_water.groupby(WaterDataFrame.type)
+
+        # Now we are done
+        still_water = safe_get_group(split_water_groups, split_water, IGN.still)
+        flowing_water = safe_get_group(split_water_groups, split_water, IGN.flowing)
+        ocean_water = safe_get_group(split_water_groups, split_water, IGN.ocean)
 
         buildings_data = BuildingRenderingData(
             churches=churches,
@@ -210,11 +242,42 @@ class IGNPreprocessor:
         rendering_data = RenderingData(
             forests=cleaned_forests,
             buildings=buildings_data,
-            roads=roads_with_cars,
+            roads=roads_full,
             still_water=still_water,
             flowing_water=flowing_water,
-            ocean=new_oceans,
+            ocean=ocean_water,
             zones=zones_data,
         )
 
         return rendering_data
+
+    @staticmethod
+    def tag_roads(
+        geometry, importance, number_lanes, position_rel_to_ground, sidewalks_zone
+    ):
+        # Importance has to be filled
+        road_importance = int(importance)
+        # Lane number is sometimes empty
+        road_lane_nbr = int(number_lanes) if not p.isnull(number_lanes) else 1
+
+        # Sidewalks are only in urban areas
+        can_have_sidewalk = any(sidewalks_zone.intersects(geometry))
+
+        if can_have_sidewalk and (road_importance == 4 or road_importance == 5):
+            has_sidewalk = True
+            has_guardrails = False
+        elif road_importance < 2 or road_lane_nbr >= 3:
+            has_sidewalk = False
+            has_guardrails = True
+        else:
+            has_sidewalk = False
+            has_guardrails = False
+
+        is_bridge = False
+        is_tunnel = False
+        if position_rel_to_ground.isdigit():
+            road_pos_to_ground_value = int(position_rel_to_ground)
+            is_bridge = road_pos_to_ground_value >= 1
+            is_tunnel = road_pos_to_ground_value <= -1
+
+        return [has_sidewalk, has_guardrails, is_bridge, is_tunnel, road_lane_nbr]

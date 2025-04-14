@@ -32,7 +32,7 @@ class ASCParser:
         nbcols = int(file_data.columns[0].split(" ")[-1])
         nbrows = int(file_data.values[0][0].split(" ")[-1])
 
-        # The x_min and y_min indicated are those of the enveloppe of the raster,
+        # The x_min and y_min indicated are those of the envelope of the raster,
         # while we're concerned abt the center pixel which is (0.5,0.5) away.
         x_min = float(file_data.values[1][0].split(" ")[-1]) + 0.5
         y_min = float(file_data.values[2][0].split(" ")[-1]) + 0.5

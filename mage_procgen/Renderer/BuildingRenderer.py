@@ -5,6 +5,8 @@ import bpy
 import bmesh
 from bpy import data as D
 
+import pandas as p
+
 from shapely.geometry import mapping
 
 from tqdm import tqdm
@@ -110,7 +112,7 @@ class BuildingRenderer(BaseRenderer):
             m.node_group = D.node_groups[self.geometry_node_name]
 
             # If we have the info in the database, use it here
-            if not math.isnan(building[0]):
+            if not p.isnull(building[0]):
                 # Adding 1 to the DB value because the (flat) roof is considered as a floor
                 mesh_obj.modifiers[0]["Input_6"] = int(building[0]) + 1
                 mesh_obj.modifiers[0]["Input_7"] = int(building[0]) + 1

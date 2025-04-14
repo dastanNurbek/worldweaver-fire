@@ -56,21 +56,61 @@ class WFS_FR:
 
 class IGN:
 
+    other = "other"
+
+    multi_polygon = "MultiPolygon"
+
+    # Buildings
     building_churches_tags = ["Religieux"]
     building_malls_tags = ["Commercial et services"]
     building_factories_tags = ["Industriel"]
 
-    road_non_car_natures = ["Chemin", "Escalier", "Sentier"]
-    road_directions = ["Double sens", "Sens direct", "Sens inverse"]
+    mall = "mall"
+    church = "church"
+    factory = "factory"
+    house = "house"
+    default_building = "default"
 
+    building_class_synonyms = {
+        church: building_churches_tags,
+        mall: building_malls_tags,
+        factory: building_factories_tags,
+    }
+
+    # Roads
+    road_path_natures = ["Chemin", "Escalier", "Sentier"]
+    road_with_car_natures = [
+        "Bretelle",
+        "Rond-point",
+        "Route à 1 chaussée",
+        "Route à 2 chaussées",
+        "Route empierrée",
+        "Type autoroutier",
+    ]
+
+    road_directions = ["Double sens", "Sens direct", "Sens inverse"]
+    with_car_tag = "with_car"
+    path = "path"
+
+    roads_synonyms = {path: [road_path_natures], with_car_tag: road_with_car_natures}
+
+    # Zones
     industrial_commercial_tags = [
         "Zone artisanale",
         "Zone commerciale",
         "Zone d'activités",
     ]
 
+    # Water
+    flowing = "flowing"
+    still = "still"
+    ocean = "ocean"
+
     flowing_water_tags = ["Ecoulement naturel", "Ecoulement canalisé", "Canal"]
 
+    water_types_synonnyms = {flowing: flowing_water_tags}
+
+    # Landuse
     # From https://geoservices.ign.fr/bd-cartor-descriptif-de-contenu
     bdcarto_landuses_values = [
         "Broussailles",
@@ -104,6 +144,16 @@ class IGN:
     tartan_values = ["Terrain de tennis"]
     grass_values = ["Grand terrain de sport"]
     asphalt_values = ["Petit terrain multi - sports"]
+
+    tartan = "tartan"
+    grass = "grass"
+    asphalt = "asphalt"
+
+    sport_surface_class_synonyms = {
+        tartan: tartan_values,
+        grass: grass_values,
+        asphalt: asphalt_values,
+    }
 
     # From annex 1 of https://geoservices.ign.fr/sites/default/files/2023-11/DC_DL_RPG_2-1_0.pdf
     orchard_codes = ["20"]

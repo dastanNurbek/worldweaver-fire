@@ -4,6 +4,10 @@
 """
 
 
+class RenderingDataFrame:
+    geometry = "geometry"
+
+
 class RenderingBuildingDataFrame:
 
     height = "height"
@@ -14,10 +18,8 @@ class RenderingBuildingDataFrame:
 class RenderingRoadDataFrame:
 
     number_lanes = "Nb_lanes"
-    position_rel_to_ground = "Position_rel_to_ground"
-    width = "Width"
-    urban = "Urban"
     geometry = "geometry"
-
     has_sidewalks = "has_sidewalks"
     has_guardrails = "has_guardrails"
+    is_bridge = "is_bridge"
+    is_tunnel = "is_tunnel"

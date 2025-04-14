@@ -33,7 +33,6 @@ from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, CRS_degrees
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.RenderingDataFrames import (
-    RenderingRoadDataFrame,
     RenderingBuildingDataFrame,
 )
 import mage_procgen.Utils.DataFiles as df
@@ -53,6 +52,9 @@ class StreamLoader(Loader):
         geo_window_wgs84 = geo_window.to_crs(CRS_degrees)
         bbox_wgs84 = geo_window_wgs84.bounds
 
+        # The box coordinates are the coordinates of the center pixels of the rasters,
+        # which are (.5,.5) meters away from the envelope of the raster.
+        # This bbox_lamb93_rounded holds the min and max coords of the envelope we need to query
         bbox_lamb93_rounded = (
             math.floor(bbox_lamb93[0]) - 0.5,
             math.floor(bbox_lamb93[1]) - 0.5,
@@ -62,8 +64,10 @@ class StreamLoader(Loader):
 
         # Requesting terrain at .5m because there are weird artifacts when you do it at 1m
         terrain_resolution = 0.5
+        # Need to impose a limit on the size of slabs of terrain requested because of the webservices limits,
+        # so we fix a kind of arbitrary 1km limit
         terrain_max_slab_size = 1000
-        # TODO: check this value
+        # Arbitrary value
         no_data = -9999
         logger.info("Loading data from stream")
 
@@ -167,7 +171,6 @@ class StreamLoader(Loader):
 
         building_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.buildings_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -176,7 +179,6 @@ class StreamLoader(Loader):
 
         forest_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.forests_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -185,7 +187,6 @@ class StreamLoader(Loader):
 
         road_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.road_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -194,7 +195,6 @@ class StreamLoader(Loader):
 
         water_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.water_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -203,7 +203,6 @@ class StreamLoader(Loader):
 
         residential_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.residential_zone_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -212,7 +211,6 @@ class StreamLoader(Loader):
 
         interest_zone_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.activity_zone_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -221,7 +219,6 @@ class StreamLoader(Loader):
 
         departements_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.departement_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -230,7 +227,6 @@ class StreamLoader(Loader):
 
         shore_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.shore_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -239,7 +235,6 @@ class StreamLoader(Loader):
 
         sport_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.sport_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -248,7 +243,6 @@ class StreamLoader(Loader):
 
         landuse_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.landuse_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -257,7 +251,6 @@ class StreamLoader(Loader):
 
         plot_data = WFSParser.load(
             wfs=wfs,
-            folder=input_folder,
             key=WFS_FR.plot_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
@@ -311,7 +304,7 @@ class StreamLoader(Loader):
             RoadDataFrame.position_rel_to_ground: road_data[
                 RoadDataFrame.WFS.position_rel_to_ground
             ],
-            RenderingRoadDataFrame.width: road_data[RoadDataFrame.WFS.width],
+            RoadDataFrame.width: road_data[RoadDataFrame.WFS.width],
             RoadDataFrame.urban: road_data[RoadDataFrame.WFS.urban],
             RoadDataFrame.geometry: road_data[RoadDataFrame.WFS.geometry],
         }

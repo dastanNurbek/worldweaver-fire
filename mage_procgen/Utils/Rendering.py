@@ -146,7 +146,7 @@ def setup_img_persp(resolution, pixel_size, center):
     max_z = -math.inf
 
     # Calculating the maximum height of the scene, using terrain and buildings
-    # TODO: check if there are edge cases where this does not hold
+    # TODO: Instead of this, should use a constant height flight path and REAL camera parameters
     terrain_collection = D.collections["Terrain"].objects
     for terrain in terrain_collection:
         terrain_box = terrain.bound_box

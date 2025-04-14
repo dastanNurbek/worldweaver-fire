@@ -285,7 +285,7 @@ def setup_rpg(base_folder: str, departement: str, archive_file: str):
     )
 
 
-# TODO: delete the other folders ?
+# TODO: delete the other folders ? => OUI. On peut même simplifier plus
 def setup_bdortho(base_folder: str, departement: str, archive_file: str):
     """
     Extracts BDORTHO archive, and changes the folders to simplify it from:

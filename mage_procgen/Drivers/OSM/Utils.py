@@ -71,7 +71,10 @@ class OSM:
 
     # General
     tags = "tags"
+    id = "id"
     amenity = "amenity"
+
+    other = "other"
 
     # Geometry types
     point = "Point"
@@ -81,8 +84,7 @@ class OSM:
     multi_line_string = "MultiLineString"
     line_string = "LineString"
 
-    building_tag = "building"
-
+    # Roads
     highway_tag = "highway"
 
     path_tags = [
@@ -93,19 +95,11 @@ class OSM:
         "path",
         "via_ferrata",
     ]
+    path = "path"
+    road_class = "road_class"
 
-    # Land
-    landuse = "landuse"
-    natural = "natural"
+    roads_synonyms = {path: path_tags}
 
-    water = "water"
-
-    usage_forests_tags = "forest"
-    usage_residential_tags = "residential"
-    usage_commercial_tags = "residential"
-    usage_industrial_tags = "industrial"
-
-    # Roads
     lanes = "lanes"
     max_speed = "maxspeed"
     mph_key = "mph"
@@ -121,6 +115,8 @@ class OSM:
     tunnel = "tunnel"
 
     # Buildings
+    building_tag = "building"
+
     churches_types = [
         "religious ",
         "cathedral",
@@ -149,9 +145,37 @@ class OSM:
         "vineyard",
     ]
 
-    field_crop = "crop"
-    wheat_crop = "wheat"
-    corn_crop = "corn"
+    mall = "mall"
+    church = "church"
+    factory = "factory"
+    house = "house"
+    default_building = "default"
+
+    building_class_synonyms = {
+        church: churches_types,
+        mall: malls_types,
+        factory: factories_types,
+        house: houses_types,
+    }
+
+    building_class = "building_class"
+
+    height = "height"
+    levels = "building:levels"
+
+    # Landuse
+    landuse = "landuse"
+    natural = "natural"
+
+    water = "water"
+    usage_forests_tags = "forest"
+    usage_residential_tags = "residential"
+    usage_commercial_tags = "commercial"
+    usage_industrial_tags = "industrial"
+
+    leisure_landuses = [
+        "village_green",
+    ]
 
     grass_landuses = [
         "grass",
@@ -172,26 +196,85 @@ class OSM:
         "retail",
     ]
 
-    leisure_landuses = [
-        "village_green",
-    ]
+    grass = "grass"
+    developed = "developed"
+    leisure = "leisure"
+    field = "field"
 
+    landuse_class = "landuse_class"
+
+    landuse_class_synonyms = {
+        grass: grass_landuses,
+        developed: developed_landuses,
+        leisure: leisure_landuses,
+        usage_forests_tags: [usage_forests_tags],
+        field: field_landuses,
+        water: [water],
+    }
+
+    # Fields
+    field_crop = "crop"
+    wheat_crop = "wheat"
+    corn_crop = "corn"
+
+    crop_class_synonyms = {
+        wheat_crop: [wheat_crop],
+        corn_crop: [corn_crop],
+    }
+
+    crop_class = "crop_class"
+
+    # Surfaces
     surface = "surface"
 
     grass_surface = "grass"
-    asphalt_surface = [
-        "asphalt",
-    ]
+    asphalt_surface = "asphalt"
     tartan_surface = "tartan"
     compacted_surface = "compacted"
     sand_surface = "sand"
     beach = "beach"
 
+    surface_class = "surface_class"
+
+    surface_class_synonyms = {
+        grass: [grass_surface],
+        tartan_surface: [tartan_surface],
+        compacted_surface: [compacted_surface],
+        sand_surface: [sand_surface],
+        beach: [beach],
+        asphalt_surface: [asphalt_surface],
+    }
+
+    # Leisures
     leisure = "leisure"
     playground = "playground"
 
-    height = "height"
-    levels = "building:levels"
+    leisure_class = "leisure_class"
+
+    leisure_class_synonyms = {playground: [playground]}
+
+    # Natures
+    nature_class = "nature_class"
+
+    nature_class_synonyms = {
+        beach: [beach],
+        sand_surface: [sand_surface],
+        water: [water],
+    }
+
+    # Water
+    still_water_tags = ["lagoon", "lake", "oxbow", "basin", "pond", "reservoir"]
+    still_water_ban_list = ["fountain"]
+
+    still = "still"
+    flowing = "flowing"
+    ocean = "ocean"
+
+    water_class = "water_class"
+
+    waters_synonyms = {
+        still: still_water_tags,
+    }
 
 
 class SwissAlti:

@@ -119,6 +119,7 @@ class RenderManager:
         logger.info("Rendering flowing water")
         self.flowing_water_renderer.render(
             self.rendering_data.flowing_water,
+            self.rendering_data.ocean,
             self.window.center,
             rendering_collection_name,
         )
