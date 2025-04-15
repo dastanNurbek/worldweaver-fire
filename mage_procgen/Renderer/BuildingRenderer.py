@@ -15,36 +15,14 @@ from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
-from mage_procgen.Utils.DataFiles import assets_folder
 
 
 class BuildingRenderer(BaseRenderer):
     _mesh_name = "Buildings"
 
     def __init__(self, terrain_data: list[TerrainData], object_config):
-        self.config = object_config
-        _location = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__))
-        )
-        filepath = os.path.realpath(
-            os.path.join(_location, "..", assets_folder, self.config.geometry_node_file)
-        )
-        try:
-            with bpy.data.libraries.load(filepath) as (data_from, data_to):
-                data_to.node_groups = [self.config.geometry_node_name]
 
-            # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
-            self.geometry_node_name = data_to.node_groups[0].name
-
-        except Exception as _:
-            raise Exception(
-                f"Unable to load the Geometry Nodes setup with the name '"
-                f"{self.config.geometry_node_name}"
-                f"'"
-                f" from the file "
-                f"{filepath}"
-                f". Please check that the name is correct."
-            )
+        super().__init__(terrain_data, object_config)
 
         # Buildify does not realize instances of the objects it adds, so they have their own pass index.
         # In order to set it, we have to get the objects that are used by the geometry nodes.
@@ -59,8 +37,6 @@ class BuildingRenderer(BaseRenderer):
         for collection in set(added_collections):
             for obj in collection.objects:
                 obj.pass_index = object_config.tagging_index
-
-        self._terrain_data = terrain_data
 
     def render(
         self,
