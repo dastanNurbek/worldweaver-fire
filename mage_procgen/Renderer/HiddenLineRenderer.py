@@ -59,7 +59,9 @@ class HiddenLineRenderer:
             ]
 
             # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(points_coords, geo_window.center)
+            centered_points_coords = self._to_scene_coords(
+                points_coords, geo_window.center
+            )
 
             for pt_index in range(1, len(centered_points_coords)):
                 edge = mesh.edges.new(
@@ -79,7 +81,7 @@ class HiddenLineRenderer:
         mesh_obj.hide_render = True
         mesh_obj.hide_viewport = True
 
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
     ) -> list[Point]:
 

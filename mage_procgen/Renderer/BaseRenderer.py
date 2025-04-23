@@ -1,7 +1,4 @@
 import os
-import math
-
-from collections import deque
 
 import bpy
 import bmesh
@@ -52,91 +49,84 @@ class BaseRenderer:
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
+
+        mesh_obj = self.draw_objects(polygons, geo_center, parent_collection_name)
+
+        mesh_obj.pass_index = self.config.tagging_index
+
+        m = mesh_obj.modifiers.new("", "NODES")
+        m.name = self.geometry_node_name
+        m.node_group = D.node_groups[self.geometry_node_name]
+
+    def draw_objects(self, objects, geo_center, parent_collection_name):
         mesh = bmesh.new()
 
-        for polygon in tqdm(polygons):
+        for polygon in tqdm(objects):
             # Kind of hack because Polygon.coords is not implemented
             # TODO : shapely.get_coordinates(polygon)
             polygon_geometry = mapping(polygon)["coordinates"]
 
-            points_coords = [
-                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                for x in polygon_geometry[0]
-            ]
+            if len(polygon_geometry) > 0:
+                points_coords = [
+                    (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                    for x in polygon_geometry[0]
+                ]
 
-            if len(polygon_geometry) > 1:
-                # If there are holes
-                for hole in polygon_geometry[1:]:
-                    points_coords_hole = [
-                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                        for x in hole
-                    ]
+                # First getting the list of the edges that make the exterior of the face
+                countour_ring = BaseRenderer.add_edge_ring(
+                    mesh, self._to_scene_coords(points_coords, geo_center)
+                )
 
-                    points_coords = self.insert_hole(points_coords, points_coords_hole)
+                if len(polygon_geometry) > 1:
+                    # If there are holes
+                    for hole in polygon_geometry[1:]:
+                        points_coords_hole = [
+                            (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                            for x in hole
+                        ]
 
-            # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(points_coords, geo_center)
+                        # Doing the same for all the holes
+                        hole_ring = BaseRenderer.add_edge_ring(
+                            mesh, self._to_scene_coords(points_coords_hole, geo_center)
+                        )
 
-            # Need to remove the last point so that it's not repeated and creates a segment of 0 length
-            face = mesh.faces.new(
-                mesh.verts.new(x) for x in centered_points_coords[:-1]
-            )
+                        countour_ring.extend(hole_ring)
+
+                # Constructing the face this was will make blender triangulate it and allow us to do faces with holes
+                bmesh.ops.triangle_fill(
+                    mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
+                )
 
         mesh_data = D.meshes.new(self._mesh_name)
         self._mesh_name = mesh_data.name
         mesh.to_mesh(mesh_data)
         mesh.free()
         mesh_obj = D.objects.new(self._mesh_name, mesh_data)
-        mesh_obj.pass_index = self.config.tagging_index
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
-        m = mesh_obj.modifiers.new("", "NODES")
-        m.name = self.geometry_node_name
-        m.node_group = D.node_groups[self.geometry_node_name]
+        return mesh_obj
 
-    def insert_hole(
-        self, points_coords: list[Point], points_coords_hole: list[Point]
-    ) -> list[Point]:
-        min_dist = math.inf
-        closest_pt_poly = None
-        closest_pt_hole = None
+    @staticmethod
+    def add_edge_ring(mesh, point_collection):
 
-        # Last point is always repeated to close the polygon/hole
-        unique_points_coords = points_coords[:-1]
-        unique_points_coords_hole = points_coords_hole[:-1]
+        edge_collection = []
 
-        # Finding the closest distance between the poly and the hole, and associated points
-        for pt_poly in unique_points_coords:
-            for pt_hole in unique_points_coords_hole:
-                distance = math.dist(pt_poly, pt_hole)
-                if distance < min_dist:
-                    min_dist = distance
-                    closest_pt_poly = pt_poly
-                    closest_pt_hole = pt_hole
+        if len(point_collection) > 0:
+            first_point = mesh.verts.new(point_collection[0])
+            previous_point = first_point
+            current_point = None
+            for point in point_collection[1:-1]:
+                current_point = mesh.verts.new(point)
+                new_edge = mesh.edges.new([previous_point, current_point])
+                edge_collection.append(new_edge)
+                previous_point = current_point
+            if current_point is not None:
+                new_edge = mesh.edges.new([previous_point, first_point])
+                edge_collection.append(new_edge)
 
-        # Making the closest point of the hole the first in the list
-        rotation_index = -unique_points_coords_hole.index(closest_pt_hole)
-        deq = deque(unique_points_coords_hole)
-        deq.rotate(rotation_index)
-        rotated_hole = list(deq)
+        return edge_collection
 
-        # Splitting the orignal polygon at the correct index
-        insertion_index = unique_points_coords.index(closest_pt_poly) + 1
-        poly_first_part = unique_points_coords[:insertion_index]
-        poly_second_part = unique_points_coords[insertion_index:]
-
-        # Fusing the polygon with the hole
-        toreturn = []
-        toreturn.extend(poly_first_part)
-        toreturn.extend(rotated_hole)
-        toreturn.append(closest_pt_hole)
-        toreturn.append(closest_pt_poly)
-        toreturn.extend(poly_second_part)
-        toreturn.append(poly_first_part[0])
-
-        return toreturn
-
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
     ) -> list[Point]:
 

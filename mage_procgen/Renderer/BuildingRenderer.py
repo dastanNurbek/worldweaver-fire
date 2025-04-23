@@ -1,7 +1,3 @@
-import os
-import math
-
-import bpy
 import bmesh
 from bpy import data as D
 
@@ -14,7 +10,7 @@ from tqdm import tqdm
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 from mage_procgen.Utils.Geometry import interpolate_z
-from mage_procgen.Utils.Utils import BuildingList, Point, TerrainData
+from mage_procgen.Utils.Utils import BuildingList, TerrainData
 
 
 class BuildingRenderer(BaseRenderer):
@@ -51,27 +47,32 @@ class BuildingRenderer(BaseRenderer):
             mesh = bmesh.new()
             # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(building[1])["coordinates"]
+
             points_coords = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
             ]
+            # Buildings have to be perfectly flat in order for Buildify to work.
+            # To achieve that we place all the points at the lowest z of the contour points
+            z_min = min([x[2] for x in points_coords])
+            points_coords = [(x[0], x[1], z_min) for x in points_coords]
+            countour_ring = BaseRenderer.add_edge_ring(
+                mesh, self._to_scene_coords(points_coords, geo_center)
+            )
 
             if len(polygon_geometry) > 1:
                 # If there are holes
                 for hole in polygon_geometry[1:]:
-                    points_coords_hole = [
-                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                        for x in hole
-                    ]
+                    points_coords_hole = [(x[0], x[1], z_min) for x in hole]
 
-                    points_coords = self.insert_hole(points_coords, points_coords_hole)
+                    hole_ring = BaseRenderer.add_edge_ring(
+                        mesh, self._to_scene_coords(points_coords_hole, geo_center)
+                    )
 
-            # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(points_coords, geo_center)
+                    countour_ring.extend(hole_ring)
 
-            # Need to remove the last point so that it's not repeated and creates a segment of 0 length
-            face = mesh.faces.new(
-                mesh.verts.new(x) for x in centered_points_coords[:-1]
+            bmesh.ops.triangle_fill(
+                mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
             )
 
             mesh_name = self._mesh_name
@@ -92,21 +93,6 @@ class BuildingRenderer(BaseRenderer):
                 # Adding 1 to the DB value because the (flat) roof is considered as a floor
                 mesh_obj.modifiers[0]["Input_6"] = int(building[0]) + 1
                 mesh_obj.modifiers[0]["Input_7"] = int(building[0]) + 1
-
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
-
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        # Also, building rendering requires the base polygon to have constant z, so we fix every point's z to be the lowest in the set.
-        z_min = min([x[2] for x in points_coords])
-
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
-            for x in points_coords
-        ]
-
-        return centered_points_coords
 
     def clear_object(self):
 

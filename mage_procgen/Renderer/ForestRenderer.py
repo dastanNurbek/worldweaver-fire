@@ -18,7 +18,7 @@ class ForestRenderer(BaseRenderer):
         node["Socket_8"] = terrain_object
         node["Socket_3"] = ray_length
 
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
     ) -> list[Point]:
 

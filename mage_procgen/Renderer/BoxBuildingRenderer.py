@@ -1,8 +1,6 @@
-import os
-import math
 import random
+from dataclasses import dataclass
 
-import bpy
 import bmesh
 from bpy import data as D
 
@@ -51,6 +49,23 @@ class BoxBuildingRenderer(BaseRenderer):
         (0.429, 0.067, 0.030, 1),
     ]
 
+    class GeometryCollection:
+        def __init__(self):
+            # Contains all the edges of the bottom face
+            self.bottom_edges_collection = []
+            # Contains all the edges of the top face
+            self.top_edges_collection = []
+            # Contains all the edges of the mockup face
+            self.mockup_edges_collection = []
+            # Contains the points of the top face that will be used to contruct the base of the roof
+            self.top_points_dict = {}
+
+    @dataclass
+    class PointGroup:
+        bottom_point: bmesh.types.BMVert
+        top_point: bmesh.types.BMVert
+        mockup_point: bmesh.types.BMVert
+
     def __init__(self, terrain_data: list[TerrainData], object_config):
 
         super().__init__(terrain_data, object_config)
@@ -82,65 +97,96 @@ class BoxBuildingRenderer(BaseRenderer):
 
             mesh = bmesh.new()
 
+            # Mockup object used to fix PBGen's issue with complex roofs.
+            # Currently PBGen often introduces "holes" in the roof with are seen in the resulting tagging image
+            # Simply trying to add another polygon below the roof doesn't work since pbgen deletes it.
+            # Instead, we create another mesh and pass it the correct tagging index.
+            mesh_top_mockup = bmesh.new()
+
             # TODO: make those parametric
             building_height = random.uniform(2.5, 6)
             # If we have the info in the database, use it here
             if not p.isnull(building[0]):
                 building_height = float(building[0])
 
-            # TODO: Have to create the mesh data here because of the "face already exists" traces.
-            #   Correct behavior and move the init of mesh data lower
-            mesh_name = self._mesh_name
-            mesh_data = D.meshes.new(mesh_name)
-
             # Kind of hack because Polygon.coords is not implemented
             polygon_geometry = mapping(building[1])["coordinates"]
-            points_coords = [
+
+            points_coords_bot = [
                 (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
                 for x in polygon_geometry[0]
             ]
 
+            # Buildings have to be perfectly flat.
+            # To achieve this we place all the points at the lowest z of the contour points
+            z_min = min([x[2] for x in points_coords_bot])
+            points_coords_bot = [(x[0], x[1], z_min) for x in points_coords_bot]
+
+            # Coordinates for future computation of straight skeleton
+            points_scene_coords_contour_2d = [
+                Point2D(x[0] - geo_center[0], x[1] - geo_center[1])
+                for x in points_coords_bot
+            ]
+            points_scene_coords_holes_2d = []
+
+            geometry_parts = BoxBuildingRenderer.__build_geometry_part(
+                mesh,
+                mesh_top_mockup,
+                self._to_scene_coords(points_coords_bot, geo_center),
+                building_height,
+            )
+
             if len(polygon_geometry) > 1:
                 # If there are holes
                 for hole in polygon_geometry[1:]:
-                    points_coords_hole = [
-                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                        for x in hole
+                    points_coords_hole_bot = [(x[0], x[1], z_min) for x in hole]
+                    points_coords_hole_2d = [
+                        Point2D(x[0] - geo_center[0], x[1] - geo_center[1])
+                        for x in points_coords_hole_bot
                     ]
+                    points_scene_coords_holes_2d.append(points_coords_hole_2d)
 
-                    points_coords = self.insert_hole(points_coords, points_coords_hole)
+                    geometry_parts_hole = BoxBuildingRenderer.__build_geometry_part(
+                        mesh,
+                        mesh_top_mockup,
+                        self._to_scene_coords(points_coords_hole_bot, geo_center),
+                        building_height,
+                    )
 
-            # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(points_coords, geo_center)
+                    geometry_parts.bottom_edges_collection.extend(
+                        geometry_parts_hole.bottom_edges_collection
+                    )
+                    geometry_parts.top_edges_collection.extend(
+                        geometry_parts_hole.top_edges_collection
+                    )
+                    geometry_parts.mockup_edges_collection.extend(
+                        geometry_parts_hole.mockup_edges_collection
+                    )
+                    geometry_parts.top_points_dict = {
+                        **geometry_parts.top_points_dict,
+                        **geometry_parts_hole.top_points_dict,
+                    }
 
-            # Need to remove the last point so that it's not repeated and creates a segment of 0 length
-            pts_3d_bot = {
-                Point2D(x[0], x[1]): mesh.verts.new(x)
-                for x in centered_points_coords[:-1]
-            }
-            face_bot = mesh.faces.new(pts_3d_bot.values())
-            top_face_points_coords = [
-                (pt[0], pt[1], pt[2] + building_height) for pt in centered_points_coords
-            ]
-            pts_3d_top = {
-                Point2D(x[0], x[1]): mesh.verts.new(x)
-                for x in top_face_points_coords[:-1]
-            }
-            face_top = mesh.faces.new(pts_3d_top.values())
+            bmesh.ops.triangle_fill(
+                mesh,
+                use_beauty=True,
+                use_dissolve=False,
+                edges=geometry_parts.bottom_edges_collection,
+            )
+            bmesh.ops.triangle_fill(
+                mesh,
+                use_beauty=True,
+                use_dissolve=False,
+                edges=geometry_parts.top_edges_collection,
+            )
+            bmesh.ops.triangle_fill(
+                mesh_top_mockup,
+                use_beauty=True,
+                use_dissolve=False,
+                edges=geometry_parts.mockup_edges_collection,
+            )
 
-            # Building the walls
-            previous_point = list(pts_3d_bot.keys())[-1]
-            for point in pts_3d_bot.keys():
-                wall_points = [
-                    pts_3d_bot[previous_point],
-                    pts_3d_bot[point],
-                    pts_3d_top[point],
-                    pts_3d_top[previous_point],
-                ]
-
-                wall_face = mesh.faces.new(wall_points)
-                previous_point = point
-
+            # TODO: add to config
             # 45° is a slope of 1, we want a max slope of 25°
             max_slope = 25 / 45
 
@@ -149,24 +195,18 @@ class BoxBuildingRenderer(BaseRenderer):
             tolerance = 1e-8
 
             # Building straight skeleton roof
-            # TODO: find out if rounding is necessary. Should not be, but a segfault was observed on the first run after
-            #   it was disabled (only the first so far, others ran fine)
-            polygon_points = [
-                # Point2D(round(x[0], digit_precision), round(x[1], digit_precision))
-                Point2D(x[0], x[1])
-                for x in centered_points_coords[:-1]
-            ]
-            polygon = Polygon2D(polygon_points)
+            polygon = Polygon2D.from_shape_with_holes(
+                points_scene_coords_contour_2d, points_scene_coords_holes_2d
+            )
             straight_skel = skeleton_as_edge_list(polygon)
 
-            base_height = centered_points_coords[0][2]
             # Dict whose key is the point in 2d and the value is the point in 3d
             points_3d = {}
             # Contains all the 2d lines in the roof
             roof_lines = []
 
             for pt in polygon.vertices:
-                points_3d[pt] = (pt.x, pt.y, base_height + building_height)
+                points_3d[pt] = (pt.x, pt.y, z_min + building_height)
 
             for line in polygon.segments:
                 roof_lines.append(line)
@@ -182,13 +222,13 @@ class BoxBuildingRenderer(BaseRenderer):
                     points_3d[line.p1] = (
                         line.p1.x,
                         line.p1.y,
-                        base_height + building_height,
+                        z_min + building_height,
                     )
                 if not point_2d_in_collection(line.p2, points_3d.keys(), tolerance):
                     points_3d[line.p2] = (
                         line.p2.x,
                         line.p2.y,
-                        base_height + building_height,
+                        z_min + building_height,
                     )
                 if not point_2d_in_collection(
                     line.p1, polygon.vertices, tolerance
@@ -220,10 +260,10 @@ class BoxBuildingRenderer(BaseRenderer):
 
             verts_dict = {}
             for p2d, p3d in points_3d.items():
-                if p2d not in pts_3d_top:
+                if p2d not in geometry_parts.top_points_dict:
                     vert = mesh.verts.new((p3d[0], p3d[1], p3d[2]))
                 else:
-                    vert = pts_3d_top[p2d]
+                    vert = geometry_parts.top_points_dict[p2d]
                 verts_dict[p2d] = vert
 
             for line in polygon.segments:
@@ -264,6 +304,8 @@ class BoxBuildingRenderer(BaseRenderer):
                     if not str(e) == "faces.new(verts): face already exists":
                         raise e
 
+            mesh_name = self._mesh_name
+            mesh_data = D.meshes.new(mesh_name)
             mesh.to_mesh(mesh_data)
             mesh.free()
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
@@ -288,17 +330,9 @@ class BoxBuildingRenderer(BaseRenderer):
             m["Input_13"][2] = self._roof_colors[roof_color_index][2]
             m["Input_13"][3] = self._roof_colors[roof_color_index][3]
 
-            # Mockup object used to fix PBGen's issue with complex roofs.
-            # Currently PBGen often introduces "holes" in the roof with are seen in the resulting tagging image
-            # Simply trying to add another polygon below the roof doesn't work since pbgen deletes it.
-            # Instead, we create another mesh and pass it the correct tagging index.
-            mesh_top = bmesh.new()
-            face_top_2 = mesh_top.faces.new(
-                mesh_top.verts.new(x) for x in top_face_points_coords[:-1]
-            )
             mesh_data_top = D.meshes.new(mesh_name + "_Top")
-            mesh_top.to_mesh(mesh_data_top)
-            mesh_top.free()
+            mesh_top_mockup.to_mesh(mesh_data_top)
+            mesh_top_mockup.free()
             mesh_obj_top = D.objects.new(mesh_data_top.name, mesh_data_top)
             mesh_obj_top.pass_index = self.config.tagging_index
             D.collections[additionals_collection_name].objects.link(mesh_obj_top)
@@ -314,20 +348,103 @@ class BoxBuildingRenderer(BaseRenderer):
 
             self._mesh_names.append(mesh_obj_top.name)
 
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
+    @staticmethod
+    def __build_geometry_part(
+        building_mesh, mockup_mesh, point_collection, building_height
+    ) -> GeometryCollection:
 
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        # Also, building rendering requires the base polygon to have constant z, so we fix every point's z to be the lowest in the set.
-        z_min = min([x[2] for x in points_coords])
+        geometry_collection = BoxBuildingRenderer.GeometryCollection()
 
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
-            for x in points_coords
-        ]
+        if len(point_collection) > 0:
+            # Point in bottom face has the same coordinates as the points in point_collection.
+            # Points in top face and mockup are shifted along +z by building_height
+            first_points = BoxBuildingRenderer.PointGroup(
+                bottom_point=building_mesh.verts.new(point_collection[0]),
+                top_point=building_mesh.verts.new(
+                    (
+                        point_collection[0][0],
+                        point_collection[0][1],
+                        point_collection[0][2] + building_height,
+                    )
+                ),
+                mockup_point=mockup_mesh.verts.new(
+                    (
+                        point_collection[0][0],
+                        point_collection[0][1],
+                        point_collection[0][2] + building_height,
+                    )
+                ),
+            )
+            geometry_collection.top_points_dict[
+                Point2D(point_collection[0][0], point_collection[0][1])
+            ] = first_points.top_point
+            previous_points = first_points
+            current_points = None
+            for point in point_collection[1:-1]:
+                current_points = BoxBuildingRenderer.PointGroup(
+                    bottom_point=building_mesh.verts.new(point),
+                    top_point=building_mesh.verts.new(
+                        (point[0], point[1], point[2] + building_height)
+                    ),
+                    mockup_point=mockup_mesh.verts.new(
+                        (point[0], point[1], point[2] + building_height)
+                    ),
+                )
+                geometry_collection.top_points_dict[
+                    Point2D(point[0], point[1])
+                ] = current_points.top_point
+                new_edges = (
+                    building_mesh.edges.new(
+                        [previous_points.bottom_point, current_points.bottom_point]
+                    ),
+                    building_mesh.edges.new(
+                        [previous_points.top_point, current_points.top_point]
+                    ),
+                    mockup_mesh.edges.new(
+                        [previous_points.mockup_point, current_points.mockup_point]
+                    ),
+                )
 
-        return centered_points_coords
+                geometry_collection.bottom_edges_collection.append(new_edges[0])
+                geometry_collection.top_edges_collection.append(new_edges[1])
+                geometry_collection.mockup_edges_collection.append(new_edges[2])
+
+                # Building walls
+                wall_points = [
+                    previous_points.bottom_point,
+                    current_points.bottom_point,
+                    current_points.top_point,
+                    previous_points.top_point,
+                ]
+                wall_face = building_mesh.faces.new(wall_points)
+
+                previous_points = current_points
+            if current_points is not None:
+                new_edges = (
+                    building_mesh.edges.new(
+                        [previous_points.bottom_point, first_points.bottom_point]
+                    ),
+                    building_mesh.edges.new(
+                        [previous_points.top_point, first_points.top_point]
+                    ),
+                    mockup_mesh.edges.new(
+                        [previous_points.mockup_point, first_points.mockup_point]
+                    ),
+                )
+                geometry_collection.bottom_edges_collection.append(new_edges[0])
+                geometry_collection.top_edges_collection.append(new_edges[1])
+                geometry_collection.mockup_edges_collection.append(new_edges[2])
+
+                # Building last wall
+                wall_points = [
+                    previous_points.bottom_point,
+                    first_points.bottom_point,
+                    first_points.top_point,
+                    previous_points.top_point,
+                ]
+                wall_face = building_mesh.faces.new(wall_points)
+
+        return geometry_collection
 
     def clear_object(self):
 

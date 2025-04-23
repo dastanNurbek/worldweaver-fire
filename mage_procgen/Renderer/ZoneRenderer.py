@@ -9,12 +9,11 @@ from mage_procgen.Utils.Utils import Point
 class ZoneRenderer(HiddenPolygonRenderer):
     _mesh_name = "Zone"
 
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
     ) -> list[Point]:
 
         # Centering the coordinates so that Blender's internal precision is less impactful,
-        # But putting the Z location high up so that the trees can be projected onto the terrain by the geometrynode
         centered_points_coords = [
             (
                 x[0] - geo_center[0],

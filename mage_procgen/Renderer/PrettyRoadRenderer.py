@@ -164,7 +164,7 @@ class PrettyRoadRenderer:
             is_tunnel = roads[RenderingRoadDataFrame.is_tunnel][road_index]
 
             # Adapting the coordinates for rendering purposes
-            centered_points_coords = self.adapt_coords(
+            centered_points_coords = self._to_scene_coords(
                 points_coords, geo_center, is_bridge, is_tunnel
             )
 
@@ -311,7 +311,7 @@ class PrettyRoadRenderer:
             1
         ].default_value = D.collections[terrain_collection_name].objects[0]
 
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point, is_bridge, is_tunnel
     ) -> list[Point]:
 

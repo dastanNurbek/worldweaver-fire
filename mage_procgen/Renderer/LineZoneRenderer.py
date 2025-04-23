@@ -9,7 +9,7 @@ from mage_procgen.Utils.Rendering import ortho_camera_name
 class LineZoneRenderer(HiddenLineRenderer):
     _mesh_name = "LineZone"
 
-    def adapt_coords(
+    def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
     ) -> list[Point]:
 

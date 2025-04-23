@@ -18,53 +18,24 @@ from tqdm import tqdm
 
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import Point, GeoWindow, safe_overlay, OverlayType
+from mage_procgen.Utils.Utils import GeoWindow, safe_overlay, OverlayType
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
+from mage_procgen.Renderer.FlatPolygonRenderer import FlatPolygonRenderer
 
 
-class StillWaterRenderer(BaseRenderer):
+class StillWaterRenderer(FlatPolygonRenderer):
     _mesh_name = "Still_Water"
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]
 
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
 
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        # Also, building rendering requires the base polygon to have constant z, so we fix every point's z to be the lowest in the set.
-        z_min = min([x[2] for x in points_coords])
-
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
-            for x in points_coords
-        ]
-
-        return centered_points_coords
-
-
-class OceanRenderer(BaseRenderer):
+class OceanRenderer(FlatPolygonRenderer):
     _mesh_name = "Ocean_Water"
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]
-
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
-
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        # Oceans are also drawn at a constant z
-        z_min = min([x[2] for x in points_coords])
-
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], z_min - geo_center[2])
-            for x in points_coords
-        ]
-
-        return centered_points_coords
 
 
 class FlowingWaterRendererUtils:
@@ -392,18 +363,18 @@ class FlowingWaterRenderer(BaseRenderer):
                                 current_point_z,
                             )
 
-                            adapted_current_point_coords = (
+                            current_point_scene_coords = (
                                 current_point_coords[0] - geo_center[0],
                                 current_point_coords[1] - geo_center[1],
                                 current_point_coords[2] - geo_center[2],
                             )
 
-                            if adapted_current_point_coords not in meshes_points:
+                            if current_point_scene_coords not in meshes_points:
                                 meshes_points[
-                                    adapted_current_point_coords
-                                ] = mesh.verts.new(adapted_current_point_coords)
+                                    current_point_scene_coords
+                                ] = mesh.verts.new(current_point_scene_coords)
                             face_coords.append(
-                                meshes_points[adapted_current_point_coords]
+                                meshes_points[current_point_scene_coords]
                             )
 
                     if len(face_coords) >= 3:
@@ -422,18 +393,6 @@ class FlowingWaterRenderer(BaseRenderer):
         m = mesh_obj.modifiers.new("", "NODES")
         m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
-
-    def adapt_coords(
-        self, points_coords: list[Point], geo_center: Point
-    ) -> list[Point]:
-
-        # Centering the coordinates so that Blender's internal precision is less impactful
-        centered_points_coords = [
-            (x[0] - geo_center[0], x[1] - geo_center[1], x[2] - geo_center[2])
-            for x in points_coords
-        ]
-
-        return centered_points_coords
 
     def get_mesh_obj(self):
         return D.objects[self._mesh_name]
