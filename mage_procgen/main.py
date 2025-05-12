@@ -96,7 +96,7 @@ def main(filepath):
         driver.internal_crs,
         config,
     )
-    render_manager.draw_flood_interactors()
+    render_manager.draw_terrain()
 
     if config.flood:
 
@@ -166,7 +166,7 @@ def main(filepath):
                 (0, 0, 0),
             )
 
-        render_manager.beautify_zone(False)
+        render_manager.draw_decor(False)
         export_rendered_img(export_folder, now_str)
 
     if config.export_img:
@@ -204,14 +204,14 @@ def main(filepath):
                             (camera_x, camera_y, 0),
                         )
                         # Beautify
-                        zone_window = render_manager.beautify_zone(True, True)
+                        zone_window = render_manager.draw_decor(True, True)
                     else:
                         setup_img_ortho_res(
                             config.out_img_resolution,
                             config.out_img_pixel_size,
                             (camera_x, camera_y, 0),
                         )
-                        zone_window = render_manager.beautify_zone(True)
+                        zone_window = render_manager.draw_decor(True)
 
                     set_compositing_render_image_name(now_str + "_tagging")
 

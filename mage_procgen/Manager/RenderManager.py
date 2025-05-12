@@ -105,9 +105,9 @@ class RenderManager:
         self.sand_renderer = ZoneRenderer.SandRenderer(self.terrain_data)
         self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
 
-    def draw_flood_interactors(self):
-        # Rendering objects that interact with flood
-        logger.info("Rendering objects that interact with flood")
+    def draw_terrain(self):
+        # Rendering objects that are ground level or interact with terrain
+        logger.info("Rendering terrain and its dependencies")
         self.terrain_renderer.render(
             self.terrain_data,
             self.window,
@@ -234,7 +234,7 @@ class RenderManager:
         )
 
         # Once everything is rendered, it can be plugged into the terrain's geometrynodes
-        self.terrain_renderer.config_geometry_node(
+        self.terrain_renderer._TerrainRenderer__config_geometry_node(
             road_object=self.road_renderer.get_mesh_obj(),
             water_object=self.flowing_water_renderer.get_mesh_obj(),
             still_water_object=self.still_water_renderer.get_mesh_obj(),
@@ -243,7 +243,7 @@ class RenderManager:
         )
 
         if not self.config.use_sat_img:
-            self.terrain_renderer.config_tagging_node(
+            self.terrain_renderer._TerrainRenderer__config_tagging_node(
                 wheatfields_object=self.wheatfields_renderer.get_mesh_obj(),
                 cornields_object=self.cornfields_renderer.get_mesh_obj(),
                 grass_object=self.grass_renderer.get_mesh_obj(),
@@ -261,7 +261,7 @@ class RenderManager:
     def draw_flood(self, flood_data):
         self.flood_renderer.render(flood_data, rendering_collection_name)
 
-    def beautify_zone(self, restrict_to_camera, use_camera_presp=False):
+    def draw_decor(self, restrict_to_camera, use_camera_presp=False):
 
         zone_window = self.window
 
@@ -426,7 +426,7 @@ class RenderManager:
         self.forests_renderer.render(
             forests, self.window.center, rendering_collection_name
         )
-        self.forests_renderer.config_geometry_node(
+        self.forests_renderer._ForestRenderer__config_geometry_node(
             self.road_renderer.get_mesh_obj(),
             self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
@@ -461,6 +461,9 @@ class RenderManager:
         Hides objects that need to be displayed before flood because they interact with terrain, but need to be hidden
         during source computation
         """
+
+        # Decor of terrain needs to be hidden during source computation
+        self.terrain_renderer.change_decor_visibility(is_visible)
 
         for road_object in self.road_renderer.get_meshes_objs():
             road_object.hide_viewport = not is_visible

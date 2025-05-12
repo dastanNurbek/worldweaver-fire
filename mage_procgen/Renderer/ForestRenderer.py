@@ -9,9 +9,11 @@ from mage_procgen.Utils.Utils import Point
 class ForestRenderer(BaseRenderer):
     _mesh_name = "Forest"
 
-    def config_geometry_node(
+    def __config_geometry_node(
         self, road_object, building_object, terrain_object, ray_length
     ):
+        # Forests' geometry node requires references to other Blender objects present in the scene,
+        # so this method needs to be called by the RenderManager whose responsibility is to be aware of the context of the whole scene
         node = D.objects[self._mesh_name].modifiers[self.geometry_node_name]
         node["Socket_4"] = road_object
         node["Socket_6"] = building_object

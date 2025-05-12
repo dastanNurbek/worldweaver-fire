@@ -395,7 +395,7 @@ class TerrainRenderer:
             m3.name = self.decorating_geometry_node_name
             m3.node_group = D.node_groups[self.decorating_geometry_node_name]
 
-    def config_geometry_node(
+    def __config_geometry_node(
         self,
         road_object,
         water_object,
@@ -403,6 +403,8 @@ class TerrainRenderer:
         ocean_object,
         building_object,
     ):
+        # Terrain's geometry node requires references to other Blender objects present in the scene,
+        # so this method needs to be called by the RenderManager whose responsibility is to be aware of the context of the whole scene
         node = self.terrain_object.modifiers[self.geometry_node_name]
         node["Socket_2"] = road_object
         node["Socket_4"] = water_object
@@ -410,7 +412,7 @@ class TerrainRenderer:
         node["Socket_8"] = still_water_object
         node["Socket_10"] = ocean_object
 
-    def config_tagging_node(
+    def __config_tagging_node(
         self,
         wheatfields_object,
         cornields_object,
@@ -423,6 +425,8 @@ class TerrainRenderer:
         roads_object,
         path_object,
     ):
+        # Terrain's geometry node for tagging requires references to other Blender objects present in the scene,
+        # so this method needs to be called by the RenderManager whose responsibility is to be aware of the context of the whole scene
         if not self.use_sat_img:
             node_tree = D.node_groups[self._TerrainTaggingGN]
             node_tree.nodes["Compute Proximity Wheat Fields"].inputs[
@@ -458,6 +462,11 @@ class TerrainRenderer:
             node_tree.nodes["Compute Edge Proximity Field"].inputs[
                 4
             ].default_value = wheatfields_object
+
+    def change_decor_visibility(self, is_visible: bool):
+        node = self.terrain_object.modifiers[self.decorating_geometry_node_name]
+        node.show_viewport = is_visible
+        node.show_render = is_visible
 
     def get_mesh_obj(self):
         return self.terrain_object
