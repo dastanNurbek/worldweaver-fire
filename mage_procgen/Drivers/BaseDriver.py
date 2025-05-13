@@ -1,5 +1,6 @@
 import os
 from abc import ABC, abstractmethod
+from enum import StrEnum
 
 import geopandas as g
 
@@ -9,6 +10,12 @@ from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import RenderingData
 from mage_procgen.Utils.Utils import GeoWindow
+
+
+class WindowTypes(StrEnum):
+    TOWN = "TOWN"
+    FILE = "FILE"
+    COORDS = "COORDS"
 
 
 class BaseDriver(ABC):
@@ -33,13 +40,18 @@ class BaseDriver(ABC):
     def process(self) -> RenderingData:
         pass
 
+    @staticmethod
+    @abstractmethod
+    def get_supported_sources() -> list[str]:
+        pass
+
     @abstractmethod
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
         pass
 
     def __compute_geo_window__(self):
         match self.config.window_type:
-            case "TOWN":
+            case WindowTypes.TOWN:
                 town = self.__compute_geo_window_town__()
 
                 town_bounds = town.geometry[0].bounds
@@ -51,7 +63,7 @@ class BaseDriver(ABC):
                     from_crs=self.internal_crs,
                     to_crs=self.internal_crs,
                 )
-            case "FILE":
+            case WindowTypes.FILE:
                 file_window = fiona.open(self.config.window_shapefile)
                 window_crs = int(file_window.crs.to_string().split(":")[1])
                 file_bounds = file_window.bounds
@@ -63,7 +75,7 @@ class BaseDriver(ABC):
                     from_crs=window_crs,
                     to_crs=self.internal_crs,
                 )
-            case "COORDS":
+            case WindowTypes.COORDS:
                 self.geo_window: GeoWindow = GeoWindow.from_square(
                     x_min=self.config.geo_window.x_min,
                     x_max=self.config.geo_window.x_max,

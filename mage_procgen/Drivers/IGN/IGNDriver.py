@@ -1,3 +1,5 @@
+from enum import StrEnum
+
 import geopandas as g
 
 from mage_procgen.Drivers.BaseDriver import BaseDriver
@@ -10,21 +12,23 @@ from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import CRS_fr
 
 
+class IGNDataSources(StrEnum):
+    STREAM = "STREAM"
+    FILE = "FILE"
+
+
 class IGNDriver(BaseDriver):
-
-    supported_data_sources = ["STREAM", "FILE"]
-
     def __init__(self, config, project_path):
 
         super().__init__(config, project_path)
         self.internal_crs = CRS_fr
 
         match config.data_source:
-            case "STREAM":
+            case IGNDataSources.STREAM:
                 self.loader = StreamLoader(
                     config.base_folder, project_path, self.config.use_sat_img
                 )
-            case "FILE":
+            case IGNDataSources.FILE:
                 self.loader = FileLoader(
                     config.base_folder, project_path, self.config.use_sat_img
                 )
@@ -48,6 +52,10 @@ class IGNDriver(BaseDriver):
         )
 
         return rendering_data
+
+    @staticmethod
+    def get_supported_sources() -> list[str]:
+        return [source.value for source in IGNDataSources]
 
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
 

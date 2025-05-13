@@ -1,8 +1,10 @@
 import os
 import math
+from enum import StrEnum
 
 from datetime import datetime
 
+import bpy
 from bpy import context as C, data as D, ops as O
 import addon_utils
 
@@ -19,8 +21,12 @@ buildings_collection_name = "Buildings"
 base_collection_name = "Collection"
 additionals_collection_name = "additionals"
 
-persp_camera_name = "Camera"
-ortho_camera_name = "Camera_Ortho"
+sun_name = "Sun"
+
+
+class CameraType(StrEnum):
+    Camera_Ortho = "Camera_Ortho"
+    Camera_Persp = "Camera_Persp"
 
 
 def check_is_sun_activated():
@@ -34,7 +40,59 @@ def check_is_sun_activated():
         addon_utils.enable("sun_position", default_set=True)
 
 
+# purge_orphans and clean_scene taken from https://github.com/CGArtPython/bpy_building_blocks_examples/blob/main/clean_scene/clean_scene_example_1.py
+def purge_orphans():
+    if bpy.app.version >= (3, 0, 0):
+        bpy.ops.outliner.orphans_purge(
+            do_local_ids=True, do_linked_ids=True, do_recursive=True
+        )
+    else:
+        # call purge_orphans() recursively until there are no more orphan data blocks to purge
+        result = bpy.ops.outliner.orphans_purge()
+        if result.pop() != "CANCELLED":
+            purge_orphans()
+
+
+def clean_scene():
+    """
+    Removing all of the objects, collection, materials, particles,
+    textures, images, curves, meshes, actions, nodes, and worlds from the scene
+    """
+    if bpy.context.active_object and bpy.context.active_object.mode == "EDIT":
+        bpy.ops.object.editmode_toggle()
+
+    for obj in bpy.data.objects:
+        obj.hide_set(False)
+        obj.hide_select = False
+        obj.hide_viewport = False
+
+    bpy.ops.object.select_all(action="SELECT")
+    bpy.ops.object.delete()
+
+    collection_names = [col.name for col in bpy.data.collections]
+    for name in collection_names:
+        bpy.data.collections.remove(bpy.data.collections[name])
+
+    # in the case when you modify the world shader
+    world_names = [world.name for world in bpy.data.worlds]
+    for name in world_names:
+        bpy.data.worlds.remove(bpy.data.worlds[name])
+    # create a new world data block
+    bpy.ops.world.new()
+    bpy.context.scene.world = bpy.data.worlds["World"]
+
+    purge_orphans()
+
+
 def configure_render(geo_center_deg):
+
+    # TODO: Generates blender logs that maybe we should wrap ?
+    clean_scene()
+
+    base_collection = D.collections.new(base_collection_name)
+    sc = C.scene
+    sc.collection.children.link(base_collection)
+
     for a in C.screen.areas:
         if a.type == "VIEW_3D":
             for s in a.spaces:
@@ -46,9 +104,10 @@ def configure_render(geo_center_deg):
                     s.shading.type = "RENDERED"
 
     # Sun and lighting
-    sun = D.objects["Light"]
-    sun.data.type = "SUN"
-    sun.data.energy = 10
+    sun_data = D.lights.new(name=sun_name, type="SUN")
+    sun_object = D.objects.new(sun_name, sun_data)
+    D.collections[base_collection_name].objects.link(sun_object)
+    sun_data.energy = 10
 
     tzf = TimezoneFinder()
     tz = tzf.timezone_at(lng=geo_center_deg[0], lat=geo_center_deg[1])
@@ -62,7 +121,7 @@ def configure_render(geo_center_deg):
 
     try:
         sc = C.scene
-        sc.sun_pos_properties.sun_object = sun
+        sc.sun_pos_properties.sun_object = sun_object
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
         sc.sun_pos_properties.day = date.day
@@ -75,23 +134,29 @@ def configure_render(geo_center_deg):
             "Sun position addon is not enabled. Go to Blender's Preference -> Add-ons, and enable 'Lighting: Sun Position'."
         )
 
-    # Camera
-    camera = D.objects[persp_camera_name]
-    camera.location = (0, 0, 1100)
-    camera.rotation_euler = (0, 0, 0)
-    camera.data.clip_end = 100000
-    camera.data.lens_unit = "FOV"
-    camera.data.angle = 10 * math.pi / 180
+    # Persp Camera
+    persp_camera_data = D.cameras.new(name=CameraType.Camera_Persp.value)
+    persp_camera_object = D.objects.new(
+        CameraType.Camera_Persp.value, persp_camera_data
+    )
+    D.collections[base_collection_name].objects.link(persp_camera_object)
+    persp_camera_object.location = (0, 0, 1100)
+    persp_camera_object.rotation_euler = (0, 0, 0)
+    persp_camera_object.data.clip_end = 100000
+    persp_camera_object.data.lens_unit = "FOV"
+    persp_camera_object.data.angle = 10 * math.pi / 180
 
     # Ortho Camera
-    camera_data = D.cameras.new(name=ortho_camera_name)
-    camera_object = D.objects.new(ortho_camera_name, camera_data)
-    D.collections[base_collection_name].objects.link(camera_object)
-    camera_data.type = "ORTHO"
-    camera_data.clip_end = 100000
-    camera_object.location = (0, 0, 1100)
-    camera_object.rotation_euler = (0, 0, 0)
-    camera_data.ortho_scale = 200
+    ortho_camera_data = D.cameras.new(name=CameraType.Camera_Ortho.value)
+    ortho_camera_object = D.objects.new(
+        CameraType.Camera_Ortho.value, ortho_camera_data
+    )
+    D.collections[base_collection_name].objects.link(ortho_camera_object)
+    ortho_camera_data.type = "ORTHO"
+    ortho_camera_data.clip_end = 100000
+    ortho_camera_object.location = (0, 0, 1100)
+    ortho_camera_object.rotation_euler = (0, 0, 0)
+    ortho_camera_data.ortho_scale = 200
 
     # Rendering
     sc.render.engine = "CYCLES"
@@ -132,13 +197,24 @@ def export_rendered_img(base_path, base_name):
         print("What abt this ?")
 
 
+def get_camera(camera_type):
+
+    match camera_type:
+        case CameraType.Camera_Ortho:
+            return D.objects[CameraType.Camera_Ortho.value]
+        case CameraType.Camera_Persp:
+            return D.objects[CameraType.Camera_Persp.value]
+        case _:
+            raise ValueError("Invalid camera type")
+
+
 def setup_img_persp(resolution, pixel_size, center):
 
     sc = C.scene
     sc.render.resolution_x = resolution
     sc.render.resolution_y = resolution
 
-    camera = D.objects[persp_camera_name]
+    camera = get_camera(CameraType.Camera_Persp)
     sc.camera = camera
     img_size = resolution * pixel_size
     camera_elevation = img_size / (2 * math.tan(camera.data.angle / 2))
@@ -165,7 +241,7 @@ def setup_img_ortho(size_x, size_y, pixel_size, center):
 
     size = max(size_x, size_y)
 
-    camera = D.objects[ortho_camera_name]
+    camera = get_camera(CameraType.Camera_Ortho)
     sc.camera = camera
     camera.data.ortho_scale = size
 

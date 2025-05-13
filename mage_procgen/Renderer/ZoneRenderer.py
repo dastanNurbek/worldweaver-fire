@@ -1,8 +1,6 @@
-from bpy import data as D
-
 from mage_procgen.Renderer.HiddenPolygonRenderer import HiddenPolygonRenderer
 
-from mage_procgen.Utils.Rendering import ortho_camera_name
+from mage_procgen.Utils.Rendering import get_camera, CameraType
 from mage_procgen.Utils.Utils import Point
 
 
@@ -18,7 +16,7 @@ class ZoneRenderer(HiddenPolygonRenderer):
             (
                 x[0] - geo_center[0],
                 x[1] - geo_center[1],
-                D.objects[ortho_camera_name].location[2],
+                get_camera(CameraType.Camera_Ortho).location[2],
             )
             for x in points_coords
         ]

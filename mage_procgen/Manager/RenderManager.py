@@ -30,8 +30,8 @@ from mage_procgen.Utils.Rendering import (
     terrain_collection_name,
     buildings_collection_name,
     additionals_collection_name,
-    persp_camera_name,
-    ortho_camera_name,
+    CameraType,
+    get_camera,
 )
 
 
@@ -273,7 +273,7 @@ class RenderManager:
             # Calculating an area that is roughly vector_multiplier times bigger than the field of view of the camera
             # So that we only draw objects that are inside this area
             if use_camera_presp:
-                camera = D.objects[persp_camera_name]
+                camera = get_camera(CameraType.Camera_Persp)
                 origin = camera.location
 
                 # camera Z should be by far the highest so this rule of thumb should hold
@@ -337,7 +337,7 @@ class RenderManager:
                         "Zone to beautify is outside of the boundaries of the scene"
                     )
             else:
-                camera = D.objects[ortho_camera_name]
+                camera = get_camera(CameraType.Camera_Ortho)
                 origin = camera.location
                 window_size = camera.data.ortho_scale
 
@@ -430,7 +430,7 @@ class RenderManager:
             self.road_renderer.get_mesh_obj(),
             self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
-            D.objects[ortho_camera_name].location[2] * 2,
+            get_camera(CameraType.Camera_Ortho).location[2] * 2,
         )
 
         return zone_window

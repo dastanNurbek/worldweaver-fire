@@ -228,9 +228,9 @@ def main(filepath):
 
 
 def select_driver(config, project_path):
-    if config.data_source in OSMDriver.supported_data_sources:
+    if config.data_source in OSMDriver.get_supported_sources():
         return OSMDriver(config, project_path)
-    elif config.data_source in IGNDriver.supported_data_sources:
+    elif config.data_source in IGNDriver.get_supported_sources():
         return IGNDriver(config, project_path)
     else:
         raise ValueError("Unsupported data source in config file:", config.data_source)

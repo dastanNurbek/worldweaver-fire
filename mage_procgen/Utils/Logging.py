@@ -22,6 +22,8 @@ def setup_logger(folder: str, file_name: str, add_debug: bool):
             exist_ok=True,
         )
 
+    root_logger.handlers.clear()
+
     file_handler = logging.FileHandler(os.path.join(folder, file_name), mode="w")
     file_handler.setFormatter(log_formatter_file)
     root_logger.addHandler(file_handler)
