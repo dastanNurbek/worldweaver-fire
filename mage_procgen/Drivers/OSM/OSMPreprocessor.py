@@ -2,6 +2,7 @@ import random
 
 import geopandas as g
 import pandas as p
+import numpy as np
 
 from shapely import union, Polygon
 from shapely.geometry import mapping
@@ -9,10 +10,15 @@ from shapely.geometry import mapping
 from mage_procgen.Drivers.OSM.Utils import OSM
 
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import (
+from mage_procgen.Utils.RenderingDataFrames import (
+    RenderingRoadDataFrame,
+    RenderingBuildingDataFrame,
     RenderingData,
-    GeoWindow,
     BuildingRenderingData,
+    ZonesRenderingData,
+)
+from mage_procgen.Utils.Utils import (
+    GeoWindow,
     safe_overlay,
     reduce_columns,
     ensure_columns_existence,
@@ -20,11 +26,6 @@ from mage_procgen.Utils.Utils import (
     get_class,
     safe_get_group,
     OverlayType,
-    ZonesRenderingData,
-)
-from mage_procgen.Utils.RenderingDataFrames import (
-    RenderingRoadDataFrame,
-    RenderingBuildingDataFrame,
 )
 
 
@@ -216,6 +217,21 @@ class OSMPreprocessor:
         highways = g.GeoDataFrame(
             highways_tagged, geometry=highways_data.geometry, crs=geowindow.crs
         )
+        highways[RenderingRoadDataFrame.has_sidewalks] = highways[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        highways[RenderingRoadDataFrame.has_guardrails] = highways[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        highways[RenderingRoadDataFrame.is_bridge] = highways[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        highways[RenderingRoadDataFrame.is_tunnel] = highways[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        highways[RenderingRoadDataFrame.number_lanes] = highways[
+            RenderingRoadDataFrame.number_lanes
+        ].astype(np.uint8)
 
         # Water.
         # Algorithm is the same as in IGNPreprocessor.

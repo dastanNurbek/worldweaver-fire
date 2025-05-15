@@ -1,5 +1,6 @@
 import geopandas as g
 import pandas as p
+import numpy as np
 
 from shapely import union, Polygon
 from shapely.geometry import mapping
@@ -18,17 +19,18 @@ from mage_procgen.Drivers.IGN.DataFrames import (
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import (
     RenderingRoadDataFrame,
+    RenderingBuildingDataFrame,
+    RenderingData,
+    BuildingRenderingData,
+    ZonesRenderingData,
 )
 from mage_procgen.Utils.Utils import (
-    RenderingData,
     GeoWindow,
-    BuildingRenderingData,
     safe_overlay,
     tag_water,
     get_class,
     safe_get_group,
     OverlayType,
-    ZonesRenderingData,
 )
 
 
@@ -110,9 +112,32 @@ class IGNPreprocessor:
         roads_full = g.GeoDataFrame(
             roads_tagged, geometry=roads_with_cars.geometry, crs=geowindow.crs
         )
+        roads_full[RenderingRoadDataFrame.has_sidewalks] = roads_full[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        roads_full[RenderingRoadDataFrame.has_guardrails] = roads_full[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        roads_full[RenderingRoadDataFrame.is_bridge] = roads_full[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        roads_full[RenderingRoadDataFrame.is_tunnel] = roads_full[
+            RenderingRoadDataFrame.has_sidewalks
+        ].astype(bool)
+        roads_full[RenderingRoadDataFrame.number_lanes] = roads_full[
+            RenderingRoadDataFrame.number_lanes
+        ].astype(np.uint8)
 
         # Removing forests from water
         cleaned_forests = safe_overlay(new_forests, new_water, OverlayType.DIFFERENCE)
+
+        # Casting building columns into appropriate types
+        new_buildings[RenderingBuildingDataFrame.height] = new_buildings[
+            RenderingBuildingDataFrame.height
+        ].astype(p.Float64Dtype())
+        new_buildings[RenderingBuildingDataFrame.number_floors] = new_buildings[
+            RenderingBuildingDataFrame.number_floors
+        ].astype(p.Int8Dtype())
 
         # Splitting buildings into the different categories
         new_buildings[BuildingDataFrame.type] = new_buildings[

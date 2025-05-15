@@ -4,12 +4,14 @@ import bpy
 import bmesh
 from bpy import data as D
 
-from shapely.geometry import mapping
+import geopandas as g
+
+from shapely.geometry import mapping, MultiPolygon
 
 from tqdm import tqdm
 
 from mage_procgen.Utils.Geometry import interpolate_z
-from mage_procgen.Utils.Utils import PolygonList, Point, TerrainData
+from mage_procgen.Utils.Utils import Point, TerrainData
 from mage_procgen.Utils.DataFiles import assets_folder
 
 
@@ -45,12 +47,12 @@ class BaseRenderer:
 
     def render(
         self,
-        polygons: PolygonList,
+        objects_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
 
-        mesh_obj = self.draw_objects(polygons, geo_center, parent_collection_name)
+        mesh_obj = self._draw_objects(objects_gdf, geo_center, parent_collection_name)
 
         mesh_obj.pass_index = self.config.tagging_index
 
@@ -58,44 +60,21 @@ class BaseRenderer:
         m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
 
-    def draw_objects(self, objects, geo_center, parent_collection_name):
+    def _draw_objects(self, objects_gdf, geo_center, parent_collection_name):
         mesh = bmesh.new()
 
-        for polygon in tqdm(objects):
-            # Kind of hack because Polygon.coords is not implemented
-            # TODO : shapely.get_coordinates(polygon)
-            polygon_geometry = mapping(polygon)["coordinates"]
+        for object_index in tqdm(objects_gdf.index):
 
-            if len(polygon_geometry) > 0:
-                points_coords = [
-                    (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                    for x in polygon_geometry[0]
-                ]
+            object_geom = objects_gdf.geometry[object_index]
 
-                # First getting the list of the edges that make the exterior of the face
-                countour_ring = BaseRenderer.add_edge_ring(
-                    mesh, self._to_scene_coords(points_coords, geo_center)
-                )
+            if object_geom.is_empty:
+                continue
 
-                if len(polygon_geometry) > 1:
-                    # If there are holes
-                    for hole in polygon_geometry[1:]:
-                        points_coords_hole = [
-                            (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                            for x in hole
-                        ]
-
-                        # Doing the same for all the holes
-                        hole_ring = BaseRenderer.add_edge_ring(
-                            mesh, self._to_scene_coords(points_coords_hole, geo_center)
-                        )
-
-                        countour_ring.extend(hole_ring)
-
-                # Constructing the face this was will make blender triangulate it and allow us to do faces with holes
-                bmesh.ops.triangle_fill(
-                    mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
-                )
+            if type(object_geom) == MultiPolygon:
+                for polygon in object_geom.geoms:
+                    self.__draw_face(mesh, polygon, geo_center)
+            else:
+                self.__draw_face(mesh, object_geom, geo_center)
 
         mesh_data = D.meshes.new(self._mesh_name)
         self._mesh_name = mesh_data.name
@@ -106,8 +85,44 @@ class BaseRenderer:
 
         return mesh_obj
 
+    def __draw_face(self, mesh, polygon, geo_center):
+        # Kind of hack because Polygon.coords is not implemented
+        # TODO : shapely.get_coordinates(polygon)
+        polygon_geometry = mapping(polygon)["coordinates"]
+
+        if len(polygon_geometry) > 0:
+            points_coords = [
+                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                for x in polygon_geometry[0]
+            ]
+
+            # First getting the list of the edges that make the exterior of the face
+            countour_ring = BaseRenderer._add_edge_ring(
+                mesh, self._to_scene_coords(points_coords, geo_center)
+            )
+
+            if len(polygon_geometry) > 1:
+                # If there are holes
+                for hole in polygon_geometry[1:]:
+                    points_coords_hole = [
+                        (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+                        for x in hole
+                    ]
+
+                    # Doing the same for all the holes
+                    hole_ring = BaseRenderer._add_edge_ring(
+                        mesh, self._to_scene_coords(points_coords_hole, geo_center)
+                    )
+
+                    countour_ring.extend(hole_ring)
+
+            # Constructing the face this was will make blender triangulate it and allow us to do faces with holes
+            bmesh.ops.triangle_fill(
+                mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
+            )
+
     @staticmethod
-    def add_edge_ring(mesh, point_collection):
+    def _add_edge_ring(mesh, point_collection):
 
         edge_collection = []
 

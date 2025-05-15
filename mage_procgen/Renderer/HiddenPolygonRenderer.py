@@ -1,5 +1,7 @@
 from bpy import data as D
 
+import geopandas as g
+
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Renderer.FlatPolygonRenderer import FlatPolygonRenderer
 
@@ -13,12 +15,12 @@ class HiddenPolygonRenderer(FlatPolygonRenderer):
 
     def render(
         self,
-        objects: list,
+        objects_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
 
-        mesh_obj = self.draw_objects(objects, geo_center, parent_collection_name)
+        mesh_obj = self._draw_objects(objects_gdf, geo_center, parent_collection_name)
 
         mesh_obj.hide_render = True
         mesh_obj.hide_viewport = True

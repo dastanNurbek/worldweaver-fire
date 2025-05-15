@@ -1,16 +1,20 @@
+import math
+
 import bmesh
 from bpy import data as D
 
+import geopandas as g
 import pandas as p
-
-from shapely.geometry import mapping
+import random
+from shapely.geometry import mapping, MultiPolygon, Polygon
 
 from tqdm import tqdm
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 from mage_procgen.Utils.Geometry import interpolate_z
-from mage_procgen.Utils.Utils import BuildingList, TerrainData
+from mage_procgen.Utils.Utils import TerrainData
+from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
 
 class BuildingRenderer(BaseRenderer):
@@ -36,63 +40,112 @@ class BuildingRenderer(BaseRenderer):
 
     def render(
         self,
-        buildings: BuildingList,
+        buildings_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
         parent_collection_name,
     ):
 
         self._mesh_names = []
 
-        for building in tqdm(buildings):
-            mesh = bmesh.new()
-            # Kind of hack because Polygon.coords is not implemented
-            polygon_geometry = mapping(building[1])["coordinates"]
+        for building_index in tqdm(buildings_gdf.index):
 
-            points_coords = [
-                (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
-                for x in polygon_geometry[0]
-            ]
-            # Buildings have to be perfectly flat in order for Buildify to work.
-            # To achieve that we place all the points at the lowest z of the contour points
-            z_min = min([x[2] for x in points_coords])
-            points_coords = [(x[0], x[1], z_min) for x in points_coords]
-            countour_ring = BaseRenderer.add_edge_ring(
-                mesh, self._to_scene_coords(points_coords, geo_center)
-            )
+            if buildings_gdf.geometry[building_index].is_empty:
+                continue
 
-            if len(polygon_geometry) > 1:
-                # If there are holes
-                for hole in polygon_geometry[1:]:
-                    points_coords_hole = [(x[0], x[1], z_min) for x in hole]
+            # TODO: make those parametric
+            building_floor_numbers = random.randint(2, 6)
+            # Height of each floor in meters
+            floor_height = 3
 
-                    hole_ring = BaseRenderer.add_edge_ring(
-                        mesh, self._to_scene_coords(points_coords_hole, geo_center)
+            if not p.isnull(
+                buildings_gdf[RenderingBuildingDataFrame.number_floors][building_index]
+            ):
+                building_floor_numbers = int(
+                    buildings_gdf[RenderingBuildingDataFrame.number_floors][
+                        building_index
+                    ]
+                )
+            elif not p.isnull(
+                buildings_gdf[RenderingBuildingDataFrame.height][building_index]
+            ):
+                # Better to round up than down in this case
+                building_floor_numbers = math.ceil(
+                    buildings_gdf[RenderingBuildingDataFrame.height][building_index]
+                    / floor_height
+                )
+
+            if type(buildings_gdf.geometry[building_index]) == MultiPolygon:
+                for polygon in buildings_gdf.geometry[building_index].geoms:
+                    self.__draw_building(
+                        polygon,
+                        geo_center,
+                        building_floor_numbers,
+                        parent_collection_name,
                     )
+            else:
+                self.__draw_building(
+                    buildings_gdf.geometry[building_index],
+                    geo_center,
+                    building_floor_numbers,
+                    parent_collection_name,
+                )
 
-                    countour_ring.extend(hole_ring)
+    def __draw_building(
+        self,
+        polygon: Polygon,
+        geo_center: tuple[float, float, float],
+        building_floor_numbers: int,
+        parent_collection_name: str,
+    ):
 
-            bmesh.ops.triangle_fill(
-                mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
-            )
+        mesh = bmesh.new()
 
-            mesh_name = self._mesh_name
-            mesh_data = D.meshes.new(mesh_name)
-            mesh.to_mesh(mesh_data)
-            mesh.free()
-            mesh_obj = D.objects.new(mesh_data.name, mesh_data)
-            mesh_obj.pass_index = self.config.tagging_index
-            D.collections[parent_collection_name].objects.link(mesh_obj)
+        # Kind of hack because Polygon.coords is not implemented
+        polygon_geometry = mapping(polygon)["coordinates"]
 
-            self._mesh_names.append(mesh_obj.name)
+        points_coords = [
+            (x[0], x[1], interpolate_z(self._terrain_data, x[0], x[1]))
+            for x in polygon_geometry[0]
+        ]
+        # Buildings have to be perfectly flat in order for Buildify to work.
+        # To achieve that we place all the points at the lowest z of the contour points
+        z_min = min([x[2] for x in points_coords])
+        points_coords = [(x[0], x[1], z_min) for x in points_coords]
+        countour_ring = BaseRenderer._add_edge_ring(
+            mesh, self._to_scene_coords(points_coords, geo_center)
+        )
 
-            m = mesh_obj.modifiers.new("", "NODES")
-            m.node_group = D.node_groups[self.geometry_node_name]
+        if len(polygon_geometry) > 1:
+            # If there are holes
+            for hole in polygon_geometry[1:]:
+                points_coords_hole = [(x[0], x[1], z_min) for x in hole]
 
-            # If we have the info in the database, use it here
-            if not p.isnull(building[0]):
-                # Adding 1 to the DB value because the (flat) roof is considered as a floor
-                mesh_obj.modifiers[0]["Input_6"] = int(building[0]) + 1
-                mesh_obj.modifiers[0]["Input_7"] = int(building[0]) + 1
+                hole_ring = BaseRenderer._add_edge_ring(
+                    mesh, self._to_scene_coords(points_coords_hole, geo_center)
+                )
+
+                countour_ring.extend(hole_ring)
+
+        bmesh.ops.triangle_fill(
+            mesh, use_beauty=True, use_dissolve=False, edges=countour_ring
+        )
+
+        mesh_name = self._mesh_name
+        mesh_data = D.meshes.new(mesh_name)
+        mesh.to_mesh(mesh_data)
+        mesh.free()
+        mesh_obj = D.objects.new(mesh_data.name, mesh_data)
+        mesh_obj.pass_index = self.config.tagging_index
+        D.collections[parent_collection_name].objects.link(mesh_obj)
+
+        self._mesh_names.append(mesh_obj.name)
+
+        m = mesh_obj.modifiers.new("", "NODES")
+        m.node_group = D.node_groups[self.geometry_node_name]
+
+        # Adding 1 to the DB value because the (flat) roof is considered as a floor
+        mesh_obj.modifiers[0]["Input_6"] = int(building_floor_numbers) + 1
+        mesh_obj.modifiers[0]["Input_7"] = int(building_floor_numbers) + 1
 
     def clear_object(self):
 

@@ -8,7 +8,7 @@ import fiona
 
 from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import RenderingData
+from mage_procgen.Utils.RenderingDataFrames import RenderingData
 from mage_procgen.Utils.Utils import GeoWindow
 
 
