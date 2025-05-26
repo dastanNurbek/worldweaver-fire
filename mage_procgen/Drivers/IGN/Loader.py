@@ -18,7 +18,7 @@ class Loader(ABC):
         pass
 
     @abstractmethod
-    def load_town_shape(self, departement_nbr: int, town_name: str) -> g.GeoDataFrame:
+    def load_town_shape(self, town_id: str) -> g.GeoDataFrame:
         pass
 
     @abstractmethod

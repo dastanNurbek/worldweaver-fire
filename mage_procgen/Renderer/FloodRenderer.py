@@ -13,7 +13,6 @@ from mage_procgen.Utils.DataFiles import assets_folder
 class FloodRenderer:
 
     _mesh_name = "Flood"
-    _AssetsFolder = "Assets"
 
     def __init__(self, object_config):
         self.config = object_config

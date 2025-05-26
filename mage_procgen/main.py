@@ -23,11 +23,9 @@ from mage_procgen.Utils.Rendering import (
     setup_compositing_render,
     set_compositing_render_image_name,
     check_is_sun_activated,
+    CameraType,
 )
 from mage_procgen.Utils.DataFiles import (
-    config_folder,
-    base_config_file,
-    default_config_file,
     check_shapefiles_presence,
     setup_project_folder,
     setup_export_folder,
@@ -39,30 +37,10 @@ from mage_procgen.Utils.DataFiles import (
 def main(filepath):
 
     start_time = time()
-    # Buffering log messages until logger is created
-    log_messages = []
 
-    # Loading config
-    if len(filepath) > 0:
-        log_messages.append("Using config file path given by user")
-        config_filepath = filepath
-    else:
-        log_messages.append("Falling back to default conf")
-        _location = os.path.realpath(
-            os.path.join(os.getcwd(), os.path.dirname(__file__))
-        )
-        config_filepath = os.path.realpath(
-            os.path.join(_location, config_folder, default_config_file)
-        )
+    config_status = ConfigLoader.load(filepath)
+    config = config_status.config
 
-        if not os.path.isfile(config_filepath):
-            log_messages.append("No config file found, copying base config")
-            shutil.copyfile(
-                os.path.join(_location, config_folder, base_config_file),
-                config_filepath,
-            )
-
-    config = ConfigLoader.load(config_filepath)
     if ".." in config.base_folder:
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))
@@ -75,7 +53,7 @@ def main(filepath):
         os.path.join(config.base_folder, log_folder), log_file_name, add_debug=False
     )
     logger.info("Worldweaver starting")
-    for log_message in log_messages:
+    for log_message in config_status.log_messages:
         logger.info(log_message)
 
     # Pre-run checks
@@ -98,7 +76,7 @@ def main(filepath):
     )
     render_manager.draw_terrain()
 
-    if config.flood:
+    if config.flood.activate:
 
         render_manager.change_non_sources_visibility(False)
 
@@ -107,7 +85,7 @@ def main(filepath):
         FloodProcessor.generate_height_map(
             config.base_folder,
             driver.geo_window,
-            config.flood_cell_size,
+            config.flood.flood_cell_size,
         )
 
         render_manager.change_terrain_visibility(False)
@@ -119,7 +97,7 @@ def main(filepath):
         FloodProcessor.generate_semantic_map(
             config.base_folder,
             driver.geo_window,
-            config.flood_cell_size,
+            config.flood.flood_cell_size,
         )
 
         render_manager.change_terrain_visibility(True)
@@ -128,60 +106,53 @@ def main(filepath):
         flood_data = FloodProcessor.flood(
             config.base_folder,
             driver.geo_window,
-            config.flood_height,
+            config.flood.flood_height,
             flood_threshold,
-            config.flood_cell_size,
+            config.flood.flood_cell_size,
         )
 
         render_manager.draw_flood(flood_data)
 
         render_manager.change_non_sources_visibility(True)
 
-    if not config.export_img:
+    export_folder = setup_export_folder(project_path)
 
-        export_folder = setup_export_folder(project_path)
+    config_filename = os.path.basename(config_status.config_file_path)
+    shutil.copyfile(
+        config_status.config_file_path,
+        os.path.join(project_path, config_filename),
+    )
 
-        config_filename = os.path.basename(config_filepath)
-        shutil.copyfile(
-            config_filepath,
-            os.path.join(project_path, config_filename),
-        )
+    setup_compositing_render(export_folder, config)
 
-        setup_compositing_render(export_folder, config)
+    if not config.rendering.output.export_img:
+
         now = datetime.now()
         now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
         set_compositing_render_image_name(now_str + "_tagging")
 
-        if not config.use_camera_ortho:
+        if config.rendering.output.camera_type == CameraType.PERSPECTIVE:
             setup_img_persp(
-                config.out_img_resolution,
-                config.out_img_pixel_size,
+                config.rendering.output.tile_size,
+                config.rendering.output.ground_sampling_distance,
                 (0, 0, 0),
             )
 
         else:
             setup_img_ortho_res(
-                config.out_img_resolution,
-                config.out_img_pixel_size,
+                config.rendering.output.tile_size,
+                config.rendering.output.ground_sampling_distance,
                 (0, 0, 0),
             )
 
         render_manager.draw_decor(False)
         export_rendered_img(export_folder, now_str)
+    else:
 
-    if config.export_img:
-
-        export_folder = setup_export_folder(project_path)
-
-        config_filename = os.path.basename(config_filepath)
-        shutil.copyfile(
-            config_filepath,
-            os.path.join(project_path, config_filename),
+        img_size = (
+            config.rendering.output.tile_size
+            * config.rendering.output.ground_sampling_distance
         )
-
-        setup_compositing_render(export_folder, config)
-
-        img_size = config.out_img_resolution * config.out_img_pixel_size
 
         camera_step = img_size * 0.9
 
@@ -197,18 +168,18 @@ def main(filepath):
                     now = datetime.now()
                     now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
 
-                    if not config.use_camera_ortho:
+                    if config.rendering.output.camera_type == CameraType.PERSPECTIVE:
                         setup_img_persp(
-                            config.out_img_resolution,
-                            config.out_img_pixel_size,
+                            config.rendering.output.tile_size,
+                            config.rendering.output.ground_sampling_distance,
                             (camera_x, camera_y, 0),
                         )
                         # Beautify
                         zone_window = render_manager.draw_decor(True, True)
                     else:
                         setup_img_ortho_res(
-                            config.out_img_resolution,
-                            config.out_img_pixel_size,
+                            config.rendering.output.tile_size,
+                            config.rendering.output.ground_sampling_distance,
                             (camera_x, camera_y, 0),
                         )
                         zone_window = render_manager.draw_decor(True)

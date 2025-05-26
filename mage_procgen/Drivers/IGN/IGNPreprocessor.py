@@ -116,13 +116,13 @@ class IGNPreprocessor:
             RenderingRoadDataFrame.has_sidewalks
         ].astype(bool)
         roads_full[RenderingRoadDataFrame.has_guardrails] = roads_full[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.has_guardrails
         ].astype(bool)
         roads_full[RenderingRoadDataFrame.is_bridge] = roads_full[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.is_bridge
         ].astype(bool)
         roads_full[RenderingRoadDataFrame.is_tunnel] = roads_full[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.is_tunnel
         ].astype(bool)
         roads_full[RenderingRoadDataFrame.number_lanes] = roads_full[
             RenderingRoadDataFrame.number_lanes

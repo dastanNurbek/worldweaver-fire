@@ -368,11 +368,14 @@ class StreamLoader(Loader):
 
         return geo_data
 
-    def load_town_shape(self, departement_nbr: int, town_name: str) -> g.GeoDataFrame:
+    def load_town_shape(self, town_id: str) -> g.GeoDataFrame:
+
+        town_name = town_id.split(" ")[:-1]
+        departement_nbr = town_id.split(" ")[-1]
 
         town_request_parameters = {
             WFS_FR.town_request_name: town_name,
-            WFS_FR.town_request_dpt: str(departement_nbr),
+            WFS_FR.town_request_dpt: departement_nbr,
             WFS_FR.town_request_format: WFS_FR.town_request_geojson,
             WFS_FR.town_request_geometry: WFS_FR.town_request_contour,
         }
@@ -381,9 +384,14 @@ class StreamLoader(Loader):
             WFS_FR.town_request_url, params=town_request_parameters
         )
 
-        town_data = town_request_response.content.decode("ascii")
+        town_data = town_request_response.content.decode("utf-8")
 
         town = g.read_file(town_data).to_crs(CRS_fr)
+
+        if town.empty:
+            raise ValueError(
+                f"Query of town with identifier {town_id} returned nothing. Format should be '<name_of_town> <departement_number>'"
+            )
 
         return town
 

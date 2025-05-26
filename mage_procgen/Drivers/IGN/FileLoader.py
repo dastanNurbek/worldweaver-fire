@@ -399,13 +399,16 @@ class FileLoader(Loader):
 
         return geo_data
 
-    def load_town_shape(self, departement_nbr: int, town_name: str) -> g.GeoDataFrame:
+    def load_town_shape(self, town_id: str) -> g.GeoDataFrame:
+
+        town_name = town_id.split(" ")[:-1]
+        departement_nbr = town_id.split(" ")[-1]
 
         towns = ShapeFileParser.load_no_window(
             os.path.join(
                 self.base_folder,
                 df.departements,
-                str(departement_nbr),
+                departement_nbr,
                 df.bdtopo_folder,
                 df.delivery,
                 df.dpt_folder,
@@ -416,6 +419,11 @@ class FileLoader(Loader):
 
         # Need to reset the index of the dataframe to ease the access of the data, and there is only one line anyway
         town = towns.query("NOM == @town_name").reset_index()
+
+        if town.empty:
+            raise ValueError(
+                f"Query of town with identifier {town_id} returned nothing. Format should be '<name_of_town> <departement_number>'"
+            )
 
         return town
 

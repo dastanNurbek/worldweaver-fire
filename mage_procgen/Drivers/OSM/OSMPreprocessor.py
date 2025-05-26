@@ -221,13 +221,13 @@ class OSMPreprocessor:
             RenderingRoadDataFrame.has_sidewalks
         ].astype(bool)
         highways[RenderingRoadDataFrame.has_guardrails] = highways[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.has_guardrails
         ].astype(bool)
         highways[RenderingRoadDataFrame.is_bridge] = highways[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.is_bridge
         ].astype(bool)
         highways[RenderingRoadDataFrame.is_tunnel] = highways[
-            RenderingRoadDataFrame.has_sidewalks
+            RenderingRoadDataFrame.is_tunnel
         ].astype(bool)
         highways[RenderingRoadDataFrame.number_lanes] = highways[
             RenderingRoadDataFrame.number_lanes

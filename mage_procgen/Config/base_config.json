@@ -1,86 +1,114 @@
 {
- "py/object": "mage_procgen.Utils.Config.Config",
- "base_folder": "../../maps",
- "data_source": "STREAM",
- "window_type": "COORDS",
- "geo_window": {
-  "py/object": "mage_procgen.Utils.Config.GeoWindowConfig",
-  "x_min": 2.9185,
-  "y_min": 48.9396,
-  "x_max": 2.9314,
-  "y_max": 48.9466,
-  "crs_from": 4326
- },
- "town_dpt": 62,
- "town_name": "Loos-en-Gohelle",
- "window_shapefile": "",
- "terrain_resolution": 2,
- "use_sat_img": true,
- "flood": true,
- "flood_height": 10,
- "flood_cell_size": 1,
- "export_img": false,
- "use_camera_ortho": true,
- "out_img_resolution": 512,
- "out_img_pixel_size": 0.2,
- "building_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Buildings.blend",
-  "geometry_node_name": "Buildings",
-  "tagging_index": 6
- },
- "house_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Houses.blend",
-  "geometry_node_name": "(PBG) Swedish cottage Preset",
-  "tagging_index": 6
- },
- "church_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Churches.blend",
-  "geometry_node_name": "Churches",
-  "tagging_index": 6
- },
- "factory_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Factories.blend",
-  "geometry_node_name": "Factories",
-  "tagging_index": 6
- },
- "mall_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Malls.blend",
-  "geometry_node_name": "Malls",
-  "tagging_index": 6
- },
- "flood_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Flood.blend",
-  "geometry_node_name": "Flood",
-  "tagging_index": 2
- },
- "forest_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Forests.blend",
-  "geometry_node_name": "Forest_pine",
-  "tagging_index": 3
- },
- "road_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Roads.blend",
-  "geometry_node_name": "Roads",
-  "tagging_index": 4
- },
- "water_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Water.blend",
-  "geometry_node_name": "Water",
-  "tagging_index": 2
- },
- "car_render_config": {
-  "py/object": "mage_procgen.Utils.Config.RenderObjectConfig",
-  "geometry_node_file": "Cars.blend",
-  "geometry_node_name": "CarsOnVectors",
-  "tagging_index": 5
- }
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "STREAM"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 2.9185,
+      "y_min": 48.9396,
+      "x_max": 2.9314,
+      "y_max": 48.9466,
+      "crs_from": 4326
+    },
+    "town": {
+      "identifier" : "Loos-en-Gohelle 59"
+    },
+    "shapefile": {
+      "path": ""
+    }
+  },
+  "terrain": {
+    "terrain_resolution": 2,
+    "use_orthoimage_as_basemap": false
+  },
+  "flood": {
+    "activate": false,
+    "flood_height": 10,
+    "flood_cell_size": 1
+  },
+  "rendering": {
+    "export_images": false,
+    "device_type": "GPU",
+    "camera_type": "ORTHOGRAPHIC",
+    "ground_sampling_distance": 0.2,
+    "tile_size": 512,
+    "objects": {
+      "building_render": {
+        "geometry_node_file": "Buildings.blend",
+        "geometry_node_name": "Buildings",
+        "tagging_index": 6,
+        "default_levels_min": 2,
+        "default_levels_max": 3
+      },
+      "house_render": {
+        "geometry_node_file": "Houses.blend",
+        "geometry_node_name": "(PBG) Swedish cottage Preset",
+        "tagging_index": 6,
+        "default_height_min": 2.5,
+        "default_height_max": 6,
+        "roof_slope_degrees": 25
+      },
+      "church_render": {
+        "geometry_node_file": "Churches.blend",
+        "geometry_node_name": "Churches",
+        "tagging_index": 6,
+        "default_levels_min": 4,
+        "default_levels_max": 4
+      },
+      "factory_render": {
+        "geometry_node_file": "Factories.blend",
+        "geometry_node_name": "Factories",
+        "tagging_index": 6,
+        "default_levels_min": 2,
+        "default_levels_max": 5
+      },
+      "mall_render": {
+        "geometry_node_file": "Malls.blend",
+        "geometry_node_name": "Malls",
+        "tagging_index": 6,
+        "default_levels_min": 3,
+        "default_levels_max": 4
+      },
+      "flood_render": {
+        "geometry_node_file": "Flood.blend",
+        "geometry_node_name": "Flood",
+        "tagging_index": 2
+      },
+      "forest_render": {
+        "geometry_node_file": "Forests.blend",
+        "geometry_node_name": "Forest_pine",
+        "tagging_index": 3
+      },
+      "road_render": {
+        "geometry_node_file": "Roads_pretty_3.blend",
+        "geometry_node_name": "Next_Streets_V3_custom_cars",
+        "car_collection_info_node_name": "Cars Collection Info",
+        "tagging_index": 4,
+        "car_tagging_index": 5
+      },
+      "bridge_render": {
+        "geometry_node_file": "Bridges.blend",
+        "geometry_node_name": "Bridges",
+        "tagging_index": 4,
+        "bridge_group_name": "Group.001"
+      },
+      "water_render": {
+        "geometry_node_file": "Water.blend",
+        "geometry_node_name": "Water",
+        "tagging_index": 2
+      },
+      "terrain_render": {
+        "geometry_node_file": "Terrain_2Tests.blend",
+        "adaptation_node_name": "TerrainMove",
+        "tagging_node_name": "TerrainTagging",
+        "decorating_node_name": "TerrainDecorating",
+        "base_material_name": "Base_Terrain",
+        "tagged_material_name": "Tagged_Terrain",
+        "tagging_index": 0,
+        "decor_tagging_index": 7
+      }
+    }
+  }
 }

@@ -2,7 +2,8 @@ from bpy import data as D
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
-from mage_procgen.Utils.Rendering import get_camera, CameraType
+from mage_procgen.Utils.Config import CameraType
+from mage_procgen.Utils.Rendering import get_camera
 from mage_procgen.Utils.Utils import Point
 
 
@@ -30,7 +31,7 @@ class ForestRenderer(BaseRenderer):
             (
                 x[0] - geo_center[0],
                 x[1] - geo_center[1],
-                get_camera(CameraType.Camera_Ortho).location[2],
+                get_camera(CameraType.ORTHOGRAPHIC).location[2],
             )
             for x in points_coords
         ]

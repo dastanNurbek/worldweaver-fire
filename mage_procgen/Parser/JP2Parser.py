@@ -6,7 +6,6 @@ import rasterio
 from rasterio.windows import Window
 
 from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
-from mage_procgen.Utils.Logging import logger
 
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, safe_overlay, OverlayType
 

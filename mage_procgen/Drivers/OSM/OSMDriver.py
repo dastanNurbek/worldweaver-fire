@@ -5,6 +5,7 @@ from mage_procgen.Drivers.OSM.OsmLoader import OsmLoader
 from mage_procgen.Drivers.OSM.OsmChLoader import OsmChLoader
 from mage_procgen.Drivers.OSM.OSMPreprocessor import OSMPreprocessor
 
+from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
 
 
@@ -14,7 +15,7 @@ class OSMDataSources(StrEnum):
 
 
 class OSMDriver(BaseDriver):
-    def __init__(self, config, project_path):
+    def __init__(self, config: Config, project_path: str):
         super().__init__(config, project_path)
         match config.data_source:
             case OSMDataSources.OSM_CH:
@@ -52,4 +53,4 @@ class OSMDriver(BaseDriver):
 
     def __compute_geo_window_town__(self):
 
-        return self.loader.load_town_shape(self.config.town_name)
+        return self.loader.load_town_shape(self.config.geo_window.town_id)

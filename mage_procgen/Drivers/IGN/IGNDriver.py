@@ -8,6 +8,7 @@ from mage_procgen.Drivers.IGN.StreamLoader import StreamLoader
 from mage_procgen.Drivers.IGN.FileLoader import FileLoader
 from mage_procgen.Drivers.IGN.IGNPreprocessor import IGNPreprocessor
 
+from mage_procgen.Utils.Config import Config
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import CRS_fr
 
@@ -18,7 +19,7 @@ class IGNDataSources(StrEnum):
 
 
 class IGNDriver(BaseDriver):
-    def __init__(self, config, project_path):
+    def __init__(self, config: Config, project_path):
 
         super().__init__(config, project_path)
         self.internal_crs = CRS_fr
@@ -26,11 +27,11 @@ class IGNDriver(BaseDriver):
         match config.data_source:
             case IGNDataSources.STREAM:
                 self.loader = StreamLoader(
-                    config.base_folder, project_path, self.config.use_sat_img
+                    config.base_folder, project_path, self.config.terrain.use_sat_img
                 )
             case IGNDataSources.FILE:
                 self.loader = FileLoader(
-                    config.base_folder, project_path, self.config.use_sat_img
+                    config.base_folder, project_path, self.config.terrain.use_sat_img
                 )
             case _:
                 raise ValueError(
@@ -63,4 +64,4 @@ class IGNDriver(BaseDriver):
 
     def __compute_geo_window_town__(self) -> g.GeoDataFrame:
 
-        return self.loader.load_town_shape(self.config.town_dpt, self.config.town_name)
+        return self.loader.load_town_shape(self.config.geo_window.town_id)

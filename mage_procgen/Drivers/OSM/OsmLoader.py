@@ -55,6 +55,7 @@ class OsmLoader:
 
     def load_town_shape(self, town_name: str):
 
+        # TODO: Replace overpass query with Nominatim query
         api = overpass.API()
 
         query = OSM.get_town_request(town_name)
@@ -69,6 +70,11 @@ class OsmLoader:
         response_str = json.dumps(response, indent=2)
 
         town = g.read_file(response_str).to_crs(self.internal_crs).query("index==0")
+
+        if town.empty:
+            raise ValueError(
+                f"Query of town with identifier {town_name} returned nothing. Identifier should be a valid Nominatim query.\nYou can check it on https://nominatim.openstreetmap.org/ui/search.html"
+            )
 
         return town
 

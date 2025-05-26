@@ -17,7 +17,7 @@ from mage_procgen.Renderer import (
     LineZoneRenderer,
 )
 
-from mage_procgen.Utils.Config import Config
+from mage_procgen.Utils.Config import Config, CameraType
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.Utils import GeoWindow, safe_overlay, OverlayType
@@ -27,7 +27,6 @@ from mage_procgen.Utils.Rendering import (
     terrain_collection_name,
     buildings_collection_name,
     additionals_collection_name,
-    CameraType,
     get_camera,
 )
 from mage_procgen.Utils.RenderingDataFrames import RenderingData
@@ -50,45 +49,44 @@ class RenderManager:
         self.current_zone = None
         configure_render(self.window.center_deg)
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
-            config.base_folder,
-            self.config.terrain_resolution,
-            terrain_data[0].resolution,
-            self.config.use_sat_img,
+            terrain_data,
+            self.config.terrain,
+            self.config.rendering.terrain_render_config,
         )
         self.building_renderer = BuildingRenderer.BuildingRenderer(
-            self.terrain_data, self.config.building_render_config
+            self.terrain_data, self.config.rendering.building_render_config
         )
         self.houses_renderer = BoxBuildingRenderer.BoxBuildingRenderer(
-            self.terrain_data, self.config.house_render_config
+            self.terrain_data, self.config.rendering.house_render_config
         )
         self.malls_renderer = BuildingRenderer.MallRenderer(
-            self.terrain_data, self.config.mall_render_config
+            self.terrain_data, self.config.rendering.mall_render_config
         )
         self.churches_renderer = BuildingRenderer.ChurchRenderer(
-            self.terrain_data, self.config.church_render_config
+            self.terrain_data, self.config.rendering.church_render_config
         )
         self.factories_renderer = BuildingRenderer.FactoryRenderer(
-            self.terrain_data, self.config.factory_render_config
+            self.terrain_data, self.config.rendering.factory_render_config
         )
         self.flowing_water_renderer = WaterRenderer.FlowingWaterRenderer(
-            self.terrain_data, self.config.water_render_config
+            self.terrain_data, self.config.rendering.water_render_config
         )
         self.ocean_renderer = WaterRenderer.OceanRenderer(
-            self.terrain_data, self.config.water_render_config
+            self.terrain_data, self.config.rendering.water_render_config
         )
         self.flood_renderer = FloodRenderer.FloodRenderer(
-            self.config.flood_render_config
+            self.config.rendering.flood_render_config
         )
         self.forests_renderer = ForestRenderer.ForestRenderer(
-            self.terrain_data, self.config.forest_render_config
+            self.terrain_data, self.config.rendering.forest_render_config
         )
         self.road_renderer = PrettyRoadRenderer.PrettyRoadRenderer(
             self.terrain_data,
-            self.config.road_render_config,
-            self.config.car_render_config,
+            self.config.rendering.road_render_config,
+            self.config.rendering.bridge_render_config,
         )
         self.still_water_renderer = WaterRenderer.StillWaterRenderer(
-            self.terrain_data, self.config.water_render_config
+            self.terrain_data, self.config.rendering.water_render_config
         )
         self.building_footprint_renderer = (
             BuildingFootprintRenderer.BuildingFootprintRenderer(self.terrain_data)
@@ -107,7 +105,6 @@ class RenderManager:
         # Rendering objects that are ground level or interact with terrain
         logger.info("Rendering terrain and its dependencies")
         self.terrain_renderer.render(
-            self.terrain_data,
             self.window,
             terrain_collection_name,
         )
@@ -250,7 +247,7 @@ class RenderManager:
             building_object=self.building_footprint_renderer.get_mesh_obj(),
         )
 
-        if not self.config.use_sat_img:
+        if not self.config.terrain.use_sat_img:
             self.terrain_renderer._TerrainRenderer__config_tagging_node(
                 wheatfields_object=self.wheatfields_renderer.get_mesh_obj(),
                 cornields_object=self.cornfields_renderer.get_mesh_obj(),
@@ -281,7 +278,7 @@ class RenderManager:
             # Calculating an area that is roughly vector_multiplier times bigger than the field of view of the camera
             # So that we only draw objects that are inside this area
             if use_camera_presp:
-                camera = get_camera(CameraType.Camera_Persp)
+                camera = get_camera(CameraType.PERSPECTIVE)
                 origin = camera.location
 
                 # camera Z should be by far the highest so this rule of thumb should hold
@@ -345,7 +342,7 @@ class RenderManager:
                         "Zone to beautify is outside of the boundaries of the scene"
                     )
             else:
-                camera = get_camera(CameraType.Camera_Ortho)
+                camera = get_camera(CameraType.ORTHOGRAPHIC)
                 origin = camera.location
                 window_size = camera.data.ortho_scale
 
@@ -434,7 +431,7 @@ class RenderManager:
             self.road_renderer.get_mesh_obj(),
             self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
-            get_camera(CameraType.Camera_Ortho).location[2] * 2,
+            get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
         )
 
         return zone_window

@@ -24,7 +24,7 @@ from mage_procgen.Utils.Geometry import (
     interpolate_z,
 )
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import Point, TerrainData
+from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.Rendering import additionals_collection_name
 from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 

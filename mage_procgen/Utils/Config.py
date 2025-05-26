@@ -1,11 +1,16 @@
 from dataclasses import dataclass
+from enum import StrEnum
 
-window_type_coords = "COORDS"
-window_type_town = "TOWN"
-window_type_file = "FILE"
 
-data_source_stream = "STREAM"
-data_source_file = "FILE"
+class WindowTypes(StrEnum):
+    TOWN = "TOWN"
+    FILE = "FILE"
+    COORDS = "COORDS"
+
+
+class CameraType(StrEnum):
+    ORTHOGRAPHIC = "ORTHOGRAPHIC"
+    PERSPECTIVE = "PERSPECTIVE"
 
 
 @dataclass
@@ -16,7 +21,54 @@ class RenderObjectConfig:
 
 
 @dataclass
-class GeoWindowConfig:
+class BuildingRendererConfig:
+    geometry_node_file: str
+    geometry_node_name: str
+    tagging_index: int
+    default_levels_min: int
+    default_levels_max: int
+
+
+@dataclass
+class HouseRendererConfig:
+    geometry_node_file: str
+    geometry_node_name: str
+    tagging_index: int
+    default_height_min: int
+    default_height_max: int
+
+
+@dataclass
+class RoadRendererConfig:
+    geometry_node_file: str
+    geometry_node_name: str
+    car_collection_info_node_name: str
+    road_tagging_index: int
+    car_tagging_index: int
+
+
+@dataclass
+class BridgeRendererConfig:
+    geometry_node_file: str
+    geometry_node_name: str
+    tagging_index: int
+    bridge_group_name: str
+
+
+@dataclass
+class TerrainRendererConfig:
+    geometry_node_file: str
+    adaptation_node_name: str
+    tagging_node_name: str
+    decorating_node_name: str
+    base_material_name: str
+    tagged_material_name: str
+    tagging_index: int
+    decor_tagging_index: int
+
+
+@dataclass
+class CoordsGeoWindowConfig:
     x_min: float
     y_min: float
     x_max: float
@@ -25,30 +77,57 @@ class GeoWindowConfig:
 
 
 @dataclass
+class GeoWindowConfig:
+    window_type: str
+    geo_window: CoordsGeoWindowConfig
+    town_id: str
+    window_shapefile: str
+
+
+@dataclass
+class OutputConfig:
+    export_img: bool
+    device_type: str
+    camera_type: str
+    tile_size: int
+    ground_sampling_distance: float
+
+
+@dataclass
+class FloodConfig:
+    activate: bool
+    flood_height: float
+    flood_cell_size: float
+
+
+@dataclass
+class TerrainConfig:
+    terrain_resolution: float
+    use_sat_img: bool
+
+
+@dataclass
+class RenderingConfig:
+
+    output: OutputConfig
+    building_render_config: BuildingRendererConfig
+    house_render_config: HouseRendererConfig
+    church_render_config: BuildingRendererConfig
+    factory_render_config: BuildingRendererConfig
+    mall_render_config: BuildingRendererConfig
+    flood_render_config: RenderObjectConfig
+    forest_render_config: RenderObjectConfig
+    road_render_config: RoadRendererConfig
+    bridge_render_config: BridgeRendererConfig
+    water_render_config: RenderObjectConfig
+    terrain_render_config: TerrainRendererConfig
+
+
+@dataclass
 class Config:
     base_folder: str
     data_source: str
-    window_type: str
     geo_window: GeoWindowConfig
-    town_dpt: int
-    town_name: str
-    window_shapefile: str
-    terrain_resolution: float
-    use_sat_img: bool
-    flood: bool
-    flood_height: float
-    flood_cell_size: float
-    export_img: bool
-    use_camera_ortho: bool
-    out_img_resolution: int
-    out_img_pixel_size: float
-    building_render_config: RenderObjectConfig
-    house_render_config: RenderObjectConfig
-    church_render_config: RenderObjectConfig
-    factory_render_config: RenderObjectConfig
-    mall_render_config: RenderObjectConfig
-    flood_render_config: RenderObjectConfig
-    forest_render_config: RenderObjectConfig
-    road_render_config: RenderObjectConfig
-    water_render_config: RenderObjectConfig
-    car_render_config: RenderObjectConfig
+    terrain: TerrainConfig
+    flood: FloodConfig
+    rendering: RenderingConfig

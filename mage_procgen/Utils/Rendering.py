@@ -1,6 +1,5 @@
 import os
 import math
-from enum import StrEnum
 
 from datetime import datetime
 
@@ -10,6 +9,8 @@ import addon_utils
 
 from timezonefinder import TimezoneFinder
 import pytz
+
+from mage_procgen.Utils.Config import CameraType
 
 from mage_procgen.Utils.Logging import logger, stdout_redirected
 import mage_procgen.Utils.DataFiles as df
@@ -23,10 +24,10 @@ additionals_collection_name = "additionals"
 
 sun_name = "Sun"
 
-
-class CameraType(StrEnum):
-    Camera_Ortho = "Camera_Ortho"
-    Camera_Persp = "Camera_Persp"
+cameras = {
+    CameraType.ORTHOGRAPHIC: "Camera_Ortho",
+    CameraType.PERSPECTIVE: "Camera_Persp",
+}
 
 
 def check_is_sun_activated():
@@ -135,9 +136,9 @@ def configure_render(geo_center_deg):
         )
 
     # Persp Camera
-    persp_camera_data = D.cameras.new(name=CameraType.Camera_Persp.value)
+    persp_camera_data = D.cameras.new(name=cameras[CameraType.PERSPECTIVE])
     persp_camera_object = D.objects.new(
-        CameraType.Camera_Persp.value, persp_camera_data
+        cameras[CameraType.PERSPECTIVE], persp_camera_data
     )
     D.collections[base_collection_name].objects.link(persp_camera_object)
     persp_camera_object.location = (0, 0, 1100)
@@ -147,9 +148,9 @@ def configure_render(geo_center_deg):
     persp_camera_object.data.angle = 10 * math.pi / 180
 
     # Ortho Camera
-    ortho_camera_data = D.cameras.new(name=CameraType.Camera_Ortho.value)
+    ortho_camera_data = D.cameras.new(name=cameras[CameraType.ORTHOGRAPHIC])
     ortho_camera_object = D.objects.new(
-        CameraType.Camera_Ortho.value, ortho_camera_data
+        cameras[CameraType.ORTHOGRAPHIC], ortho_camera_data
     )
     D.collections[base_collection_name].objects.link(ortho_camera_object)
     ortho_camera_data.type = "ORTHO"
@@ -200,10 +201,10 @@ def export_rendered_img(base_path, base_name):
 def get_camera(camera_type):
 
     match camera_type:
-        case CameraType.Camera_Ortho:
-            return D.objects[CameraType.Camera_Ortho.value]
-        case CameraType.Camera_Persp:
-            return D.objects[CameraType.Camera_Persp.value]
+        case CameraType.ORTHOGRAPHIC:
+            return D.objects[cameras[CameraType.ORTHOGRAPHIC]]
+        case CameraType.PERSPECTIVE:
+            return D.objects[cameras[CameraType.ORTHOGRAPHIC]]
         case _:
             raise ValueError("Invalid camera type")
 
@@ -214,7 +215,7 @@ def setup_img_persp(resolution, pixel_size, center):
     sc.render.resolution_x = resolution
     sc.render.resolution_y = resolution
 
-    camera = get_camera(CameraType.Camera_Persp)
+    camera = get_camera(CameraType.PERSPECTIVE)
     sc.camera = camera
     img_size = resolution * pixel_size
     camera_elevation = img_size / (2 * math.tan(camera.data.angle / 2))
@@ -241,7 +242,7 @@ def setup_img_ortho(size_x, size_y, pixel_size, center):
 
     size = max(size_x, size_y)
 
-    camera = get_camera(CameraType.Camera_Ortho)
+    camera = get_camera(CameraType.ORTHOGRAPHIC)
     sc.camera = camera
     camera.data.ortho_scale = size
 
@@ -355,21 +356,23 @@ def setup_compositing_render(folder, config):
     output_file.format.color_depth = "8"
     output_file.base_path = folder
 
-    # Normalizing
-    objects_config = [
-        config.building_render_config,
-        config.church_render_config,
-        config.factory_render_config,
-        config.mall_render_config,
-        config.flood_render_config,
-        config.forest_render_config,
-        config.road_render_config,
-        config.water_render_config,
-        config.car_render_config,
+    # Normalizing the map to improve contrast
+    objects_indexes = [
+        config.rendering.building_render_config.tagging_index,
+        config.rendering.house_render_config.tagging_index,
+        config.rendering.church_render_config.tagging_index,
+        config.rendering.factory_render_config.tagging_index,
+        config.rendering.mall_render_config.tagging_index,
+        config.rendering.flood_render_config.tagging_index,
+        config.rendering.forest_render_config.tagging_index,
+        config.rendering.road_render_config.road_tagging_index,
+        config.rendering.road_render_config.car_tagging_index,
+        config.rendering.bridge_render_config.tagging_index,
+        config.rendering.water_render_config.tagging_index,
+        config.rendering.terrain_render_config.tagging_index,
+        config.rendering.terrain_render_config.decor_tagging_index,
     ]
-    max_tagging_index = max(
-        [object_config.tagging_index for object_config in objects_config]
-    )
+    max_tagging_index = max(objects_indexes)
 
     math_node = nodes.new("CompositorNodeMath")
     math_node.inputs[1].default_value = max_tagging_index

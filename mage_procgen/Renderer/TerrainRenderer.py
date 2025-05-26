@@ -8,9 +8,10 @@ from numpy import arange
 
 from tqdm import tqdm
 
+from mage_procgen.Utils.Config import TerrainRendererConfig, TerrainConfig
 from mage_procgen.Utils.Geometry import center_point
 from mage_procgen.Utils.Logging import logger
-from mage_procgen.Utils.Utils import GeoWindow
+from mage_procgen.Utils.Utils import GeoWindow, TerrainData
 from mage_procgen.Utils.DataFiles import assets_folder
 
 
@@ -18,26 +19,21 @@ class TerrainRenderer:
 
     _mesh_name = "Terrain"
 
-    _TerrainAdaptationGN = "TerrainMove"
-    _TerrainTaggingGN = "TerrainTagging"
-    _TerrainDecoratingGN = "TerrainDecorating"
-    _BaseMaterialName = "Base_Terrain"
-    _TaggedMaterialName = "Tagged_Terrain"
-    _MaterialFile = "Terrain_2Tests.blend"
-
     def __init__(
         self,
-        base_folder: str,
-        render_resolution: float,
-        file_resolution: float,
-        use_sat_img: bool,
+        terrain_data: list[TerrainData],
+        terrain_config: TerrainConfig,
+        render_config: TerrainRendererConfig,
     ):
-
-        self.base_folder = base_folder
-        self.render_resolution = render_resolution
-        self.file_resolution = file_resolution
-        self.use_sat_img = use_sat_img
-        if render_resolution / file_resolution != render_resolution // file_resolution:
+        self.terrain_data = terrain_data
+        self.use_sat_img = terrain_config.use_sat_img
+        self.render_resolution = terrain_config.terrain_resolution
+        self.file_resolution = self.terrain_data[0].resolution
+        self.config = render_config
+        if (
+            self.render_resolution / self.file_resolution
+            != self.render_resolution // self.file_resolution
+        ):
             raise ValueError(
                 "terrain render resolution has to be a multiple of file resolution"
             )
@@ -46,15 +42,18 @@ class TerrainRenderer:
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         filepath = os.path.realpath(
-            os.path.join(_location, "..", assets_folder, self._MaterialFile)
+            os.path.join(_location, "..", assets_folder, self.config.geometry_node_file)
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
-                data_to.materials = [self._BaseMaterialName, self._TaggedMaterialName]
+                data_to.materials = [
+                    self.config.base_material_name,
+                    self.config.tagged_material_name,
+                ]
                 data_to.node_groups = [
-                    self._TerrainAdaptationGN,
-                    self._TerrainTaggingGN,
-                    self._TerrainDecoratingGN,
+                    self.config.adaptation_node_name,
+                    self.config.tagging_node_name,
+                    self.config.decorating_node_name,
                 ]
 
             self._base_material = data_to.materials[0]
@@ -75,7 +74,7 @@ class TerrainRenderer:
             .default_value
         )
 
-        trashcan.pass_index = 1
+        trashcan.pass_index = self.config.decor_tagging_index
 
         lamp = (
             D.node_groups["Decorate_LightsOnRoads"]
@@ -84,11 +83,10 @@ class TerrainRenderer:
             .default_value
         )
 
-        lamp.pass_index = 1
+        lamp.pass_index = self.config.decor_tagging_index
 
     def render(
         self,
-        terrain_data,
         geo_window: GeoWindow,
         parent_collection_name,
     ):
@@ -99,34 +97,34 @@ class TerrainRenderer:
 
         box = geo_window.bounds
 
-        current_terrain = terrain_data[0]
+        current_terrain = self.terrain_data[0]
         terrain_index = 0
 
         meshes = {
             x: TerrainMeshInfo(
                 mesh=bmesh.new(),
-                base_map_file=terrain_data[x].base_map_file,
-                base_map_x_min=terrain_data[x].x_min,
-                base_map_x_max=terrain_data[x].x_max,
-                base_map_y_min=terrain_data[x].y_min,
-                base_map_y_max=terrain_data[x].y_max,
+                base_map_file=self.terrain_data[x].base_map_file,
+                base_map_x_min=self.terrain_data[x].x_min,
+                base_map_x_max=self.terrain_data[x].x_max,
+                base_map_y_min=self.terrain_data[x].y_min,
+                base_map_y_max=self.terrain_data[x].y_max,
             )
-            for x in range(len(terrain_data))
+            for x in range(len(self.terrain_data))
         }
-        meshes_points = {x: {} for x in range(len(terrain_data))}
-        meshes_points_real_coords = {x: [] for x in range(len(terrain_data))}
+        meshes_points = {x: {} for x in range(len(self.terrain_data))}
+        meshes_points_real_coords = {x: [] for x in range(len(self.terrain_data))}
 
-        global_x_min = min([x.x_min for x in terrain_data])
-        global_x_max = max([x.x_max for x in terrain_data])
-        global_y_min = min([x.y_min for x in terrain_data])
-        global_y_max = max([x.y_max for x in terrain_data])
+        global_x_min = min([x.x_min for x in self.terrain_data])
+        global_x_max = max([x.x_max for x in self.terrain_data])
+        global_y_min = min([x.y_min for x in self.terrain_data])
+        global_y_max = max([x.y_max for x in self.terrain_data])
 
         base_range_x = arange(global_x_min, global_x_max, self.render_resolution)
         range_x = []
         for x in base_range_x:
             if box[0] < x < box[2]:
                 range_x.append(x)
-        for terrain in terrain_data:
+        for terrain in self.terrain_data:
             if terrain.x_max not in range_x:
                 if box[0] < terrain.x_max < box[2]:
                     range_x.append(terrain.x_max)
@@ -140,7 +138,7 @@ class TerrainRenderer:
         for y in base_range_y:
             if box[1] < y < box[3]:
                 range_y.append(y)
-        for terrain in terrain_data:
+        for terrain in self.terrain_data:
             if terrain.y_max not in range_y:
                 if box[1] < terrain.y_max < box[3]:
                     range_y.append(terrain.y_max)
@@ -186,7 +184,7 @@ class TerrainRenderer:
 
                 if not is_point_in_current_terrain:
 
-                    for terrain in terrain_data:
+                    for terrain in self.terrain_data:
                         is_point_in_terrain = True
                         is_point_in_terrain &= point_query_x >= terrain.x_min
                         is_point_in_terrain &= point_query_x < terrain.x_max
@@ -195,7 +193,7 @@ class TerrainRenderer:
 
                         if is_point_in_terrain:
                             current_terrain = terrain
-                            terrain_index = terrain_data.index(current_terrain)
+                            terrain_index = self.terrain_data.index(current_terrain)
                             break
 
                 current_point_index_x = (
@@ -259,7 +257,7 @@ class TerrainRenderer:
 
                     if not is_ll_point_in_current_terrain:
 
-                        for terrain in terrain_data:
+                        for terrain in self.terrain_data:
                             is_ll_point_in_terrain = True
                             is_ll_point_in_terrain &= ll_point[0] >= terrain.x_min
                             is_ll_point_in_terrain &= ll_point[0] < terrain.x_max
@@ -267,7 +265,9 @@ class TerrainRenderer:
                             is_ll_point_in_terrain &= ll_point[1] < terrain.y_max
 
                             if is_ll_point_in_terrain:
-                                ll_point_terrain_index = terrain_data.index(terrain)
+                                ll_point_terrain_index = self.terrain_data.index(
+                                    terrain
+                                )
                                 break
 
                     new_face_mesh_verts = []
@@ -307,7 +307,7 @@ class TerrainRenderer:
 
             if self.use_sat_img:
 
-                mesh_material = D.materials[self._BaseMaterialName].copy()
+                mesh_material = D.materials[self.config.base_material_name].copy()
                 if os.path.isfile(mesh_info.base_map_file):
                     try:
                         # TODO: this line triggers prints such as
@@ -331,7 +331,7 @@ class TerrainRenderer:
 
                 mesh_data.materials.append(mesh_material)
             else:
-                mesh_material = D.materials[self._TaggedMaterialName]
+                mesh_material = D.materials[self.config.tagged_material_name]
                 mesh_data.materials.append(mesh_material)
 
             base_map_size_x = mesh_info.base_map_x_max - mesh_info.base_map_x_min
@@ -428,7 +428,7 @@ class TerrainRenderer:
         # Terrain's geometry node for tagging requires references to other Blender objects present in the scene,
         # so this method needs to be called by the RenderManager whose responsibility is to be aware of the context of the whole scene
         if not self.use_sat_img:
-            node_tree = D.node_groups[self._TerrainTaggingGN]
+            node_tree = D.node_groups[self.config.tagging_node_name]
             node_tree.nodes["Compute Proximity Wheat Fields"].inputs[
                 2
             ].default_value = wheatfields_object
@@ -464,9 +464,10 @@ class TerrainRenderer:
             ].default_value = wheatfields_object
 
     def change_decor_visibility(self, is_visible: bool):
-        node = self.terrain_object.modifiers[self.decorating_geometry_node_name]
-        node.show_viewport = is_visible
-        node.show_render = is_visible
+        if not self.use_sat_img:
+            node = self.terrain_object.modifiers[self.decorating_geometry_node_name]
+            node.show_viewport = is_visible
+            node.show_render = is_visible
 
     def get_mesh_obj(self):
         return self.terrain_object

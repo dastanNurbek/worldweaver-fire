@@ -13,6 +13,7 @@ from shapely.geometry import MultiLineString
 
 from tqdm import tqdm
 
+from mage_procgen.Utils.Config import RoadRendererConfig, BridgeRendererConfig
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import (
     Point,
@@ -31,38 +32,33 @@ class PrettyRoadRenderer:
     _bridge_mesh_name = "Bridges"
     _car_mesh_name = "Cars"
 
-    _Asset_File = "Roads_pretty_3.blend"
-    _GN_Name = "Next_Streets_V3_custom_cars"
-    _car_collection_info_node_name = "Cars Collection Info"
-
-    _Bridge_Asset_File = "Bridges.blend"
-    _Bridge_GN_Name = "Bridges"
-    _Bridge_Group_Name = "Group.001"
-
     _default_road_thickness = 3
     _default_road_lanes = 1
 
     def __init__(
-        self, terrain_data: list[TerrainData], object_config, car_object_config
+        self,
+        terrain_data: list[TerrainData],
+        road_object_config: RoadRendererConfig,
+        bridge_object_config: BridgeRendererConfig,
     ):
-        self.config = object_config
-        self.car_config = car_object_config
+        self.config = road_object_config
+        self.bridge_config = bridge_object_config
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))
         )
         filepath = os.path.realpath(
-            os.path.join(_location, "..", assets_folder, self._Asset_File)
+            os.path.join(_location, "..", assets_folder, self.config.geometry_node_file)
         )
         try:
             with bpy.data.libraries.load(filepath) as (data_from, data_to):
-                data_to.node_groups = [self._GN_Name]
+                data_to.node_groups = [self.config.geometry_node_name]
 
             # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
             self.geometry_node_name = data_to.node_groups[0].name
         except Exception as _:
             raise Exception(
                 f"Unable to load the Geometry Nodes setup with the name '"
-                f"{self._GN_Name}"
+                f"{self.config.geometry_node_name}"
                 f"'"
                 f" from the file "
                 f"{filepath}"
@@ -70,18 +66,20 @@ class PrettyRoadRenderer:
             )
 
         filepath_bridge = os.path.realpath(
-            os.path.join(_location, "..", assets_folder, self._Bridge_Asset_File)
+            os.path.join(
+                _location, "..", assets_folder, self.bridge_config.geometry_node_file
+            )
         )
         try:
             with bpy.data.libraries.load(filepath_bridge) as (data_from, data_to):
-                data_to.node_groups = [self._Bridge_GN_Name]
+                data_to.node_groups = [self.bridge_config.geometry_node_name]
 
             # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
             self.bridge_geometry_node_name = data_to.node_groups[0].name
         except Exception as _:
             raise Exception(
                 f"Unable to load the Geometry Nodes setup with the name '"
-                f"{self._Bridge_GN_Name}"
+                f"{self.bridge_config.geometry_node_name}"
                 f"'"
                 f" from the file "
                 f"{filepath_bridge}"
@@ -93,22 +91,22 @@ class PrettyRoadRenderer:
         # Setting pass index of cars
         cars_collection = (
             D.node_groups[self.geometry_node_name]
-            .nodes[self._car_collection_info_node_name]
+            .nodes[self.config.car_collection_info_node_name]
             .inputs[0]
             .default_value
         )
         for obj in cars_collection.objects:
-            obj.pass_index = car_object_config.tagging_index
+            obj.pass_index = self.config.car_tagging_index
 
         # Setting pass index of bridge pillar
         bridge_pillar = (
             D.node_groups[self.bridge_geometry_node_name]
-            .nodes[self._Bridge_Group_Name]
+            .nodes[self.bridge_config.bridge_group_name]
             .inputs[2]
             .default_value
         )
 
-        bridge_pillar.pass_index = car_object_config.tagging_index
+        bridge_pillar.pass_index = self.bridge_config.tagging_index
 
     def render(
         self,
@@ -230,7 +228,7 @@ class PrettyRoadRenderer:
         mesh.free()
         mesh_obj = D.objects.new(self._mesh_name, mesh_data)
         self._mesh_name = mesh_obj.name
-        mesh_obj.pass_index = self.config.tagging_index
+        mesh_obj.pass_index = self.config.road_tagging_index
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
         m = mesh_obj.modifiers.new("", "NODES")
@@ -300,7 +298,7 @@ class PrettyRoadRenderer:
         bridge_mesh.to_mesh(bridge_mesh_data)
         bridge_mesh.free()
         bridge_mesh_obj = D.objects.new(self._bridge_mesh_name, bridge_mesh_data)
-        bridge_mesh_obj.pass_index = self.config.tagging_index
+        bridge_mesh_obj.pass_index = self.bridge_config.tagging_index
         D.collections[parent_collection_name].objects.link(bridge_mesh_obj)
 
         mb = bridge_mesh_obj.modifiers.new("", "NODES")
