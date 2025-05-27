@@ -5,9 +5,7 @@ import geopandas as g
 
 import fiona
 
-from mage_procgen.Loader.ConfigLoader import WindowTypes
-
-from mage_procgen.Utils.Config import Config
+from mage_procgen.Utils.Config import Config, WindowTypes
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.RenderingDataFrames import RenderingData
 from mage_procgen.Utils.Utils import GeoWindow

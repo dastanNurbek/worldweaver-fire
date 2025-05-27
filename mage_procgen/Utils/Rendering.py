@@ -10,7 +10,7 @@ import addon_utils
 from timezonefinder import TimezoneFinder
 import pytz
 
-from mage_procgen.Utils.Config import CameraType
+from mage_procgen.Utils.Config import CameraType, RenderDeviceType
 
 from mage_procgen.Utils.Logging import logger, stdout_redirected
 import mage_procgen.Utils.DataFiles as df
@@ -85,7 +85,7 @@ def clean_scene():
     purge_orphans()
 
 
-def configure_render(geo_center_deg):
+def configure_render(geo_center_deg: tuple[float, float], device_type: str):
 
     # TODO: Generates blender logs that maybe we should wrap ?
     clean_scene()
@@ -161,8 +161,28 @@ def configure_render(geo_center_deg):
 
     # Rendering
     sc.render.engine = "CYCLES"
-    sc.cycles.device = "GPU"
+    sc.cycles.device = device_type
     sc.cycles.samples = 50
+
+    if device_type == RenderDeviceType.GPU:
+        # Set the device_type
+        C.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
+
+    # Refreshing the device list to be able to set them
+    # https://projects.blender.org/blender/blender/issues/60618
+    C.preferences.addons["cycles"].preferences.get_devices()
+
+    # Enabling devices
+    for d in C.preferences.addons["cycles"].preferences.devices:
+        if (device_type == RenderDeviceType.CPU and d["type"] == 0) or (
+            device_type == RenderDeviceType.GPU and d["type"] == 1
+        ):
+            d["use"] = 1
+        else:
+            d["use"] = 0
+        logger.info(
+            f"Device name: {d['name']}, type: {d['type']}, use status: {d['use']}"
+        )
 
     # Preparing collections
     rendering_collection = D.collections.new(rendering_collection_name)

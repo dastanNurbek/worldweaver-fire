@@ -13,6 +13,11 @@ class CameraType(StrEnum):
     PERSPECTIVE = "PERSPECTIVE"
 
 
+class RenderDeviceType(StrEnum):
+    CPU = "CPU"
+    GPU = "GPU"
+
+
 @dataclass
 class RenderObjectConfig:
     geometry_node_file: str

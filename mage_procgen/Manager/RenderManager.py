@@ -47,7 +47,9 @@ class RenderManager:
         self.crs = crs
         self.config = config
         self.current_zone = None
-        configure_render(self.window.center_deg)
+        configure_render(
+            self.window.center_deg, self.config.rendering.output.device_type
+        )
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
             terrain_data,
             self.config.terrain,
