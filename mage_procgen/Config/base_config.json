@@ -42,14 +42,6 @@
         "default_levels_min": 2,
         "default_levels_max": 3
       },
-      "house_render": {
-        "geometry_node_file": "Houses.blend",
-        "geometry_node_name": "(PBG) Swedish cottage Preset",
-        "tagging_index": 6,
-        "default_height_min": 2.5,
-        "default_height_max": 6,
-        "roof_slope_degrees": 25
-      },
       "church_render": {
         "geometry_node_file": "Churches.blend",
         "geometry_node_name": "Churches",
@@ -70,6 +62,14 @@
         "tagging_index": 6,
         "default_levels_min": 3,
         "default_levels_max": 4
+      },
+      "house_render": {
+        "geometry_node_file": "Houses.blend",
+        "geometry_node_name": "(PBG) Swedish cottage Preset",
+        "tagging_index": 6,
+        "default_height_min": 2.5,
+        "default_height_max": 6,
+        "roof_slope_degrees": 25
       },
       "flood_render": {
         "geometry_node_file": "Flood.blend",

@@ -4,7 +4,7 @@ import shutil
 from datetime import datetime
 from time import time
 
-from numpy import arange
+import numpy as np
 
 from mage_procgen.Drivers.IGN.IGNDriver import IGNDriver
 from mage_procgen.Drivers.OSM.OSMDriver import OSMDriver
@@ -148,6 +148,7 @@ def main(filepath):
         render_manager.draw_decor(False)
         export_rendered_img(export_folder, now_str)
     else:
+        render_times = []
 
         img_size = (
             config.rendering.output.tile_size
@@ -162,8 +163,8 @@ def main(filepath):
         camera_y_min = scene_box[1] - driver.geo_window.center[1] + img_size / 2
         camera_y_max = scene_box[3] - driver.geo_window.center[1] - img_size / 2
 
-        for camera_x in arange(camera_x_min, camera_x_max, camera_step):
-            for camera_y in arange(camera_y_min, camera_y_max, camera_step):
+        for camera_x in np.arange(camera_x_min, camera_x_max, camera_step):
+            for camera_y in np.arange(camera_y_min, camera_y_max, camera_step):
                 try:
                     now = datetime.now()
                     now_str = now.strftime("%Y_%m_%d:%H:%M:%S:%f")
@@ -185,17 +186,25 @@ def main(filepath):
                         zone_window = render_manager.draw_decor(True)
 
                     set_compositing_render_image_name(now_str + "_tagging")
-
                     export_rendered_img(export_folder, now_str)
 
                     # Clean
                     render_manager.clean_zone()
+                    render_times.append(datetime.now() - now)
 
                 except Exception as error:
                     logger.exception("Could not generate an image", exc_info=error)
 
+        logger.info(
+            f"Generated {len(render_times)} image pairs. "
+            f"Min render time: {min(render_times).total_seconds():.3f}. "
+            f"Max: {max(render_times).total_seconds():.3f}. "
+            f"Average: {np.average(render_times).total_seconds():.3f}"
+        )
+
     stop_time = time()
-    logger.info(f"Done in {stop_time - start_time}")
+
+    logger.info(f"Done in {(stop_time - start_time):.3f} seconds")
 
 
 def select_driver(config, project_path):

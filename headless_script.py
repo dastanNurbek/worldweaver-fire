@@ -1,7 +1,8 @@
 import argparse
 import os
 import sys
-# Has to be imported here because it enables to import things like mathutils later
+
+# bpy has to be imported here because it enables to import things like mathutils later.
 import bpy
 from bpy import context as C
 
