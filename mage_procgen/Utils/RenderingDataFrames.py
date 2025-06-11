@@ -19,23 +19,37 @@ class RenderingDataFrame:
     geometry = "geometry"  # shapely geometry
 
     @staticmethod
-    def is_valid(gdf: g.GeoDataFrame) -> bool:
+    def is_valid(gdf: g.GeoDataFrame, log_messages: list[str]) -> bool:
+
+        is_valid = True
+
         if RenderingDataFrame.geometry not in gdf.columns:
-            logger.error("Missing column: geometry")
-            return False
+            log_messages.append(f"Missing column: {RenderingDataFrame.geometry}")
+            is_valid = False
+        else:
+            if not gdf.empty:
+                for entry in gdf[RenderingDataFrame.geometry]:
+                    if not isinstance(entry, shapely.geometry.base.BaseGeometry):
+                        log_messages.append(
+                            f"Invalid geometry (should be shapely BaseGeometry): {entry}"
+                        )
+                        is_valid = False
 
-        if not gdf.empty:
-            for entry in gdf[RenderingDataFrame.geometry]:
-                if not isinstance(entry, shapely.geometry.base.BaseGeometry):
-                    logger.error("Invalid geometry:", entry)
-                    return False
-
-        return True
+        return is_valid
 
     @staticmethod
-    def validate(gdf: g.GeoDataFrame):
-        if not RenderingDataFrame.is_valid(gdf):
-            raise ValueError("Invalid RenderingDataFrame:", gdf)
+    def validate(dataframe: g.GeoDataFrame, dataframe_name: str):
+
+        is_valid = True
+
+        logs = []
+        if not RenderingDataFrame.is_valid(dataframe, logs):
+            is_valid = False
+            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            for log in logs:
+                logger.error(log)
+
+        return is_valid
 
 
 class RenderingBuildingDataFrame:
@@ -45,49 +59,69 @@ class RenderingBuildingDataFrame:
     number_floors = "Nb_floors"  # p.Int8Dtype
 
     @staticmethod
-    def is_valid(gdf: g.GeoDataFrame) -> bool:
-        if RenderingBuildingDataFrame.geometry not in gdf.columns:
-            logger.error("Missing column: geometry")
-            return False
+    def is_valid(gdf: g.GeoDataFrame, log_messages: list[str]) -> bool:
 
-        if not gdf.empty:
-            for entry in gdf[RenderingBuildingDataFrame.geometry]:
-                if not (
-                    type(entry) == shapely.geometry.Polygon
-                    or type(entry) == shapely.geometry.MultiPolygon
-                ):
-                    logger.error("Invalid geometry:", entry)
-                    return False
+        is_valid = True
+
+        if RenderingBuildingDataFrame.geometry not in gdf.columns:
+            log_messages.append(
+                f"Missing column: {RenderingBuildingDataFrame.geometry}"
+            )
+            is_valid = False
+        else:
+            if not gdf.empty:
+                for entry in gdf[RenderingBuildingDataFrame.geometry]:
+                    if not (
+                        type(entry) == shapely.geometry.Polygon
+                        or type(entry) == shapely.geometry.MultiPolygon
+                    ):
+                        log_messages.append(
+                            f"Invalid geometry (should be shapely Polygon or MultiPolygon): {entry}"
+                        )
+                        is_valid = False
 
         if RenderingBuildingDataFrame.number_floors not in gdf.columns:
-            logger.error("Missing column: number_floors")
-            return False
-
-        if not gdf.empty:
-            if not gdf[RenderingBuildingDataFrame.number_floors].dtype == p.Int8Dtype():
-                logger.error(
-                    "Invalid number_floors type:",
-                    gdf[RenderingBuildingDataFrame.number_floors].dtype,
-                )
-                return False
+            log_messages.append(
+                f"Missing column: {RenderingBuildingDataFrame.number_floors}"
+            )
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if (
+                    not gdf[RenderingBuildingDataFrame.number_floors].dtype
+                    == p.Int8Dtype()
+                ):
+                    log_messages.append(
+                        f"Invalid number_floors type (should be pandas Int8Dtype): {gdf[RenderingBuildingDataFrame.number_floors].dtype}"
+                    )
+                    is_valid = False
 
         if RenderingBuildingDataFrame.height not in gdf.columns:
-            logger.error("Missing column: height")
-            return False
+            log_messages.append(f"Missing column: {RenderingBuildingDataFrame.height}")
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingBuildingDataFrame.height].dtype == p.Float64Dtype():
+                    log_messages.append(
+                        f"Invalid height type (should be pandas Float64Dtype): {gdf[RenderingBuildingDataFrame.height].dtype}"
+                    )
+                    is_valid = False
 
-        if not gdf.empty:
-            if not gdf[RenderingBuildingDataFrame.height].dtype == p.Float64Dtype():
-                logger.error(
-                    "Invalid height type:", gdf[RenderingBuildingDataFrame.height].dtype
-                )
-                return False
-
-        return True
+        return is_valid
 
     @staticmethod
-    def validate(gdf: g.GeoDataFrame):
-        if not RenderingBuildingDataFrame.is_valid(gdf):
-            raise ValueError("Invalid RenderingBuildingDataFrame:", gdf)
+    def validate(dataframe: g.GeoDataFrame, dataframe_name: str):
+
+        is_valid = True
+
+        logs = []
+        if not RenderingBuildingDataFrame.is_valid(dataframe, logs):
+            is_valid = False
+            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            for log in logs:
+                logger.error(log)
+
+        return is_valid
 
 
 class RenderingRoadDataFrame:
@@ -100,87 +134,101 @@ class RenderingRoadDataFrame:
     is_tunnel = "is_tunnel"  # bool
 
     @staticmethod
-    def is_valid(gdf: g.GeoDataFrame) -> bool:
+    def is_valid(gdf: g.GeoDataFrame, log_messages: list[str]) -> bool:
+
+        is_valid = True
 
         if RenderingRoadDataFrame.geometry not in gdf.columns:
-            logger.error("Missing column: geometry")
-            return False
-
-        if not gdf.empty:
-            for entry in gdf[RenderingRoadDataFrame.geometry]:
-                if not (
-                    type(entry) == shapely.geometry.LineString
-                    or type(entry) == shapely.geometry.MultiLineString
-                ):
-                    logger.error("Invalid geometry:", entry)
-                    return False
+            log_messages.append(f"Missing column: {RenderingRoadDataFrame.geometry}")
+            is_valid = False
+        else:
+            if not gdf.empty:
+                for entry in gdf[RenderingRoadDataFrame.geometry]:
+                    if not (
+                        type(entry) == shapely.geometry.LineString
+                        or type(entry) == shapely.geometry.MultiLineString
+                    ):
+                        log_messages.append(
+                            f"Invalid geometry (should be shapely LineString or MultiLineString): {entry}"
+                        )
+                        is_valid = False
 
         if RenderingRoadDataFrame.number_lanes not in gdf.columns:
-            logger.error("Missing column: number_lanes")
-            return False
-
-        if not gdf.empty:
-            if not gdf[RenderingRoadDataFrame.number_lanes].dtype.type == np.uint8:
-                logger.error(
-                    "Invalid number_lanes type:",
-                    gdf[RenderingRoadDataFrame.number_lanes].dtype,
-                )
-                return False
+            log_messages.append(
+                f"Missing column: {RenderingRoadDataFrame.number_lanes}"
+            )
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingRoadDataFrame.number_lanes].dtype.type == np.uint8:
+                    log_messages.append(
+                        f"Invalid number_lanes type (should be numpy uint8): {gdf[RenderingRoadDataFrame.number_lanes].dtype}"
+                    )
+                    is_valid = False
 
         if RenderingRoadDataFrame.has_sidewalks not in gdf.columns:
-            logger.error("Missing column: has_sidewalks")
-            return False
-
-        if not gdf.empty:
-            if not gdf[RenderingRoadDataFrame.has_sidewalks].dtype == bool:
-                logger.error(
-                    "Invalid has_sidewalks type:",
-                    gdf[RenderingRoadDataFrame.has_sidewalks].dtype,
-                )
-                return False
+            log_messages.append(
+                f"Missing column: {RenderingRoadDataFrame.has_sidewalks}"
+            )
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingRoadDataFrame.has_sidewalks].dtype == bool:
+                    log_messages.append(
+                        f"Invalid has_sidewalks type (should be bool): {gdf[RenderingRoadDataFrame.has_sidewalks].dtype}"
+                    )
+                    is_valid = False
 
         if RenderingRoadDataFrame.has_guardrails not in gdf.columns:
-            logger.error("Missing column: has_guardrails")
+            log_messages.append(
+                f"Missing column: {RenderingRoadDataFrame.has_guardrails}"
+            )
             return False
-
-        if not gdf.empty:
-            if not gdf[RenderingRoadDataFrame.has_guardrails].dtype == bool:
-                logger.error(
-                    "Invalid has_guardrails type:",
-                    gdf[RenderingRoadDataFrame.has_guardrails].dtype,
-                )
-                return False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingRoadDataFrame.has_guardrails].dtype == bool:
+                    log_messages.append(
+                        f"Invalid has_guardrails type (should be bool): {gdf[RenderingRoadDataFrame.has_guardrails].dtype}"
+                    )
+                    is_valid = False
 
         if RenderingRoadDataFrame.is_bridge not in gdf.columns:
-            logger.error("Missing column: is_bridge")
-            return False
-
-        if not gdf.empty:
-            if not gdf[RenderingRoadDataFrame.is_bridge].dtype == bool:
-                logger.error(
-                    "Invalid is_bridge type:",
-                    gdf[RenderingRoadDataFrame.is_bridge].dtype,
-                )
-                return False
+            log_messages.append(f"Missing column: {RenderingRoadDataFrame.is_bridge}")
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingRoadDataFrame.is_bridge].dtype == bool:
+                    log_messages.append(
+                        f"Invalid is_bridge type (should be bool): {gdf[RenderingRoadDataFrame.is_bridge].dtype}"
+                    )
+                    is_valid = False
 
         if RenderingRoadDataFrame.is_tunnel not in gdf.columns:
-            logger.error("Missing column: is_tunnel")
-            return False
+            log_messages.append(f"Missing column: {RenderingRoadDataFrame.is_tunnel}")
+            is_valid = False
+        else:
+            if not gdf.empty:
+                if not gdf[RenderingRoadDataFrame.is_tunnel].dtype == bool:
+                    log_messages.append(
+                        f"Invalid is_tunnel type (should be bool): {gdf[RenderingRoadDataFrame.is_tunnel].dtype}"
+                    )
+                    is_valid = False
 
-        if not gdf.empty:
-            if not gdf[RenderingRoadDataFrame.is_tunnel].dtype == bool:
-                logger.error(
-                    "Invalid is_tunnel type:",
-                    gdf[RenderingRoadDataFrame.is_tunnel].dtype,
-                )
-                return False
-
-        return True
+        return is_valid
 
     @staticmethod
-    def validate(gdf: g.GeoDataFrame):
-        if not RenderingRoadDataFrame.is_valid(gdf):
-            raise ValueError("Invalid RenderingRoadDataFrame:", gdf)
+    def validate(dataframe: g.GeoDataFrame, dataframe_name: str):
+
+        is_valid = True
+
+        logs = []
+        if not RenderingRoadDataFrame.is_valid(dataframe, logs):
+            is_valid = False
+            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            for log in logs:
+                logger.error(log)
+
+        return is_valid
 
 
 @dataclass
@@ -280,22 +328,35 @@ class RenderingData:
         self.validate()
 
     def validate(self):
-        RenderingDataFrame.validate(self.forests)
-        RenderingBuildingDataFrame.validate(self.buildings.churches)
-        RenderingBuildingDataFrame.validate(self.buildings.malls)
-        RenderingBuildingDataFrame.validate(self.buildings.factories)
-        RenderingBuildingDataFrame.validate(self.buildings.houses)
-        RenderingBuildingDataFrame.validate(self.buildings.default_buildings)
-        RenderingRoadDataFrame.validate(self.roads)
-        RenderingDataFrame.validate(self.still_water)
-        RenderingDataFrame.validate(self.flowing_water)
-        RenderingDataFrame.validate(self.ocean)
-        RenderingDataFrame.validate(self.zones.wheatfields)
-        RenderingDataFrame.validate(self.zones.cornfields)
-        RenderingDataFrame.validate(self.zones.grass)
-        RenderingDataFrame.validate(self.zones.developed)
-        RenderingDataFrame.validate(self.zones.tartan)
-        RenderingDataFrame.validate(self.zones.compacted)
-        RenderingDataFrame.validate(self.zones.asphalt)
-        RenderingDataFrame.validate(self.zones.sand)
-        RenderingDataFrame.validate(self.zones.paths)
+
+        is_valid = True
+
+        is_valid &= RenderingDataFrame.validate(self.forests, "Forest")
+        is_valid &= RenderingBuildingDataFrame.validate(
+            self.buildings.churches, "Church"
+        )
+        is_valid &= RenderingBuildingDataFrame.validate(self.buildings.malls, "Mall")
+        is_valid &= RenderingBuildingDataFrame.validate(
+            self.buildings.factories, "Factory"
+        )
+        is_valid &= RenderingBuildingDataFrame.validate(self.buildings.houses, "House")
+        is_valid &= RenderingBuildingDataFrame.validate(
+            self.buildings.default_buildings,
+            "Default Building",
+        )
+        is_valid &= RenderingRoadDataFrame.validate(self.roads, "Road")
+        is_valid &= RenderingDataFrame.validate(self.still_water, "Still Water")
+        is_valid &= RenderingDataFrame.validate(self.flowing_water, "Flowing Water")
+        is_valid &= RenderingDataFrame.validate(self.ocean, "Ocean")
+        is_valid &= RenderingDataFrame.validate(self.zones.wheatfields, "Wheat Field")
+        is_valid &= RenderingDataFrame.validate(self.zones.cornfields, "Corn Field")
+        is_valid &= RenderingDataFrame.validate(self.zones.grass, "Grass")
+        is_valid &= RenderingDataFrame.validate(self.zones.developed, "Developed")
+        is_valid &= RenderingDataFrame.validate(self.zones.tartan, "Tartan")
+        is_valid &= RenderingDataFrame.validate(self.zones.compacted, "Compacted")
+        is_valid &= RenderingDataFrame.validate(self.zones.asphalt, "Asphalt")
+        is_valid &= RenderingDataFrame.validate(self.zones.sand, "Sand")
+        is_valid &= RenderingDataFrame.validate(self.zones.paths, "Path")
+
+        if not is_valid:
+            raise ValueError("Invalid RenderingData")

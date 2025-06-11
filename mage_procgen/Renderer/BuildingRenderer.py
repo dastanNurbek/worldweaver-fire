@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
+from mage_procgen.Utils.Config import BuildingRendererConfig
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
@@ -20,7 +21,9 @@ from mage_procgen.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 class BuildingRenderer(BaseRenderer):
     _mesh_name = "Buildings"
 
-    def __init__(self, terrain_data: list[TerrainData], object_config):
+    def __init__(
+        self, terrain_data: list[TerrainData], object_config: BuildingRendererConfig
+    ):
 
         super().__init__(terrain_data, object_config)
 

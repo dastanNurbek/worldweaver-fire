@@ -6,6 +6,7 @@ from bpy import data as D
 
 from tqdm import tqdm
 
+from mage_procgen.Utils.Config import RenderObjectConfig
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.DataFiles import assets_folder
 
@@ -14,7 +15,7 @@ class FloodRenderer:
 
     _mesh_name = "Flood"
 
-    def __init__(self, object_config):
+    def __init__(self, object_config: RenderObjectConfig):
         self.config = object_config
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))

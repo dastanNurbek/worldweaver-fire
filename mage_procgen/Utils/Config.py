@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Union
 
 
 class WindowTypes(StrEnum):
@@ -136,3 +137,9 @@ class Config:
     terrain: TerrainConfig
     flood: FloodConfig
     rendering: RenderingConfig
+
+
+# Union of types used for type hints of BaseRenderer, whose child classes might have different configurations
+BaseRenderConfig = Union[
+    RenderObjectConfig, BuildingRendererConfig, HouseRendererConfig
+]

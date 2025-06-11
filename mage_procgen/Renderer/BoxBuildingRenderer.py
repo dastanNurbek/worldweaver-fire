@@ -17,6 +17,7 @@ from ladybug_geometry.triangulation import earcut
 
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
+from mage_procgen.Utils.Config import HouseRendererConfig
 from mage_procgen.Utils.Geometry import (
     point_2d_almost_equal,
     point_2d_in_collection,
@@ -67,7 +68,9 @@ class BoxBuildingRenderer(BaseRenderer):
         top_point: bmesh.types.BMVert
         mockup_point: bmesh.types.BMVert
 
-    def __init__(self, terrain_data: list[TerrainData], object_config):
+    def __init__(
+        self, terrain_data: list[TerrainData], object_config: HouseRendererConfig
+    ):
 
         super().__init__(terrain_data, object_config)
 

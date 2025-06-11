@@ -10,6 +10,7 @@ from shapely.geometry import mapping, MultiPolygon
 
 from tqdm import tqdm
 
+from mage_procgen.Utils.Config import BaseRenderConfig
 from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Utils import Point, TerrainData
 from mage_procgen.Utils.DataFiles import assets_folder
@@ -18,7 +19,9 @@ from mage_procgen.Utils.DataFiles import assets_folder
 class BaseRenderer:
     _mesh_name = ""
 
-    def __init__(self, terrain_data: list[TerrainData], object_config):
+    def __init__(
+        self, terrain_data: list[TerrainData], object_config: BaseRenderConfig
+    ):
         self.config = object_config
         _location = os.path.realpath(
             os.path.join(os.getcwd(), os.path.dirname(__file__))
