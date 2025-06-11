@@ -79,8 +79,13 @@ class RenderManager:
         self.flood_renderer = FloodRenderer.FloodRenderer(
             self.config.rendering.flood_render_config
         )
+        chosen_forest_config = (
+            self.config.rendering.pretty_forest_render_config
+            if self.config.rendering.output.export_img
+            else self.config.rendering.placeholder_forest_render_config
+        )
         self.forests_renderer = ForestRenderer.ForestRenderer(
-            self.terrain_data, self.config.rendering.forest_render_config
+            self.terrain_data, chosen_forest_config
         )
         self.road_renderer = PrettyRoadRenderer.PrettyRoadRenderer(
             self.terrain_data,

@@ -122,7 +122,8 @@ class RenderingConfig:
     factory_render_config: BuildingRendererConfig
     mall_render_config: BuildingRendererConfig
     flood_render_config: RenderObjectConfig
-    forest_render_config: RenderObjectConfig
+    placeholder_forest_render_config: RenderObjectConfig
+    pretty_forest_render_config: RenderObjectConfig
     road_render_config: RoadRendererConfig
     bridge_render_config: BridgeRendererConfig
     water_render_config: RenderObjectConfig

@@ -60,7 +60,8 @@ class ConfigTag:
     factory_render = "factory_render"
     mall_render = "mall_render"
     flood_render = "flood_render"
-    forest_render = "forest_render"
+    placeholder_forest_render = "placeholder_forest_render"
+    pretty_forest_render = "pretty_forest_render"
     road_render = "road_render"
     car_collection_info_node_name = "car_collection_info_node_name"
     car_tagging_index = "car_tagging_index"
@@ -707,40 +708,79 @@ class ConfigLoader:
             flood_render_config = default_config.rendering.flood_render_config
 
         # Forest
-        forest_render = ConfigLoader.get_field(
+        placeholder_forest_render = ConfigLoader.get_field(
             parent_dict=objects,
-            tag=ConfigTag.forest_render,
+            tag=ConfigTag.placeholder_forest_render,
             parent_tag=ConfigTag.objects,
             filepath=filepath,
             is_optional=use_defaults,
         )
-        if forest_render is not None:
-            forest_geometry_node_file = ConfigLoader.get_mandatory_field(
-                parent_dict=forest_render,
+        if placeholder_forest_render is not None:
+            placeholder_forest_geometry_node_file = ConfigLoader.get_mandatory_field(
+                parent_dict=placeholder_forest_render,
                 tag=ConfigTag.geometry_node_file,
-                parent_tag=ConfigTag.forest_render,
+                parent_tag=ConfigTag.placeholder_forest_render,
                 filepath=filepath,
             )
-            forest_geometry_node_name = ConfigLoader.get_mandatory_field(
-                parent_dict=forest_render,
+            placeholder_forest_geometry_node_name = ConfigLoader.get_mandatory_field(
+                parent_dict=placeholder_forest_render,
                 tag=ConfigTag.geometry_node_name,
-                parent_tag=ConfigTag.forest_render,
+                parent_tag=ConfigTag.placeholder_forest_render,
                 filepath=filepath,
             )
-            forest_tagging_index = ConfigLoader.get_mandatory_field(
-                parent_dict=forest_render,
+            placeholder_forest_tagging_index = ConfigLoader.get_mandatory_field(
+                parent_dict=placeholder_forest_render,
                 tag=ConfigTag.tagging_index,
-                parent_tag=ConfigTag.forest_render,
+                parent_tag=ConfigTag.placeholder_forest_render,
                 filepath=filepath,
             )
 
-            forest_render_config = Config.RenderObjectConfig(
-                geometry_node_file=forest_geometry_node_file,
-                geometry_node_name=forest_geometry_node_name,
-                tagging_index=forest_tagging_index,
+            placeholder_forest_render_config = Config.RenderObjectConfig(
+                geometry_node_file=placeholder_forest_geometry_node_file,
+                geometry_node_name=placeholder_forest_geometry_node_name,
+                tagging_index=placeholder_forest_tagging_index,
             )
         else:
-            forest_render_config = default_config.rendering.forest_render_config
+            placeholder_forest_render_config = (
+                default_config.rendering.placeholder_forest_render_config
+            )
+
+        pretty_forest_render = ConfigLoader.get_field(
+            parent_dict=objects,
+            tag=ConfigTag.pretty_forest_render,
+            parent_tag=ConfigTag.objects,
+            filepath=filepath,
+            is_optional=use_defaults,
+        )
+        if pretty_forest_render is not None:
+            pretty_forest_geometry_node_file = ConfigLoader.get_mandatory_field(
+                parent_dict=pretty_forest_render,
+                tag=ConfigTag.geometry_node_file,
+                parent_tag=ConfigTag.pretty_forest_render,
+                filepath=filepath,
+            )
+            pretty_forest_geometry_node_name = ConfigLoader.get_mandatory_field(
+                parent_dict=pretty_forest_render,
+                tag=ConfigTag.geometry_node_name,
+                parent_tag=ConfigTag.pretty_forest_render,
+                filepath=filepath,
+            )
+            pretty_forest_tagging_index = ConfigLoader.get_mandatory_field(
+                parent_dict=pretty_forest_render,
+                tag=ConfigTag.tagging_index,
+                parent_tag=ConfigTag.pretty_forest_render,
+                filepath=filepath,
+            )
+
+            pretty_forest_render_config = Config.RenderObjectConfig(
+                geometry_node_file=pretty_forest_geometry_node_file,
+                geometry_node_name=pretty_forest_geometry_node_name,
+                tagging_index=pretty_forest_tagging_index,
+            )
+        else:
+            pretty_forest_render_config = (
+                default_config.rendering.pretty_forest_render_config
+            )
 
         # Road
         road_render = ConfigLoader.get_field(
@@ -950,7 +990,8 @@ class ConfigLoader:
             factory_render_config=factory_render_config,
             mall_render_config=mall_render_config,
             flood_render_config=flood_render_config,
-            forest_render_config=forest_render_config,
+            placeholder_forest_render_config=placeholder_forest_render_config,
+            pretty_forest_render_config=pretty_forest_render_config,
             road_render_config=road_render_config,
             bridge_render_config=bridge_render_config,
             water_render_config=water_render_config,

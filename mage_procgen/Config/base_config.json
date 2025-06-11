@@ -76,9 +76,14 @@
         "geometry_node_name": "Flood",
         "tagging_index": 2
       },
-      "forest_render": {
+      "placeholder_forest_render": {
         "geometry_node_file": "Forests.blend",
         "geometry_node_name": "Forest_pine",
+        "tagging_index": 3
+      },
+      "pretty_forest_render": {
+        "geometry_node_file": "Forests_pretty.blend",
+        "geometry_node_name": "Forest",
         "tagging_index": 3
       },
       "road_render": {
