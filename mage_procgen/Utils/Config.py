@@ -42,6 +42,7 @@ class HouseRendererConfig:
     tagging_index: int
     default_height_min: int
     default_height_max: int
+    roof_slope: float
 
 
 @dataclass

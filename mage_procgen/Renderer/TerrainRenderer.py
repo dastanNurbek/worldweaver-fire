@@ -66,7 +66,6 @@ class TerrainRenderer:
                 f"Unable to load the terrain material from the file {filepath}"
             )
 
-        # TODO: put pass index in config just like the others
         trashcan = (
             D.node_groups["Decorate_TrashCansOnPath"]
             .nodes["Object Info"]
@@ -88,7 +87,7 @@ class TerrainRenderer:
     def render(
         self,
         geo_window: GeoWindow,
-        parent_collection_name,
+        parent_collection_name: str,
     ):
 
         terrain_collection = D.collections[parent_collection_name]
@@ -353,7 +352,6 @@ class TerrainRenderer:
                         vertex_coords_in_basemap[1] / base_map_size_y,
                     )
 
-                    # TODO: monitor this
                     if (
                         vertex_uv[0] > 1
                         or vertex_uv[0] < 0

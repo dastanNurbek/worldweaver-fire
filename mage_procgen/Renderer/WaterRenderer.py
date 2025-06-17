@@ -100,7 +100,6 @@ class FlowingWaterRendererUtils:
 class FlowingWaterRenderer(BaseRenderer):
     _mesh_name = "Flowing_Water"
 
-    # Laplace smoothing of surface. Very much still WIP
     def render(
         self,
         water_data: g.GeoDataFrame,
@@ -108,8 +107,10 @@ class FlowingWaterRenderer(BaseRenderer):
         geo_center: tuple[float, float, float],
         parent_collection_name: str,
     ):
-        # TODO: also take oceans, do a mask, and oceans edges are init at z=0
-        # Doesn't work because oceans and flowing cannt overlap, we need the "base ocean" geometry ....
+        # Rendering of flowing water if done with a crude implementation of https://github.com/brunovallet/LaplaceDTM/blob/master/LaplaceDTM.py
+        # It mostly does the job except at the interface between water and terrain where gaps can be created.
+        # A better way of rendering flowing water would be very beneficial but at this point we have not found a more satisfactory way of doing it.
+
         mesh = bmesh.new()
 
         water_render_resolution = 1

@@ -22,7 +22,7 @@ from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.Utils import GeoWindow, safe_overlay, OverlayType
 from mage_procgen.Utils.Rendering import (
-    configure_render,
+    configure_scene,
     rendering_collection_name,
     terrain_collection_name,
     buildings_collection_name,
@@ -47,7 +47,7 @@ class RenderManager:
         self.crs = crs
         self.config = config
         self.current_zone = None
-        configure_render(
+        configure_scene(
             self.window.center_deg, self.config.rendering.output.device_type
         )
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(

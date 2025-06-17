@@ -510,6 +510,12 @@ class ConfigLoader:
                 parent_tag=ConfigTag.house_render,
                 filepath=filepath,
             )
+            house_roof_slope = ConfigLoader.get_mandatory_field(
+                parent_dict=house_render,
+                tag=ConfigTag.roof_slope_degrees,
+                parent_tag=ConfigTag.house_render,
+                filepath=filepath,
+            )
 
             house_render_config = Config.HouseRendererConfig(
                 geometry_node_file=house_geometry_node_file,
@@ -517,6 +523,7 @@ class ConfigLoader:
                 tagging_index=house_tagging_index,
                 default_height_min=house_default_height_min,
                 default_height_max=house_default_height_max,
+                roof_slope=house_roof_slope,
             )
         else:
             house_render_config = default_config.rendering.house_render_config

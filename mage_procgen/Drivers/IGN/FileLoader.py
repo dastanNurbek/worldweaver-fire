@@ -436,7 +436,6 @@ class FileLoader(Loader):
             current_departement,
             df.terrain_DB,
             df.delivery,
-            df.terrain_data_folder,
         )
         slab_file = os.path.join(
             self.base_folder,
@@ -444,7 +443,6 @@ class FileLoader(Loader):
             current_departement,
             df.terrain_DB,
             df.additional,
-            df.terrain_data_folder,
             df.slab_file,
         )
         slabs = ShapeFileParser.load(slab_file, bbox, CRS_fr)
@@ -608,7 +606,6 @@ class FileLoader(Loader):
             current_departement,
             df.texture_image_DB,
             df.delivery,
-            df.texture_data_folder,
         )
         current_texture_image_slab_file = os.path.join(
             self.base_folder,
@@ -616,7 +613,6 @@ class FileLoader(Loader):
             current_departement,
             df.texture_image_DB,
             df.additional,
-            df.texture_data_folder,
             df.slab_file,
         )
 

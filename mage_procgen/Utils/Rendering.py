@@ -10,7 +10,7 @@ import addon_utils
 from timezonefinder import TimezoneFinder
 import pytz
 
-from mage_procgen.Utils.Config import CameraType, RenderDeviceType
+from mage_procgen.Utils.Config import Config, CameraType, RenderDeviceType
 
 from mage_procgen.Utils.Logging import logger, stdout_redirected
 import mage_procgen.Utils.DataFiles as df
@@ -31,6 +31,9 @@ cameras = {
 
 
 def check_is_sun_activated():
+    """
+    Checks if Sun Position addon is enabled, and if not, enables it.
+    """
     try:
         sc = C.scene
         # Trying to access Sun Position addon to find out if it's activated or not
@@ -85,7 +88,12 @@ def clean_scene():
     purge_orphans()
 
 
-def configure_render(geo_center_deg: tuple[float, float], device_type: str):
+def configure_scene(geo_center_deg: tuple[float, float], device_type: str):
+    """
+    Configures the Blender scene prior to drawing objects
+    :param geo_center_deg: The coordinates of the center of the scene, in CRS 4326, to configure the position of the sun
+    :param device_type: The device type for rendering. "CPU" or "GPU"
+    """
 
     # TODO: Generates blender logs that maybe we should wrap ?
     clean_scene()
@@ -201,24 +209,26 @@ def configure_render(geo_center_deg: tuple[float, float], device_type: str):
     D.collections[base_collection_name].children.link(additional_collection)
 
 
-# TODO: move out of here when we know better what it should do
-def export_rendered_img(base_path, base_name):
+def export_rendered_img(base_folder: str, render_folder: str, image_name: str):
+    """
+    Renders the scene and saves the rendered image to the designated location
+    """
     sc = C.scene
 
-    sc.render.filepath = os.path.join(base_path, base_name + ".png")
-    # with redirect_stdout(logger):
-    # with open("/home/AVerstraete/Work/maps/Logs/render.log", 'a') as flog:
-    #     with redirect_stdout(flog):
-    #         print("Is this redirected ?")
-    #         O.render.render(write_still=True)
-    #         print("What abt this ?")
-    with stdout_redirected("/home/AVerstraete/Work/maps/Logs/render.log"):
-        print("Is this redirected ?")
+    sc.render.filepath = os.path.join(render_folder, image_name + ".png")
+
+    # Redirecting blender's render logs which are very voluminous (especially in headless mode) to another file
+    with stdout_redirected(os.path.join(base_folder, df.log_folder, df.render_log_file)):
+
         O.render.render(write_still=True)
-        print("What abt this ?")
 
 
-def get_camera(camera_type):
+def get_camera(camera_type: CameraType):
+    """
+    Returns the camera associated with the indicated type
+    :param camera_type: The camera type
+    :return: The Blender object of the camera
+    """
 
     match camera_type:
         case CameraType.ORTHOGRAPHIC:
@@ -229,7 +239,13 @@ def get_camera(camera_type):
             raise ValueError("Invalid camera type")
 
 
-def setup_img_persp(resolution, pixel_size, center):
+def setup_img_persp(resolution: float, pixel_size: float, center: tuple[float, float]):
+    """
+    Setups the scene and camera prior to rendering for perspective camera.
+    :param resolution: The resolution of the image
+    :param pixel_size: The pixel size of the image
+    :param center: The center of the image
+    """
 
     sc = C.scene
     sc.render.resolution_x = resolution
@@ -255,7 +271,17 @@ def setup_img_persp(resolution, pixel_size, center):
     camera.location = (center[0], center[1], max_z + camera_elevation)
 
 
-def setup_img_ortho(size_x, size_y, pixel_size, center):
+def setup_img_ortho(
+    size_x: float, size_y: float, pixel_size: float, center: tuple[float, float]
+) -> float:
+    """
+    Setups the scene and camera prior to rendering for ortho camera.
+    :param size_x: The size of the image along the X axis
+    :param size_y: The size of the image along the Y axis
+    :param pixel_size: The pixel size of the image
+    :param center: The center of the image
+    :return: The Z coordinate of the camera
+    """
     sc = C.scene
     sc.render.resolution_x = int(size_x // pixel_size)
     sc.render.resolution_y = int(size_y // pixel_size)
@@ -286,12 +312,25 @@ def setup_img_ortho(size_x, size_y, pixel_size, center):
     return camera_z
 
 
-def setup_img_ortho_res(resolution, pixel_size, center):
+def setup_img_ortho_res(
+    resolution: float, pixel_size: float, center: tuple[float, float]
+) -> float:
+    """
+    Setups the scene and camera prior to rendering for ortho camera.
+    :param resolution: The resolution of the image
+    :param pixel_size: The pixel size of the image
+    :param center: The center of the image
+    :return: The Z coordinate of the camera
+    """
     size = int(resolution * pixel_size)
     return setup_img_ortho(size, size, pixel_size, center)
 
 
 def setup_compositing_height_map(base_folder: str):
+    """
+    Setups Blender's compositing for height map calculation
+    :param base_folder: The folder in which the map will be exported
+    """
 
     # Enabling compositing nodes
     D.scenes["Scene"].use_nodes = True
@@ -321,6 +360,10 @@ def setup_compositing_height_map(base_folder: str):
 
 
 def setup_compositing_semantic_map(base_folder: str):
+    """
+    Setups Blender's compositing for semantic map generation
+    :param base_folder: The folder in which the map will be exported
+    """
     # Enabling compositing nodes
     D.scenes["Scene"].use_nodes = True
 
@@ -352,7 +395,12 @@ def setup_compositing_semantic_map(base_folder: str):
     link2 = links.new(norm.outputs[0], output_file.inputs[0])
 
 
-def setup_compositing_render(folder, config):
+def setup_compositing_render(folder: str, config: Config):
+    """
+    Setups Blender's compositing for rendering
+    :param folder:
+    :param config: The configuration of the run
+    """
 
     # Enabling compositing nodes
     D.scenes["Scene"].use_nodes = use_nodes = True
@@ -406,6 +454,10 @@ def setup_compositing_render(folder, config):
 
 
 def set_compositing_render_image_name(image_name):
+    """
+    Sets the name of the semantic map inside the compositing node tree
+    :param image_name: The name of the semantic map
+    """
 
     # The file name is tied to the input name of the node.
     # So we have to delete the previous input, add another one, and relink it to the correct node

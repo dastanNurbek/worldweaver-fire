@@ -121,7 +121,6 @@ class PrettyRoadRenderer:
         geo_center = geo_window.center
 
         # Storing the points inside a dict to avoid point duplication, which messes up crossroads
-        # TODO: check that this method works and does not need "fuzzy matching"
         points_dict = {}
 
         edges_config = {}

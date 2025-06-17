@@ -42,8 +42,6 @@ class FloodRenderer:
                 f". Please check that the name is correct."
             )
 
-    # TODO: fix issue where only parts of the edge cells are made. currently, it does one where specifically the topright exists
-    # Need to make sure that a cell is made once and only once
     def render(self, flood_data, parent_collection_name):
 
         flood_init_state = flood_data[0]

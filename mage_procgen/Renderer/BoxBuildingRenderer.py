@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 import bmesh
@@ -18,12 +19,7 @@ from ladybug_geometry.triangulation import earcut
 from mage_procgen.Renderer.BaseRenderer import BaseRenderer
 
 from mage_procgen.Utils.Config import HouseRendererConfig
-from mage_procgen.Utils.Geometry import (
-    point_2d_almost_equal,
-    point_2d_in_collection,
-    point_2d_value_in_dict,
-    interpolate_z,
-)
+from mage_procgen.Utils.Geometry import interpolate_z
 from mage_procgen.Utils.Logging import logger
 from mage_procgen.Utils.Utils import TerrainData
 from mage_procgen.Utils.Rendering import additionals_collection_name
@@ -94,7 +90,6 @@ class BoxBuildingRenderer(BaseRenderer):
         parent_collection_name: str,
     ):
 
-        # TODO: Cleanup
         self._mesh_names = []
 
         for building_index in tqdm(buildings_gdf.index):
@@ -102,16 +97,11 @@ class BoxBuildingRenderer(BaseRenderer):
             if buildings_gdf.geometry[building_index].is_empty:
                 continue
 
-            # TODO: make those parametric
-            building_height = random.uniform(2.5, 6)
+            building_height = random.uniform(
+                self.config.default_height_min, self.config.default_height_max
+            )
             # Height of each floor in meters
             floor_height = 3
-            if not p.isnull(
-                buildings_gdf[RenderingBuildingDataFrame.height][building_index]
-            ):
-                building_height = float(
-                    buildings_gdf[RenderingBuildingDataFrame.height][building_index]
-                )
             if not p.isnull(
                 buildings_gdf[RenderingBuildingDataFrame.number_floors][building_index]
             ):
@@ -120,6 +110,12 @@ class BoxBuildingRenderer(BaseRenderer):
                         building_index
                     ]
                     * floor_height
+                )
+            if not p.isnull(
+                buildings_gdf[RenderingBuildingDataFrame.height][building_index]
+            ):
+                building_height = float(
+                    buildings_gdf[RenderingBuildingDataFrame.height][building_index]
                 )
 
             if type(buildings_gdf.geometry[building_index]) == MultiPolygon:
@@ -226,9 +222,8 @@ class BoxBuildingRenderer(BaseRenderer):
             edges=geometry_parts.mockup_edges_collection,
         )
 
-        # TODO: add to config
-        # 45° is a slope of 1, we want a max slope of 25°
-        max_slope = 25 / 45
+        # Conversion from degrees to slope
+        max_slope = math.tan(self.config.roof_slope * math.pi / 180)
 
         # Sometimes one of the point of the skeleton will be very slightly different than the point of the polygon,
         # Which results in 2 entries in the dictionaries, and messes up the rest of the algorithm
@@ -258,27 +253,35 @@ class BoxBuildingRenderer(BaseRenderer):
 
         for line in straight_skel:
 
-            if not point_2d_in_collection(line.p1, points_3d.keys(), tolerance):
+            if not BoxBuildingRenderer.__point_2d_in_collection(
+                line.p1, points_3d.keys(), tolerance
+            ):
                 points_3d[line.p1] = (
                     line.p1.x,
                     line.p1.y,
                     z_min + building_height,
                 )
-            if not point_2d_in_collection(line.p2, points_3d.keys(), tolerance):
+            if not BoxBuildingRenderer.__point_2d_in_collection(
+                line.p2, points_3d.keys(), tolerance
+            ):
                 points_3d[line.p2] = (
                     line.p2.x,
                     line.p2.y,
                     z_min + building_height,
                 )
-            if not point_2d_in_collection(
+            if not BoxBuildingRenderer.__point_2d_in_collection(
                 line.p1, polygon.vertices, tolerance
-            ) and not point_2d_in_collection(line.p1, interior_pts, tolerance):
+            ) and not BoxBuildingRenderer.__point_2d_in_collection(
+                line.p1, interior_pts, tolerance
+            ):
                 interior_pts[line.p1] = self.__compute_shortest_path_tree(
                     line.p1, polygon.vertices, roof_lines, tolerance
                 )
-            if not point_2d_in_collection(
+            if not BoxBuildingRenderer.__point_2d_in_collection(
                 line.p2, polygon.vertices, tolerance
-            ) and not point_2d_in_collection(line.p2, interior_pts, tolerance):
+            ) and not BoxBuildingRenderer.__point_2d_in_collection(
+                line.p2, interior_pts, tolerance
+            ):
                 interior_pts[line.p2] = self.__compute_shortest_path_tree(
                     line.p2, polygon.vertices, roof_lines, tolerance
                 )
@@ -290,7 +293,7 @@ class BoxBuildingRenderer(BaseRenderer):
         for pt in orderer_pts:
             # Last point is the origin, point before that is the other point of the line in the shortest path
             line_other_point = interior_pts[pt][1][-2]
-            point_parent_3d = point_2d_value_in_dict(
+            point_parent_3d = BoxBuildingRenderer.__point_2d_value_in_dict(
                 line_other_point, points_3d, tolerance
             )
             line_length = pt.distance_to_point(line_other_point)
@@ -336,7 +339,9 @@ class BoxBuildingRenderer(BaseRenderer):
                     triangle_pts = [face_path[x] for x in triangle]
                     triangle_face = mesh.faces.new(
                         [
-                            point_2d_value_in_dict(x, verts_dict, tolerance)
+                            BoxBuildingRenderer.__point_2d_value_in_dict(
+                                x, verts_dict, tolerance
+                            )
                             for x in triangle_pts
                         ]
                     )
@@ -523,7 +528,7 @@ class BoxBuildingRenderer(BaseRenderer):
                     v = pt
             trace_msg.append(f"Exploring node {v}")
             exploration_queue.remove(v)
-            if point_2d_in_collection(v, destinations, tolerance):
+            if BoxBuildingRenderer.__point_2d_in_collection(v, destinations, tolerance):
                 trace_msg.append(f"Found point in destination: {v}")
                 path = []
                 current_point = v
@@ -535,14 +540,18 @@ class BoxBuildingRenderer(BaseRenderer):
                 return nodes_status[v][1], path
             possibles_edges = []
             for line in graph:
-                if point_2d_almost_equal(
+                if BoxBuildingRenderer.__point_2d_almost_equal(
                     line.p1, v, tolerance
-                ) or point_2d_almost_equal(line.p2, v, tolerance):
+                ) or BoxBuildingRenderer.__point_2d_almost_equal(line.p2, v, tolerance):
                     trace_msg.append(f"Adding line {line}")
                     possibles_edges.append(line)
             for line in possibles_edges:
                 new_point = (
-                    line.p2 if point_2d_almost_equal(line.p1, v, tolerance) else line.p1
+                    line.p2
+                    if BoxBuildingRenderer.__point_2d_almost_equal(
+                        line.p1, v, tolerance
+                    )
+                    else line.p1
                 )
                 trace_msg.append(f"Evaluating new point {new_point}")
                 if new_point in nodes_status:
@@ -568,3 +577,45 @@ class BoxBuildingRenderer(BaseRenderer):
         )
         for msg in trace_msg:
             logger.error(msg)
+
+    @staticmethod
+    def __point_2d_almost_equal(a, b, abs_tolerance):
+        """
+        Checks whether 2 points are close to each other using Manhattan distance
+        :param a: The first point
+        :param b: The second point
+        :param abs_tolerance: The absolute tolerance on the proximity
+        :return: True if the points are close (in the Manhattan distance sense), False otherwise
+        """
+        return math.isclose(a.x, b.x, abs_tol=abs_tolerance) and math.isclose(
+            a.y, b.y, abs_tol=abs_tolerance
+        )
+
+    @staticmethod
+    def __point_2d_in_collection(a, col, abs_tolerance):
+        """
+        Checks whether the point is close to a point inside the collection
+        :param a: The query point
+        :param col: The collection
+        :param abs_tolerance: The absolute tolerance on the proximity
+        :return: True if the query point is close (in the Manhattan distance sense) to a point in the collection, False otherwise
+        """
+        for point in col:
+            if BoxBuildingRenderer.__point_2d_almost_equal(a, point, abs_tolerance):
+                return True
+        return False
+
+    @staticmethod
+    def __point_2d_value_in_dict(a, col, abs_tolerance):
+        """
+        Returns the value of the query point inside the dictionary if the query point is close to a key of the dictionary.
+        Returns a KeyError otherwise.
+        :param a: The query point
+        :param col: The collection
+        :param abs_tolerance: The absolute tolerance on the proximity
+        :return: The value of the query point inside the dictionary if the query point is close to a key of the dictionary, a KeyError otherwise.
+        """
+        for point in col.keys():
+            if BoxBuildingRenderer.__point_2d_almost_equal(a, point, abs_tolerance):
+                return col[point]
+        raise KeyError("Point2D not in collection: " + str(a))

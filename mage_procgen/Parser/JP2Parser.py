@@ -10,7 +10,6 @@ from mage_procgen.Parser.ShapeFileParser import ShapeFileParser
 from mage_procgen.Utils.Utils import GeoWindow, CRS_fr, safe_overlay, OverlayType
 
 
-# TODO: Maybe this should'nt be called Parser since it does more than that ?
 class JP2Parser:
     @staticmethod
     def create_texture_img(

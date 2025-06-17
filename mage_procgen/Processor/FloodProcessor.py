@@ -56,6 +56,7 @@ class FloodProcessor:
         camera_z = setup_img_ortho(size_x, size_y, flood_cell_size, (0, 0))
 
         export_rendered_img(
+            base_folder,
             os.path.join(base_folder, df.rendering, df.temp_folder),
             df.temp_rendering_file,
         )
@@ -85,6 +86,7 @@ class FloodProcessor:
         camera_z = setup_img_ortho(size_x, size_y, flood_cell_size, (0, 0))
 
         export_rendered_img(
+            base_folder,
             os.path.join(base_folder, df.rendering, df.temp_folder),
             df.temp_rendering_file,
         )

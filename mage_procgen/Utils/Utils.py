@@ -138,7 +138,11 @@ def safe_overlay(
     df1: g.GeoDataFrame, df2: g.GeoDataFrame, how: OverlayType
 ) -> g.GeoDataFrame:
     """
-    Performs overlay operation on the dataframes, with safety checks to avoid errors.
+     Performs overlay operation on the dataframes, with safety checks to avoid errors.
+    :param df1: The first dataframe
+    :param df2: The second dataframe
+    :param how: The mode of overlay
+    :return: The resulting overlay
     """
     match how:
         case OverlayType.DIFFERENCE:
@@ -173,7 +177,14 @@ def safe_overlay(
             return df1.overlay(df2, how="intersection", keep_geom_type=True)
 
 
-def get_class(tag: str, synonym_dict: dict, default_value: str):
+def get_class(tag: str, synonym_dict: dict, default_value: str) -> str:
+    """
+    Returns the class of an item based on its tag, or a default value if a class cannot be found.
+    :param tag: The tag of the item
+    :param synonym_dict: The dictionary whose keys are the possible classes, and values the possible tags
+    :param default_value: The default value returned if a class cannot be found
+    :return: The class of an item based on its tag, or a default value if a class cannot be found.
+    """
     for key, value in synonym_dict.items():
         if tag in value:
             return key
@@ -181,20 +192,39 @@ def get_class(tag: str, synonym_dict: dict, default_value: str):
     return default_value
 
 
-def tag_water(geometry, water_types, default_name):
+def tag_water(water_geometry, water_types, default_name):
+    """
+    Matches the water geometry with a class by checking if the geometry intersects tha of a class
+    :param water_geometry: The geometry of the water body we want the class of
+    :param water_types: The dictionary whose keys are the possible classes, and values the geometry of the class
+    :param default_name: The default value returned if a class cannot be found
+    :return: The class of the water body based on its intersection with other bodies, or a default value if a class cannot be found.
+    """
     for water_type, water_geometry in water_types.items():
-        if not intersection(geometry, water_geometry).is_empty:
+        if not intersection(water_geometry, water_geometry).is_empty:
             return water_type
 
     return default_name
 
 
-def reduce_columns(gdf, list_cols):
+def reduce_columns(gdf: g.GeoDataFrame, list_cols: list[str]) -> g.GeoDataFrame:
+    """
+    Ensures the input dataframe has the exact columns in the list
+    :param gdf: The dataframe
+    :param list_cols: The list of columns the dataframe should have
+    :return: The dataframe, with its columns reduced
+    """
     gdf_e = ensure_columns_existence(gdf, list_cols)
     return gdf_e[list_cols]
 
 
 def ensure_columns_existence(gdf, list_cols):
+    """
+    Ensures the input dataframe has the columns in the list
+    :param gdf: The dataframe
+    :param list_cols: The list of columns the dataframe should have
+    :return: The dataframe, with its columns added
+    """
     for col_name in list_cols:
         if col_name not in gdf.columns:
             # https://stackoverflow.com/questions/60115806/pd-na-vs-np-nan-for-pandas
@@ -202,9 +232,14 @@ def ensure_columns_existence(gdf, list_cols):
     return gdf
 
 
-# TODO: pareil qu'à la fin de OSMPreprocessor, le nom des geometries c'est toujours le meme en pratique, du coup est-ce qu'on devrait faire que ce soit paramétrable ou pas ?
-# Pour le moment on le laisse comme ça
 def safe_get_group(group_by, base_gdf, key):
+    """
+    Gets the group of the key, or a default dataframe if the key is not found
+    :param group_by: The GroupBy containing the groups
+    :param base_gdf: The base dataframe from which to construct the default dataframe if needs be
+    :param key: The key of the group
+    :return: The group of the key, or a default dataframe if the key is not found
+    """
     # Needed because GroupBy.get_group() fails if key is missing
     if key in group_by.groups:
         return group_by.get_group(key)

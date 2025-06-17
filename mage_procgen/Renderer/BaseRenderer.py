@@ -52,7 +52,7 @@ class BaseRenderer:
         self,
         objects_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
-        parent_collection_name,
+        parent_collection_name: str,
     ):
 
         mesh_obj = self._draw_objects(objects_gdf, geo_center, parent_collection_name)
@@ -63,7 +63,12 @@ class BaseRenderer:
         m.name = self.geometry_node_name
         m.node_group = D.node_groups[self.geometry_node_name]
 
-    def _draw_objects(self, objects_gdf, geo_center, parent_collection_name):
+    def _draw_objects(
+        self,
+        objects_gdf: g.GeoDataFrame,
+        geo_center: tuple[float, float, float],
+        parent_collection_name: str,
+    ):
         mesh = bmesh.new()
 
         for object_index in tqdm(objects_gdf.index):
@@ -90,7 +95,6 @@ class BaseRenderer:
 
     def __draw_face(self, mesh, polygon, geo_center):
         # Kind of hack because Polygon.coords is not implemented
-        # TODO : shapely.get_coordinates(polygon)
         polygon_geometry = mapping(polygon)["coordinates"]
 
         if len(polygon_geometry) > 0:

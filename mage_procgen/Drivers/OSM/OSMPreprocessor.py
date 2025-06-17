@@ -150,8 +150,6 @@ class OSMPreprocessor:
 
         developed = safe_get_group(landuse_groups, landused, OSM.developed)
 
-        # Asphalt used to exclude highway surfaces. Unclear why.
-        # TODO: find out if it should do it or not
         asphalt = safe_get_group(surface_groups, surfaces, OSM.asphalt_surface)
         tartan = safe_get_group(surface_groups, surfaces, OSM.tartan_surface)
         compacted = safe_get_group(surface_groups, surfaces, OSM.compacted_surface)

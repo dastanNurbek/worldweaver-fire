@@ -17,7 +17,7 @@ class HiddenPolygonRenderer(FlatPolygonRenderer):
         self,
         objects_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
-        parent_collection_name,
+        parent_collection_name: str,
     ):
 
         mesh_obj = self._draw_objects(objects_gdf, geo_center, parent_collection_name)

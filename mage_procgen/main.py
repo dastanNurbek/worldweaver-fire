@@ -146,7 +146,7 @@ def main(filepath):
             )
 
         render_manager.draw_decor(False)
-        export_rendered_img(export_folder, now_str)
+        export_rendered_img(config.base_folder, export_folder, now_str)
     else:
         render_times = []
 
@@ -186,7 +186,7 @@ def main(filepath):
                         zone_window = render_manager.draw_decor(True)
 
                     set_compositing_render_image_name(now_str + "_tagging")
-                    export_rendered_img(export_folder, now_str)
+                    export_rendered_img(config.base_folder, export_folder, now_str)
 
                     # Clean
                     render_manager.clean_zone()

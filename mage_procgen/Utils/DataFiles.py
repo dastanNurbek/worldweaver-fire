@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import subprocess
 
 import funkybob
@@ -59,10 +60,11 @@ shore_file = "LIMITE_TERRE_MER.shp"
 
 texture_folder = "Textures"
 texture_image_DB = "BDORTHO"
-delivery = "1_DONNEES_LIVRAISON"
+delivery = "DONNEES"
+delivery_db = "1_DONNEES"
 texture_data_folder = "OHR_RVB"
 
-additional = "3_SUPPLEMENTS_LIVRAISON"
+additional = "SUPPLEMENTS"
 slab_file = "dalles.shp"
 
 config_folder = "Config"
@@ -78,6 +80,7 @@ input_data_folder = "Inputs"
 
 log_folder = "Logs"
 log_file_name = "worldweaver.log"
+render_log_file = "render.log"
 
 
 file_coords_regex = re.compile("_[0-9]{4}_[0-9]{4}_")
@@ -102,7 +105,7 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
     to:
 
         * BDTOPO:
-             * 1_DONNEES_LIVRAISON
+             * DONNEES
                  * OCCUPATION_DU_SOL
                      * ZONE_DE_VEGETATION.shp
                  * TRANSPORT
@@ -137,7 +140,7 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
 
     # 1_DONNEES_LIVRAISON_2021-04-00084
     # os.listdir return order is not sorted. better match by substring
-    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    dir2 = next(x for x in os.listdir(path2) if delivery_db in x)
     path3 = os.path.join(path2, dir2)
 
     # BDT_3-3_SHP_LAMB93_D006-ED2023-06-15
@@ -155,6 +158,7 @@ def setup_bdtopo(base_folder: str, departement: str, archive_file: str):
             base_folder, departements, str(departement), bdtopo_folder, delivery
         ),
     )
+    shutil.rmtree(path1, ignore_errors=True)
 
 
 def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
@@ -172,7 +176,7 @@ def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
     to:
 
         * BDCARTO:
-             * 1_DONNEES_LIVRAISON
+             * DONNEES
                  * ZONE_D_OCCUPATION_DU_SOL
                      * OCCUPATION_DU_SOL.shp
 
@@ -203,7 +207,7 @@ def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
 
     # 1_DONNEES_LIVRAISON_2024-12-00075
     # os.listdir return order is not sorted. better match by substring
-    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    dir2 = next(x for x in os.listdir(path2) if delivery_db in x)
     path3 = os.path.join(path2, dir2)
 
     # BDC_5-0_SHP_LAMB93_D006-ED2024-09-15
@@ -221,6 +225,7 @@ def setup_bdcarto(base_folder: str, departement: str, archive_file: str):
             base_folder, departements, str(departement), bdcarto_folder, delivery
         ),
     )
+    shutil.rmtree(path1, ignore_errors=True)
 
 
 def setup_rpg(base_folder: str, departement: str, archive_file: str):
@@ -237,7 +242,7 @@ def setup_rpg(base_folder: str, departement: str, archive_file: str):
     to:
 
         * RPG:
-             * 1_DONNEES_LIVRAISON
+             * DONNEES
                  * PARCELLES_GRAPHIQUES.shp
 
     Parameters:
@@ -267,7 +272,7 @@ def setup_rpg(base_folder: str, departement: str, archive_file: str):
 
     # 1_DONNEES_LIVRAISON_2023
     # os.listdir return order is not sorted. better match by substring
-    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    dir2 = next(x for x in os.listdir(path2) if delivery_db in x)
     path3 = os.path.join(path2, dir2)
 
     # RPG_2-2__SHP_LAMB93_R93_2023-01-01
@@ -283,9 +288,9 @@ def setup_rpg(base_folder: str, departement: str, archive_file: str):
         path4,
         os.path.join(base_folder, departements, str(departement), rpg_folder, delivery),
     )
+    shutil.rmtree(path1, ignore_errors=True)
 
 
-# TODO: delete the other folders ? => OUI. On peut même simplifier plus
 def setup_bdortho(base_folder: str, departement: str, archive_file: str):
     """
     Extracts BDORTHO archive, and changes the folders to simplify it from:
@@ -304,12 +309,10 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
     to:
 
          * BDORTHO
-             * 1_DONNEES_LIVRAISON
-                 * OHR_RVB
-                     * *.jp2
-             * 3_SUPPLEMENTS_LIVRAISON
-                 * OHR_RVB
-                      * dalles.shp
+             * DONNEES
+                 * *.jp2
+             * SUPPLEMENTS
+                 * dalles.shp
 
     Parameters:
         base_folder: base folder of the application (same one as the one written in the config file)
@@ -338,7 +341,7 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
 
     # 1_DONNEES_LIVRAISON_2021-04-00084
     # os.listdir return order is not sorted. better match by substring
-    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    dir2 = next(x for x in os.listdir(path2) if delivery_db in x)
     path3 = os.path.join(path2, dir2)
 
     # OHR_RVB_0M20_JP2-E080_LAMB93_D06-2020
@@ -360,7 +363,6 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
             str(departement),
             texture_image_DB,
             delivery,
-            texture_data_folder,
         ),
     )
 
@@ -373,9 +375,7 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
     path6 = os.path.join(path5, dir5)
 
     os.makedirs(
-        os.path.join(
-            base_folder, departements, str(departement), texture_image_DB, additional
-        ),
+        os.path.join(base_folder, departements, str(departement), texture_image_DB),
         exist_ok=True,
     )
     os.rename(
@@ -386,9 +386,9 @@ def setup_bdortho(base_folder: str, departement: str, archive_file: str):
             str(departement),
             texture_image_DB,
             additional,
-            texture_data_folder,
         ),
     )
+    shutil.rmtree(path1, ignore_errors=True)
 
 
 def setup_rgealti(base_folder: str, departement: str, archive_file: str):
@@ -409,12 +409,10 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
     to:
 
          * RGEALTI
-             * 1_DONNEES_LIVRAISON
-                 * MNT
-                     * *.asc
-             * 3_SUPPLEMENTS_LIVRAISON
-                 * MNT
-                     * dalles.shp
+             * DONNEES
+                * *.asc
+             * SUPPLEMENTS
+                * dalles.shp
 
     Parameters:
         base_folder: base folder of the application (same one as the one written in the config file)
@@ -443,7 +441,7 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
 
     # 1_DONNEES_LIVRAISON_2021-04-00084
     # os.listdir return order is not sorted. better match by substring
-    dir2 = next(x for x in os.listdir(path2) if delivery in x)
+    dir2 = next(x for x in os.listdir(path2) if delivery_db in x)
     path3 = os.path.join(path2, dir2)
 
     # RGEALTI_MNT_1M_ASC_LAMB93_IGN69_D077_20210303
@@ -453,7 +451,7 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
     path4 = os.path.join(path3, dir3)
 
     os.makedirs(
-        os.path.join(base_folder, departements, str(departement), terrain_DB, delivery),
+        os.path.join(base_folder, departements, str(departement), terrain_DB),
         exist_ok=True,
     )
     os.rename(
@@ -464,7 +462,6 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
             str(departement),
             terrain_DB,
             delivery,
-            terrain_data_folder,
         ),
     )
 
@@ -490,9 +487,9 @@ def setup_rgealti(base_folder: str, departement: str, archive_file: str):
             str(departement),
             terrain_DB,
             additional,
-            terrain_data_folder,
         ),
     )
+    shutil.rmtree(path1, ignore_errors=True)
 
 
 def check_shapefiles_presence(base_folder: str):

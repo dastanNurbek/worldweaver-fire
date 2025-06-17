@@ -45,7 +45,7 @@ class BuildingRenderer(BaseRenderer):
         self,
         buildings_gdf: g.GeoDataFrame,
         geo_center: tuple[float, float, float],
-        parent_collection_name,
+        parent_collection_name: str,
     ):
 
         self._mesh_names = []
@@ -55,8 +55,9 @@ class BuildingRenderer(BaseRenderer):
             if buildings_gdf.geometry[building_index].is_empty:
                 continue
 
-            # TODO: make those parametric
-            building_floor_numbers = random.randint(2, 6)
+            building_floor_numbers = random.randint(
+                self.config.default_levels_min, self.config.default_levels_max
+            )
             # Height of each floor in meters
             floor_height = 3
 

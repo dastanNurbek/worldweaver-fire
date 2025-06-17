@@ -22,7 +22,7 @@ class HiddenLineRenderer:
         self,
         lines: g.GeoDataFrame,
         geo_window: GeoWindow,
-        parent_collection_name,
+        parent_collection_name: str,
     ):
 
         mesh = bmesh.new()

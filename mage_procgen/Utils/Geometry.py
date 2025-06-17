@@ -1,31 +1,15 @@
-import math
-
 from mage_procgen.Utils.Logging import logger
 
 
 def center_point(point: tuple[float, float, float], center: tuple[float, float, float]):
+    """
+    Calculates the coordinates of a point relative to the center of the scene.
+    :param point: The point to center
+    :param center: The center of the scene
+    :return: The coordinates relative to the center of the scene
+    """
 
     return (point[0] - center[0], point[1] - center[1], point[2] - center[2])
-
-
-def point_2d_almost_equal(a, b, tolerance):
-    return math.isclose(a.x, b.x, abs_tol=tolerance) and math.isclose(
-        a.y, b.y, abs_tol=tolerance
-    )
-
-
-def point_2d_in_collection(a, col, tolerance):
-    for point in col:
-        if point_2d_almost_equal(a, point, tolerance):
-            return True
-    return False
-
-
-def point_2d_value_in_dict(a, col, tolerance):
-    for point in col.keys():
-        if point_2d_almost_equal(a, point, tolerance):
-            return col[point]
-    raise KeyError("Point2D not in collection: " + str(a))
 
 
 def interpolate_z(terrain_data, x, y):
