@@ -1,19 +1,20 @@
 from distutils.core import setup
 
 setup(
-    name="mage_procgen",
-    version="0.0.0.1",
+    name="worldweaver",
+    version="1.0.0.0",
     description="Procedural Generator for satellite images",
     author="Armand Verstraete",
     author_email="armand.verstraete@lecnam.net",
     url="",
     packages=[
-        "mage_procgen",
-        "mage_procgen.Utils",
-        "mage_procgen.Renderer",
-        "mage_procgen.Processor",
-        "mage_procgen.Parser",
-        "mage_procgen.Manager",
-        "mage_procgen.Loader",
+        "worldweaver",
+        "worldweaver.Drivers",
+        "worldweaver.Loader",
+        "worldweaver.Manager",
+        "worldweaver.Parser",
+        "worldweaver.Processor",
+        "worldweaver.Renderer",
+        "worldweaver.Utils",
     ],
 )

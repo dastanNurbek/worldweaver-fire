@@ -1,0 +1,136 @@
+import os
+
+import bpy
+import bmesh
+from bpy import data as D
+
+from tqdm import tqdm
+
+from worldweaver.Utils.Config import RenderObjectConfig
+from worldweaver.Utils.Logging import logger
+from worldweaver.Utils.DataFiles import assets_folder
+
+
+class FloodRenderer:
+
+    _mesh_name = "Flood"
+
+    def __init__(self, object_config: RenderObjectConfig):
+        self.config = object_config
+        _location = os.path.realpath(
+            os.path.join(os.getcwd(), os.path.dirname(__file__))
+        )
+
+        # Render
+        filepath = os.path.realpath(
+            os.path.join(_location, "..", assets_folder, self.config.geometry_node_file)
+        )
+        try:
+            with bpy.data.libraries.load(filepath) as (data_from, data_to):
+                data_to.node_groups = [self.config.geometry_node_name]
+
+            # A Geometry Nodes setup with name object_config.geometry_node_name may already exist.
+            self.geometry_node_name = data_to.node_groups[0].name
+
+        except Exception as _:
+            raise Exception(
+                f"Unable to load the Geometry Nodes setup with the name '"
+                f"{self.config.geometry_node_name}"
+                f"'"
+                f" from the file "
+                f"{filepath}"
+                f". Please check that the name is correct."
+            )
+
+    def render(self, flood_data, parent_collection_name):
+
+        flood_init_state = flood_data[0]
+        flood_pixels = flood_data[1]
+        is_flooded = flood_data[2]
+        lower_left = flood_data[3]
+        upper_right = flood_data[4]
+        cellsize = flood_data[5]
+
+        mesh = bmesh.new()
+
+        cell_coords = [
+            (-1, -1),
+            (-1, 0),
+            (0, 0),
+            (0, -1),
+        ]
+
+        meshes_points_top = {}
+        meshes_points_bottom = {}
+
+        logger.info("Rendering flood")
+
+        for y in tqdm(range(1, len(flood_pixels))):
+
+            for x in range(1, len(flood_pixels[y])):
+
+                # If this point is flooded
+                if is_flooded[y][x]:
+
+                    top_face_coords = []
+                    bottom_face_coords = []
+
+                    for coord_mod in cell_coords:
+
+                        current_x = x + coord_mod[0]
+                        current_y = y + coord_mod[1]
+
+                        current_point_y = upper_right[1] - current_y * cellsize
+                        current_point_x = lower_left[0] + current_x * cellsize
+
+                        # Top face
+                        flood_height_point = flood_pixels[current_y][current_x]
+
+                        current_point_top_z = (
+                            flood_height_point  # + terrain_height_point
+                        )
+
+                        current_top_point_coords = (
+                            current_point_x,
+                            current_point_y,
+                            current_point_top_z,
+                        )
+
+                        if current_top_point_coords not in meshes_points_top:
+                            meshes_points_top[
+                                current_top_point_coords
+                            ] = mesh.verts.new(current_top_point_coords)
+                        top_face_coords.append(
+                            meshes_points_top[current_top_point_coords]
+                        )
+
+                        # Bottom face
+                        terrain_height_point = flood_init_state[current_y][current_x]
+
+                        current_bottom_point_coords = (
+                            current_point_x,
+                            current_point_y,
+                            terrain_height_point,
+                        )
+
+                        if current_bottom_point_coords not in meshes_points_bottom:
+                            meshes_points_bottom[
+                                current_bottom_point_coords
+                            ] = mesh.verts.new(current_bottom_point_coords)
+                        bottom_face_coords.append(
+                            meshes_points_bottom[current_bottom_point_coords]
+                        )
+
+                    face_top = mesh.faces.new(top_face_coords)
+                    face_bottom = mesh.faces.new(bottom_face_coords)
+
+        mesh_data = D.meshes.new(self._mesh_name)
+        self._mesh_name = mesh_data.name
+        mesh.to_mesh(mesh_data)
+        mesh.free()
+        mesh_obj = D.objects.new(self._mesh_name, mesh_data)
+        mesh_obj.pass_index = self.config.tagging_index
+        D.collections[parent_collection_name].objects.link(mesh_obj)
+
+        m = mesh_obj.modifiers.new("", "NODES")
+        m.node_group = D.node_groups[self.geometry_node_name]

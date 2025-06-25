@@ -1,5 +1,5 @@
 # Flood Generation
-
+/!\ TODO 
 To simulate the propagation a flood, we use a graph-based pathfinding algorithm based on a rasterized grid of the height map. We first extract the digital elevation model (DEM) and rasterize it at \SI{1}{\meter\per\pixel} resolution, producing a $w\times h$ matrix $\mathbf{H}$ of the height map.
 We then produce a weighted oriented graph where every node is a pixel from the height map, and we add one edge from every pixel towards each of its eight neighbours.
 The weight of an edge corresponds to the slope along the direction, \ie the difference in elevation between the departing pixel and its neighbour.

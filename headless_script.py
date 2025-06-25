@@ -41,7 +41,7 @@ print(unknown)
 # HACK: because pkg is not installed
 sys.path.append("/home/AVerstraete/Work/worldweaver")
 
-from mage_procgen import main as mpm
+from worldweaver import main as mpm
 
 # For blender
 # filepath = C.preferences.addons["module_mage_procgen"].preferences.filepath

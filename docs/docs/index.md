@@ -1,9 +1,18 @@
-# MAGE Procgen Documention 
+# WorldWeaver Documention 
 
-MAGE Procgen is a Blender add-on that takes geographical data and uses them to create a 3D scene, 
+WorldWeaver is a Blender add-on and python package that takes geographical data and uses them to create a 3D scene, 
 generates a flood and then produces annotated images from that scene.
 
-It currently only works on mainland France, but has a lot of parameters to customize the window, assets, and flood.
+It currently works on data from the [French National Geographic Institute](https://www.ign.fr/), [openstreetmap](https://www.openstreetmap.org/), and [swissALTI3D](https://www.swisstopo.admin.ch/fr/modele-altimetrique-swissalti3d), and has a lot of parameters to customize the window, assets, and flood.
 
-- [Setup](install.md)
-- [Usage](workflow.md)
+Base documentation:
+
+* [Setup](install.md)
+* [First run](basic_workflow.md)
+
+Advanced documentation:
+
+* [Working offline](file_workflow.md)
+* [Advanced features](advanced_workflow.md)
+* [Assets use](assets.md)
+* [Dev documentation](dev.md)

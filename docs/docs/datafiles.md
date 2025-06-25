@@ -7,5 +7,5 @@ These helpers are located in the Utils.DataFiles module
     This module needs 7zip to be installed in order to work
 
 
-::: mage_procgen.Utils.DataFiles
+::: worldweaver.Utils.DataFiles
 

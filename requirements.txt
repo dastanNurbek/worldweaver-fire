@@ -1,18 +1,17 @@
 geopandas==1.0.1
-jsonpickle>=3.0.1
 rasterio>=1.3.7
 pyogrio>=0.5.1
 scipy==1.10.0 #1.14.0 (and maybe previous versions) contain a bug https://github.com/scipy/scipy/issues/20904. Should be fixed in 1.15.0
+scikit-image>=0.21.0
+scikit-learn==1.6.1
 numpy>=1.24.2
 tqdm>=4.65.0
 OpenEXR>=1.3.9
 Pillow>=9.5.0
-scikit-image>=0.21.0
 fiona==1.9.6
 owslib==0.33.0
 funkybob
 overpass==0.7.2
 timezonefinder==6.5.3
-scikit-learn==1.6.1
 ladybug-geometry==1.32.6
 ladybug-geometry-polyskel==1.6.4

@@ -10,26 +10,32 @@ Most assets are based on Blender's [Geometry Nodes](https://docs.blender.org/man
 
 ## Buildings
 
-There are 4 kinds of buildings ("Normal", Churches, Factories and Malls), but render-wise they are managed the same way:
-the footprint of the building is extracted from the datasets, raised to the correct altitude to fit the terrain, and a surface is generated in Blender.
-The asset we use is a geometry node based on [Buildify](https://paveloliva.gumroad.com/l/buildify) and takes this surface and transforms it into a building
+There are 5 kinds of buildings: "Normal", Churches, Factories, Malls and Houses.
 
-## Flood
-[TODO]
-The flood object consists of square cells linked together to create a surface, and then the asset we use is inspired from [this tutorial](https://www.youtube.com/watch?v=0SJ-__0gK_k&feature=youtu.be) to create the aspect of realistic water
+The first 4 are managed the same way: the footprint of the building is transformed into a 3D building with flat roof using [Buildify](https://paveloliva.gumroad.com/l/buildify).
+
+The houses are blocks with sloped roofs (instead of just footprints) that are then decorated with [PBG](https://superhivemarket.com/products/pbg-2).
+
+## Flood / Water
+
+Flood and water get renderer with in house shaders based on [this tutorial](https://www.youtube.com/watch?v=0SJ-__0gK_k).
 
 ## Forests
 
-The software creates the footprint of forests using the input data, a surface is craated from it, and then the asset samples random points on the surface and places a tree on it.
+The software creates the footprint of forests using the input data, and then the asset samples random points on the surface and places a tree on it.
+
+The "placeholder" trees are basic models made in-house.
+
+The "pretty" trees (used only when rendering) are done with [Coan Tree Generator](https://coan.gumroad.com/l/treegen).
 
 ## Roads
 
-The software creates the footprint of roads using the input data, a surface is created from it, and then the asset applies a texture on it and ensures it is place just over the top of the terrain surface
+The software extracts road data, and then decorates it using a slightly modified version of [Next Street V3](https://superhivemarket.com/products/next-street). The cars added on the road are also from Next Street's assets.
 
-## Water
+Some roads are also bridges, which are decorated with [FRG](https://superhivemarket.com/products/next-street).
 
-The software creates the footprint of water using the input data, a surface is created from it, and then the asset applies a texture on it.
+## Terrain
 
-## Cars
+Terrain is rendered with a shader that uses landuse information.
 
-Along road lanes, the software generates vectors that should indicate the orientation of the car. The asset aligns a car model along this vector
+The shader is made in-house, with free texture files from [FreePBR](https://freepbr.com/), [ambientCG](https://ambientcg.com/), [Poliigon](https://www.poliigon.com/textures/free) ...

@@ -2,10 +2,13 @@ site_name: WorldWeaver Documentation
 nav:
   - Home: index.md
   - Installation: install.md
-  - Usage: workflow.md
+  - First Run: basic_workflow.md
   - Managing IGN open data: datafiles.md
+  - Working offline: file_workflow.md
+  - Advanced features: advanced_workflow.md
+  - File usage: filesystem.md
+  - Assets use: assets.md
   - Configuration files: conf.md
-  - Managing assets: assets.md
   - Flooding algorithm: flood.md
   - Developer documentation: dev.md
 theme: readthedocs

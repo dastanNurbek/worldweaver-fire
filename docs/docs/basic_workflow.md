@@ -1,0 +1,51 @@
+# Starting your first run
+
+## Configuration
+
+Before you can render, you need to generate the configuration file for your run. 
+Edit the `Config/base_config.json` file to set the `base_folder` to a value that suits you.
+For further info please look at the documentation for this in [Configuration Files Edition](conf.md).
+
+## Run
+
+### Inside Blender
+
+Once the configuration file is done, open Blender, preferably through a terminal.
+To do so, when you are inside the folder where blender is installed:
+
+```bash
+./blender
+```
+
+You can then set the configuration file used by the plugin, either by going to `Edit->Preferences->Add-ons`, 
+search for MAGE Procgen, and edit the *Configuration File Path* field. 
+
+Alternatively, you can also do it by pressing `Ctrl + Shift + L` or go to `Object->WorldWeaver Config Select`.
+
+Once the configuration file is set (you don't have to do it if the name of the file has not changed since the last run),
+you can run the plugin by either pressing `Ctrl + Shift + M` or go to `Object->WorldWeaver`.
+
+While the program is running, you will not be able to see or do anything inside Blender, 
+but you can follow the progression through the logs in the terminal you used to start Blender. 
+A log file will also be created in a "Logs" folder inside the `base_folder` described in the configuration file.
+
+Once the run is finished, you will be able to see the scene and will have a project folder containing a sample rendering (see [File System](filesystem.md))
+
+### Headless mode
+
+Get inside the virtual environment you used during the installation: 
+
+```bash
+source <path/to/virtual_env>/bin/activate
+```
+
+Then start the run:
+
+```bash
+python <path/to/worldweaver>/headless_script.py --config <path/to/worldweaver>/worldweaver/Config/saint_sauveur_sur_tinee.json
+```
+
+While the program is running you can follow the progression through the logs in the terminal.
+A log file will also be created in a "Logs" folder inside the `base_folder` described in the configuration file.
+
+Once the run is finished, you will be able to see the scene and will have a project folder containing a sample rendering (see [File System](filesystem.md))
