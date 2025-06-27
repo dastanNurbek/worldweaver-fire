@@ -1,0 +1,30 @@
+{
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "FILE"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 7.1,
+      "y_min": 44.077,
+      "x_max": 7.11,
+      "y_max": 44.09
+    }
+  },
+  "terrain": {
+    "terrain_resolution": 1,
+    "use_orthoimage_as_basemap": false
+  },
+  "rendering": {
+    "export_images": false,
+    "device_type": "GPU",
+    "camera_type": "ORTHOGRAPHIC",
+    "ground_sampling_distance": 0.2,
+    "tile_size": 512,
+    "objects":
+    {
+
+    }
+  }
+}

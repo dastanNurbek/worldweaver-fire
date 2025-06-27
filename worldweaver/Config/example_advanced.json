@@ -1,0 +1,40 @@
+{
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "OSM-CH"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 2600536.3,
+      "y_min": 1199198.5,
+      "x_max": 2601636.9,
+      "y_max": 1200065.4,
+      "crs_from": 2056
+    }
+  },
+  "terrain": {
+    "terrain_resolution": 1,
+    "use_orthoimage_as_basemap": false
+  },
+  "flood": {
+    "activate": true,
+    "flood_height": 10,
+    "flood_cell_size": 1
+  },
+  "rendering": {
+    "export_images": true,
+    "device_type": "GPU",
+    "camera_type": "ORTHOGRAPHIC",
+    "ground_sampling_distance": 0.2,
+    "tile_size": 512,
+    "objects":
+    {
+      "placeholder_forest_render": {
+      "geometry_node_file": "Forests.blend",
+      "geometry_node_name": "Forest_feuillu",
+      "tagging_index": 3
+      }
+    }
+  }
+}

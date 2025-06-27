@@ -32,7 +32,7 @@ Current dependencies are as follows:
 Getting the python version (this exact version is needed for compatibility with blender and use of virtual environments):
 
 ```bash
-    sudo apt install python3.11-venv
+sudo apt install python3.11-venv
 ```
 
 Creating the virtual environment that will be used by the software:

@@ -38,20 +38,17 @@ print(arguments)
 print("\nUnknown Arguments:")
 print(unknown)
 
-# HACK: because pkg is not installed
-sys.path.append("/home/AVerstraete/Work/worldweaver")
-
 from worldweaver import main as mpm
 
 # For blender
-# filepath = C.preferences.addons["module_mage_procgen"].preferences.filepath
+# filepath = C.preferences.addons["module_worldweaver"].preferences.filepath
 # mpm.main(filepath)
 
 # For bpy
 mpm.main(arguments.config)
 
 # For blender
-# ./blender --background --python /home/AVerstraete/Work/worldweaver/headless_script.py -- --config /home/AVerstraete/Work/worldweaver/mage_procgen/Config/st-sauveur-sur-tinée.json
+# ./blender --background --python /home/AVerstraete/Work/worldweaver/headless_script.py -- --config /home/AVerstraete/Work/worldweaver/worldweaver/Config/base_config.json
 
 # For bpy
-# python headless_script.py --config /home/AVerstraete/Work/worldweaver/mage_procgen/Config/saint_sauveur_sur_tinee.json
+# python headless_script.py --config /home/AVerstraete/Work/worldweaver/worldweaver/Config/base_config.json

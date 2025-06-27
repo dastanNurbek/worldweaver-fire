@@ -4,6 +4,43 @@
 
 Before you can render, you need to generate the configuration file for your run. 
 Edit the `Config/base_config.json` file to set the `base_folder` to a value that suits you.
+
+For example if you want the software to use the "/home/MyUser/data/worldweaver/maps" folder, the start of your configuration file will go from this:
+```json
+{
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "STREAM"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 2.9185,
+      "y_min": 48.9396,
+      "x_max": 2.9314,
+      "y_max": 48.9466,
+      "crs_from": 4326
+    },
+    ...
+```
+to this:
+```json
+{
+  "base_folder": "/home/MyUser/data/worldweaver/maps",
+  "input_data": {
+    "type": "STREAM"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 2.9185,
+      "y_min": 48.9396,
+      "x_max": 2.9314,
+      "y_max": 48.9466,
+      "crs_from": 4326
+    },
+    ...
+```
 For further info please look at the documentation for this in [Configuration Files Edition](conf.md).
 
 ## Run
@@ -42,7 +79,7 @@ source <path/to/virtual_env>/bin/activate
 Then start the run:
 
 ```bash
-python <path/to/worldweaver>/headless_script.py --config <path/to/worldweaver>/worldweaver/Config/saint_sauveur_sur_tinee.json
+python <path/to/worldweaver>/headless_script.py --config <path/to/worldweaver>/worldweaver/Config/base_config.json
 ```
 
 While the program is running you can follow the progression through the logs in the terminal.

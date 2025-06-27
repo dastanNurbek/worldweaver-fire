@@ -218,7 +218,9 @@ def export_rendered_img(base_folder: str, render_folder: str, image_name: str):
     sc.render.filepath = os.path.join(render_folder, image_name + ".png")
 
     # Redirecting blender's render logs which are very voluminous (especially in headless mode) to another file
-    with stdout_redirected(os.path.join(base_folder, df.log_folder, df.render_log_file)):
+    with stdout_redirected(
+        os.path.join(base_folder, df.log_folder, df.render_log_file)
+    ):
 
         O.render.render(write_still=True)
 

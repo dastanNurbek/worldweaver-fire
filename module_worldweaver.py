@@ -73,6 +73,9 @@ class ObjectWorldWeaver(bpy.types.Operator):
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
+        import sys
+
+        sys.path.append("/home/AVerstraete/Work/worldweaver/")
 
         from worldweaver import main as mpm
 

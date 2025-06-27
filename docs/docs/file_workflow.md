@@ -25,13 +25,49 @@ Once you have those datasets for each departement covered by the zone you want t
 Before you can render, you need to generate the configuration file for your run. 
 Please look at the documentation for this in [Configuration Files Edition](conf.md).
 
-Copy the `example_file.json` and give it an appropriate name (or just edit it). 
+Copy the `example_offline.json` and give it an appropriate name (or just edit it). 
 
 Then:
 
  * Change the `base_folder` field to the value that reflects your setup. 
  * Change the `simulation_area` to whatever you want to render.
 
+For example if you want the software to use the "/home/MyUser/data/worldweaver/maps" folder and generate a scene around  [this district of the city of Nice](https://www.openstreetmap.org/#map=15/43.68995/7.29527), the start of your configuration file will go from this:
+```json
+{
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "FILE"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 7.1,
+      "y_min": 44.077,
+      "x_max": 7.11,
+      "y_max": 44.09
+    }
+  },
+    ...
+```
+to this:
+```json
+{
+  "base_folder": "/home/MyUser/data/worldweaver/maps",
+  "input_data": {
+    "type": "FILE"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 7.29000,
+      "y_min": 43.68350,
+      "x_max": 7.31000,
+      "y_max": 43.70000
+    }
+  },
+    ...
+```
 ## Run
 
 Run will work exactly as the [basic workflow](basic_workflow.md/#run). Just select the configuration you just generated for the run.

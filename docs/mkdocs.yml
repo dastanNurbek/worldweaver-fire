@@ -3,8 +3,8 @@ nav:
   - Home: index.md
   - Installation: install.md
   - First Run: basic_workflow.md
-  - Managing IGN open data: datafiles.md
   - Working offline: file_workflow.md
+  - Managing IGN open data: datafiles.md
   - Advanced features: advanced_workflow.md
   - File usage: filesystem.md
   - Assets use: assets.md

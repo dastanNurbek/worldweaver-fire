@@ -35,8 +35,19 @@ This file should not be edited except for the `base_folder`.
   * `geo_window`: only required if `window_type` is "COORDS". Contains:
     * `x_min`, `x_max`, `y_min` and `y_max`: coordinates of the window
     * `crs_from` (optional): code of the CRS of the coordinates
-  * `town`: only required if `window_type` is "TOWN". Contains:
-    * `identifier`: /!\ TODO
+      * `town`: only required if `window_type` is "TOWN". Contains:
+        * `identifier`: An identifier of the town. Expected format is different depending of the input data type:
+            * If using IGN data, should be the name of the town followed by the 2 digit code of the departement, for example "Loos-en-Gohelle 62" to select the town of [Loos-en-Gohelle](https://www.openstreetmap.org/relation/1113031) in the departement [62 (Pas-de-Calais)](https://www.openstreetmap.org/relation/7394#map=9/50.517/2.372).
+            * If using OSM, it should just be the name of the town. In this case, the software gets the town geometry from an [Overpass](https://overpass-turbo.eu/#) query.
+
+!!! note "Word of warning"
+
+    It searches in openstreetmap database for towns in the whole world with such a name, and just picks the first result, so you might not get what you expect. You can try out the request yourself first to confirm that it will select the correct zone. The request is:
+
+    ```
+    nwr[name="<town_name>"][boundary=administrative][type=boundary][admin_level="8"];out;(way(r); >;);out skel;
+    ```
+      
   * `shapefile`: only required if `window_type` is "FILE". Contains:
     * `path`: Path of the shapefile describing the window
 

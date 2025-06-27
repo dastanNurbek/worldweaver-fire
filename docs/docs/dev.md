@@ -114,6 +114,7 @@ The number of levels of the building can be set for each building, or attributed
 Configuring the rendering of `Factories` takes a few parameters (example taken from `base_config.json`):
 
 ```json
+      ...
       "factory_render": {
         "geometry_node_file": "Factories.blend",
         "geometry_node_name": "Factories",
@@ -121,6 +122,7 @@ Configuring the rendering of `Factories` takes a few parameters (example taken f
         "default_levels_min": 2,
         "default_levels_max": 5
       },
+      ...
 ```
 
 See [configuration documentation](conf.md#objects) for detailed definitions.
