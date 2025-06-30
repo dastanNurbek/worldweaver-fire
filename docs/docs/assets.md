@@ -32,7 +32,7 @@ The "pretty" trees (used only when rendering) are done with [Coan Tree Generator
 
 The software extracts road data, and then decorates it using a slightly modified version of [Next Street V3](https://superhivemarket.com/products/next-street). The cars added on the road are also from Next Street's assets.
 
-Some roads are also bridges, which are decorated with [FRG](https://superhivemarket.com/products/next-street).
+Some roads are also bridges, which are decorated with [FRG](https://superhivemarket.com/products/flex-road-generator).
 
 ## Terrain
 
