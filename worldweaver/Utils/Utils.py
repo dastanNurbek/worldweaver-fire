@@ -200,8 +200,8 @@ def tag_water(water_geometry, water_types, default_name):
     :param default_name: The default value returned if a class cannot be found
     :return: The class of the water body based on its intersection with other bodies, or a default value if a class cannot be found.
     """
-    for water_type, water_geometry in water_types.items():
-        if not intersection(water_geometry, water_geometry).is_empty:
+    for water_type, water_type_geometry in water_types.items():
+        if not intersection(water_geometry, water_type_geometry).is_empty:
             return water_type
 
     return default_name

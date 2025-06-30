@@ -29,6 +29,46 @@ Current dependencies are as follows:
 
 ## Setup instructions
 
+The installation procedure is slightly different if you want to be able to use Blender's GUI or just use the headless version:
+
+### Blender GUI Version
+
+Install Blender:
+
+```bash
+snap install blender --channel=4.1/stable
+```
+
+Creating the virtual environment that will be used by the software using the python interpreter packaged by Blender:
+
+```bash
+/snap/blender/current/4.1/python/bin/python3.11 -m venv <path/to/virtual_env>
+```
+
+Entering the virtual environment.
+
+```bash
+source <path/to/virtual_env>/bin/activate
+```
+
+Cloning the repository from GitHub or extract the tarball:
+
+```bash
+git clone https://github.com/geo-mage/worldweaver
+```
+
+Installing the python dependencies:
+```bash
+python -m pip install -r requirements.txt
+```
+
+You can then install the WorldWeaver Python module into your Python environment using:
+```bash
+pip install .
+```
+
+### Headless Version
+
 Getting the python version (this exact version is needed for compatibility with blender and use of virtual environments):
 
 ```bash
@@ -53,16 +93,7 @@ Cloning the repository from GitHub or extract the tarball:
 git clone https://github.com/geo-mage/worldweaver
 ```
 
-Installing the dependencies:
-
-If you are not planning to use headless mode:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-If you are planning to use headless mode:
-
+Installing the python dependencies:
 ```bash
 python -m pip install -r requirements_headless.txt
 ```
@@ -72,13 +103,24 @@ You can then install the WorldWeaver Python module into your Python environment 
 pip install .
 ```
 
-### Registering the addon in Blender
+### Other dependencies:
+
+Install 7zip (or p7zip-full, both work):
+```bash
+sudo apt install 7zip
+```
+or:
+```bash
+sudo apt install p7zip-full
+```
+
+### Registering the addon in Blender (only for GUI)
 
 Because Blender uses its own Python interpreter, we have to specify that we now want Blender to use the system Python (or the Python from your virtualenv).
-This is achieved by passing the `--python-use-system-env` to Blender at startup:
+This is achieved by setting the PYTHONPATH and passing the `--python-use-system-env` to Blender at startup:
 
 ```bash
-blender --python-use-system-env &
+PYTHONPATH="$(python -c "import sys; print(\":\".join(sys.path))")" blender --python-use-system-env
 ```
 
 Once Blender has started, we can register the WorldWeaver plugin as an add-on in the software. To do so:

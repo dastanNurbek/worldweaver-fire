@@ -529,13 +529,21 @@ def check_shapefiles_presence(base_folder: str):
 
 def get_installed_7z():
 
-    first_command = subprocess.run(["7zz"], stdout=subprocess.PIPE)
-    if first_command.returncode == 0:
-        return "7zz"
+    # Exceptions are swallowed because it is allowed for one of the 7z versions to not be installed.
+    # An exception will be thrown if both are missing anyway.
+    try:
+        first_command = subprocess.run(["7zz"], stdout=subprocess.PIPE)
+        if first_command.returncode == 0:
+            return "7zz"
+    except:
+        pass
 
-    second_command = subprocess.run(["7z"], stdout=subprocess.PIPE)
-    if second_command.returncode == 0:
-        return "7z"
+    try:
+        second_command = subprocess.run(["7z"], stdout=subprocess.PIPE)
+        if second_command.returncode == 0:
+            return "7z"
+    except:
+        pass
 
     raise Exception(
         "Neither 7zip nor py7zip-full are installed. Please install of one those."

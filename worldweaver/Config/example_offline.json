@@ -9,7 +9,8 @@
       "x_min": 7.1,
       "y_min": 44.077,
       "x_max": 7.11,
-      "y_max": 44.09
+      "y_max": 44.09,
+      "crs_from": 4326
     }
   },
   "terrain": {

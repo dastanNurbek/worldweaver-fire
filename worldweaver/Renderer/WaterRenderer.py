@@ -122,9 +122,13 @@ class FlowingWaterRenderer(BaseRenderer):
         max_iter = 10
         max_error = 1e-1
 
-        surface_count = 1
-        for surface in water_data.geometry:
+        surface_count = 0
 
+        # Min number of points to allow the use of griddata
+        min_interpolation_points = 4
+
+        for surface in water_data.geometry:
+            surface_count += 1
             logger.info(f"Processing surface {surface_count}")
             # Transforming the polygon into a raster
             surface_box = surface.bounds
@@ -183,8 +187,15 @@ class FlowingWaterRenderer(BaseRenderer):
 
             # Need to use a value below 1 because nothing will be returned if we use 1.
             water_contours = measure.find_contours(water_mask, 0.999)
-            # find_contours returns a list of arrays so we concatenate into a single one
+            # find_contours returns a list of arrays so we concatenate into a single one.
+            # But if there is no contour found (can happen for very small bodies of water),
+            # Then there is nothing to render, and we can just skip this one
+            if len(water_contours) == 0:
+                continue
             water_contours = np.concatenate(water_contours)
+            # Then, if there are not enough points for the interpolation, we also skip this surface as it's likely a mistake as well
+            if len(water_contours) < min_interpolation_points:
+                continue
 
             # Getting all the countour points as control points for the linear interpolation that will serve as the initialisation of the surface
             water_countour_x_y = np.array(
@@ -380,8 +391,6 @@ class FlowingWaterRenderer(BaseRenderer):
 
                     if len(face_coords) >= 3:
                         face = mesh.faces.new(face_coords)
-
-            surface_count += 1
 
         mesh_data = D.meshes.new(self._mesh_name)
         self._mesh_name = mesh_data.name

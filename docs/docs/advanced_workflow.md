@@ -7,7 +7,8 @@ This tutorial is intended as a jumping point for more advanced features such as 
 Before you can render, you need to generate the configuration file for your run. 
 Please look at the documentation for this in [Configuration Files Edition](conf.md).
 
-There is an `example_advanced.json` file packaged with the software.
+There is an `example_advanced.json` file packaged with the software. 
+It is a flood simulation based around a portion of the city of Bern.
 
 Inside, you will see a few differences with the `example_offline.json`:
 

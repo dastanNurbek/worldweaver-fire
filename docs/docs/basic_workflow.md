@@ -10,16 +10,16 @@ For example if you want the software to use the "/home/MyUser/data/worldweaver/m
 {
   "base_folder": "../../maps",
   "input_data": {
-    "type": "STREAM"
+    "type": "OSM-SRTM"
   },
   "simulation_area": {
     "window_type": "COORDS",
     "geo_window": {
-      "x_min": 2.9185,
-      "y_min": 48.9396,
-      "x_max": 2.9314,
-      "y_max": 48.9466,
-      "crs_from": 4326
+    "x_min": -8232499.0,
+    "y_min": 4982071.8,
+    "x_max": -8231604.3,
+    "y_max": 4982668.9,
+    "crs_from": 3857
     },
     ...
 ```
@@ -28,16 +28,16 @@ to this:
 {
   "base_folder": "/home/MyUser/data/worldweaver/maps",
   "input_data": {
-    "type": "STREAM"
+    "type": "OSM-SRTM"
   },
   "simulation_area": {
     "window_type": "COORDS",
     "geo_window": {
-      "x_min": 2.9185,
-      "y_min": 48.9396,
-      "x_max": 2.9314,
-      "y_max": 48.9466,
-      "crs_from": 4326
+    "x_min": -8232499.0,
+    "y_min": 4982071.8,
+    "x_max": -8231604.3,
+    "y_max": 4982668.9,
+    "crs_from": 3857
     },
     ...
 ```
@@ -47,11 +47,16 @@ For further info please look at the documentation for this in [Configuration Fil
 
 ### Inside Blender
 
-Once the configuration file is done, open Blender, preferably through a terminal.
-To do so, when you are inside the folder where blender is installed:
+Once the configuration file is done, to open Blender:
+
+Get inside the virtual environment you used during the installation: 
 
 ```bash
-./blender
+source <path/to/virtual_env>/bin/activate
+```
+Then:
+```bash
+PYTHONPATH="$(python -c "import sys; print(\":\".join(sys.path))")" blender --python-use-system-env
 ```
 
 You can then set the configuration file used by the plugin, either by going to `Edit->Preferences->Add-ons`, 

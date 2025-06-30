@@ -45,7 +45,8 @@ For example if you want the software to use the "/home/MyUser/data/worldweaver/m
       "x_min": 7.1,
       "y_min": 44.077,
       "x_max": 7.11,
-      "y_max": 44.09
+      "y_max": 44.09,
+      "crs_from": 4326
     }
   },
     ...
@@ -63,7 +64,8 @@ to this:
       "x_min": 7.29000,
       "y_min": 43.68350,
       "x_max": 7.31000,
-      "y_max": 43.70000
+      "y_max": 43.70000,
+      "crs_from": 4326
     }
   },
     ...

@@ -1,16 +1,16 @@
 {
   "base_folder": "../../maps",
   "input_data": {
-    "type": "STREAM"
+    "type": "OSM-SRTM"
   },
   "simulation_area": {
     "window_type": "COORDS",
     "geo_window": {
-      "x_min": 2.9185,
-      "y_min": 48.9396,
-      "x_max": 2.9314,
-      "y_max": 48.9466,
-      "crs_from": 4326
+    "x_min": -8232499.0,
+    "y_min": 4982071.8,
+    "x_max": -8231604.3,
+    "y_max": 4982668.9,
+    "crs_from": 3857
     },
     "town": {
       "identifier" : "Loos-en-Gohelle 62"
