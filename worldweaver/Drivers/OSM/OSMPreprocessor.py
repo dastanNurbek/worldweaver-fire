@@ -66,6 +66,8 @@ class OSMPreprocessor:
             buildings, [OSM.id, OSM.geometry, OSM.building_tag, OSM.height, OSM.levels]
         )
         buildings[OSM.height] = buildings[OSM.height].astype(p.Float64Dtype())
+        # Found one case where levels was a float, meaning it cannt go from str to int directly, it needs to be cast as float before.
+        buildings[OSM.levels] = buildings[OSM.levels].astype(p.Float64Dtype())
         buildings[OSM.levels] = buildings[OSM.levels].astype(p.Int8Dtype())
 
         # Splitting buildigns into the different categories
