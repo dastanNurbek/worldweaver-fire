@@ -63,7 +63,15 @@ class OSMPreprocessor:
 
         # Trimming columns (base geodataframe has hundreds of columns)
         buildings = reduce_columns(
-            buildings, [OSM.id, OSM.geometry, OSM.building_tag, OSM.height, OSM.levels]
+            buildings,
+            [
+                OSM.id,
+                OSM.geometry,
+                OSM.building_tag,
+                OSM.height,
+                OSM.levels,
+                RenderingBuildingDataFrame.change_status,
+            ],
         )
         buildings[OSM.height] = buildings[OSM.height].astype(p.Float64Dtype())
         # Found one case where levels was a float, meaning it cannt go from str to int directly, it needs to be cast as float before.

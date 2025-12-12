@@ -24,7 +24,9 @@ class WFSParser:
 
         dataframes = []
         feature_returned = 0
-        data_response = wfs.getfeature(typename=key, bbox=bbox, outputFormat='application/json')
+        data_response = wfs.getfeature(
+            typename=key, bbox=bbox, outputFormat="application/json"
+        )
         # also possible :
         # data_response = wfs.getfeature(typename=key, bbox=bbox, outputFormat='GML2')
         # but for some reason the resulting df does not have a crs
@@ -42,7 +44,10 @@ class WFSParser:
         while feature_returned < feature_matched:
             # Fetch the rest of the data
             data_response = wfs.getfeature(
-                typename=key, bbox=bbox, startindex=feature_returned, outputFormat='application/json'
+                typename=key,
+                bbox=bbox,
+                startindex=feature_returned,
+                outputFormat="application/json",
             )
             data_str = data_response.read()
 
@@ -56,6 +61,8 @@ class WFSParser:
 
         if len(dataframes) > 0:
             dataframe = p.concat(dataframes)
+            # Need to reset the index because we can end up with different rows having the same index
+            dataframe = dataframe.reset_index(drop=True)
             return dataframe
         else:
             return g.GeoDataFrame(

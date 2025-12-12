@@ -17,9 +17,24 @@ from worldweaver.Utils.Geometry import interpolate_z
 from worldweaver.Utils.Utils import TerrainData
 from worldweaver.Utils.RenderingDataFrames import RenderingBuildingDataFrame
 
+from worldweaver.Drivers.IGN.Utils import IGN
+
+from worldweaver.Utils.Rendering import match_collection
+
 
 class BuildingRenderer(BaseRenderer):
     _mesh_name = "Buildings"
+
+    # TODO: put all those colors in config somehow
+    wall_colors = {
+        IGN.change_type_appeared: (0, 1, 0, 1),
+        IGN.change_type_disappeared: (1, 0, 0, 1),
+        IGN.change_type_merged: (1, 0, 1, 1),
+        IGN.change_type_recomposed: (0.5, 0.08, 0, 1),
+        IGN.change_type_stable: (0.5, 0.5, 0.5, 1),
+    }
+
+    default_wall_color = [0.5, 0.5, 0.5, 1]
 
     def __init__(
         self, terrain_data: list[TerrainData], object_config: BuildingRendererConfig
@@ -77,6 +92,23 @@ class BuildingRenderer(BaseRenderer):
                     buildings_gdf[RenderingBuildingDataFrame.height][building_index]
                     / floor_height
                 )
+            if building_floor_numbers <= 0:
+                building_floor_numbers = random.randint(
+                    self.config.default_levels_min, self.config.default_levels_max
+                )
+
+            building_wall_color = self.default_wall_color
+            building_parent_collection_name = parent_collection_name
+            if not p.isnull(
+                buildings_gdf[RenderingBuildingDataFrame.change_status][building_index]
+            ):
+                buildings_change_status = buildings_gdf[
+                    RenderingBuildingDataFrame.change_status
+                ][building_index]
+                building_wall_color = self.wall_colors[buildings_change_status]
+                building_parent_collection_name = match_collection(
+                    buildings_change_status
+                )
 
             if type(buildings_gdf.geometry[building_index]) == MultiPolygon:
                 for polygon in buildings_gdf.geometry[building_index].geoms:
@@ -84,14 +116,16 @@ class BuildingRenderer(BaseRenderer):
                         polygon,
                         geo_center,
                         building_floor_numbers,
-                        parent_collection_name,
+                        building_parent_collection_name,
+                        building_wall_color,
                     )
             else:
                 self.__draw_building(
                     buildings_gdf.geometry[building_index],
                     geo_center,
                     building_floor_numbers,
-                    parent_collection_name,
+                    building_parent_collection_name,
+                    building_wall_color,
                 )
 
     def __draw_building(
@@ -100,6 +134,7 @@ class BuildingRenderer(BaseRenderer):
         geo_center: tuple[float, float, float],
         building_floor_numbers: int,
         parent_collection_name: str,
+        wall_color: tuple[float, float, float, float],
     ):
 
         mesh = bmesh.new()
@@ -150,6 +185,7 @@ class BuildingRenderer(BaseRenderer):
         # Adding 1 to the DB value because the (flat) roof is considered as a floor
         mesh_obj.modifiers[0]["Input_6"] = int(building_floor_numbers) + 1
         mesh_obj.modifiers[0]["Input_7"] = int(building_floor_numbers) + 1
+        mesh_obj.modifiers[0]["Socket_0"] = wall_color
 
     def clear_object(self):
 
@@ -160,11 +196,14 @@ class BuildingRenderer(BaseRenderer):
 
 class ChurchRenderer(BuildingRenderer):
     _mesh_name = "Churches"
+    default_wall_color = [0, 0, 1, 1]
 
 
 class MallRenderer(BuildingRenderer):
     _mesh_name = "Malls"
+    default_wall_color = [1, 0, 0, 1]
 
 
 class FactoryRenderer(BuildingRenderer):
     _mesh_name = "Factories"
+    default_wall_color = [0, 1, 0, 1]

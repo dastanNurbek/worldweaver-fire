@@ -22,8 +22,10 @@ from worldweaver.Utils.Config import HouseRendererConfig
 from worldweaver.Utils.Geometry import interpolate_z
 from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Utils import TerrainData
-from worldweaver.Utils.Rendering import additionals_collection_name
+from worldweaver.Utils.Rendering import additionals_collection_name, match_collection
 from worldweaver.Utils.RenderingDataFrames import RenderingBuildingDataFrame
+
+from worldweaver.Drivers.IGN.Utils import IGN
 
 
 class BoxBuildingRenderer(BaseRenderer):
@@ -46,6 +48,14 @@ class BoxBuildingRenderer(BaseRenderer):
         (0.429, 0.067, 0.030, 1),
         (0.429, 0.067, 0.030, 1),
     ]
+
+    wall_colors = {
+        IGN.change_type_appeared: (0, 1, 0, 1),
+        IGN.change_type_disappeared: (1, 0, 0, 1),
+        IGN.change_type_merged: (1, 0, 1, 1),
+        IGN.change_type_recomposed: (0.5, 0.08, 0, 1),
+        IGN.change_type_stable: (0.5, 0.5, 0.5, 1),
+    }
 
     class GeometryCollection:
         def __init__(self):
@@ -117,18 +127,46 @@ class BoxBuildingRenderer(BaseRenderer):
                 building_height = float(
                     buildings_gdf[RenderingBuildingDataFrame.height][building_index]
                 )
+            if building_height <= 0:
+                building_height = random.uniform(
+                    self.config.default_height_min, self.config.default_height_max
+                )
+
+            wall_color_index = random.randint(0, len(self._wall_colors) - 1)
+            roof_color_index = random.randint(0, len(self._roof_colors) - 1)
+            building_wall_color = self._wall_colors[wall_color_index]
+            building_roof_color = self._roof_colors[roof_color_index]
+            building_parent_collection_name = parent_collection_name
+            if not p.isnull(
+                buildings_gdf[RenderingBuildingDataFrame.change_status][building_index]
+            ):
+                buildings_change_status = buildings_gdf[
+                    RenderingBuildingDataFrame.change_status
+                ][building_index]
+                building_wall_color = self.wall_colors[buildings_change_status]
+                building_roof_color = self.wall_colors[buildings_change_status]
+                building_parent_collection_name = match_collection(
+                    buildings_change_status
+                )
 
             if type(buildings_gdf.geometry[building_index]) == MultiPolygon:
                 for polygon in buildings_gdf.geometry[building_index].geoms:
                     self.__draw_building(
-                        polygon, geo_center, building_height, parent_collection_name
+                        polygon,
+                        geo_center,
+                        building_height,
+                        building_parent_collection_name,
+                        building_wall_color,
+                        building_roof_color,
                     )
             else:
                 self.__draw_building(
                     buildings_gdf.geometry[building_index],
                     geo_center,
                     building_height,
-                    parent_collection_name,
+                    building_parent_collection_name,
+                    building_wall_color,
+                    building_roof_color,
                 )
 
     def __draw_building(
@@ -137,6 +175,8 @@ class BoxBuildingRenderer(BaseRenderer):
         geo_center: tuple[float, float, float],
         building_height: float,
         parent_collection_name: str,
+        wall_color: tuple[float, float, float, float],
+        roof_color: tuple[float, float, float, float],
     ):
         mesh = bmesh.new()
 
@@ -363,17 +403,15 @@ class BoxBuildingRenderer(BaseRenderer):
         m.node_group = D.node_groups[self.geometry_node_name]
 
         # Changing colors of house
-        wall_color_index = random.randint(0, len(self._wall_colors) - 1)
-        m["Input_11"][0] = self._wall_colors[wall_color_index][0]
-        m["Input_11"][1] = self._wall_colors[wall_color_index][1]
-        m["Input_11"][2] = self._wall_colors[wall_color_index][2]
-        m["Input_11"][3] = self._wall_colors[wall_color_index][3]
+        m["Input_11"][0] = wall_color[0]
+        m["Input_11"][1] = wall_color[1]
+        m["Input_11"][2] = wall_color[2]
+        m["Input_11"][3] = wall_color[3]
 
-        roof_color_index = random.randint(0, len(self._roof_colors) - 1)
-        m["Input_13"][0] = self._roof_colors[roof_color_index][0]
-        m["Input_13"][1] = self._roof_colors[roof_color_index][1]
-        m["Input_13"][2] = self._roof_colors[roof_color_index][2]
-        m["Input_13"][3] = self._roof_colors[roof_color_index][3]
+        m["Input_13"][0] = roof_color[0]
+        m["Input_13"][1] = roof_color[1]
+        m["Input_13"][2] = roof_color[2]
+        m["Input_13"][3] = roof_color[3]
 
         mesh_data_top = D.meshes.new(mesh_name + "_Top")
         mesh_top_mockup.to_mesh(mesh_data_top)

@@ -10,6 +10,8 @@ import addon_utils
 from timezonefinder import TimezoneFinder
 import pytz
 
+from worldweaver.Drivers.IGN.Utils import IGN
+
 from worldweaver.Utils.Config import Config, CameraType, RenderDeviceType
 
 from worldweaver.Utils.Logging import logger, stdout_redirected
@@ -19,6 +21,9 @@ rendering_collection_name = "Rendering"
 terrain_collection_name = "Terrain"
 cars_collection_name = "Cars"
 buildings_collection_name = "Buildings"
+stable_buildings_collection_name = "Stable"
+new_buildings_collection_name = "New"
+old_buildings_collection_name = "Old"
 base_collection_name = "Collection"
 additionals_collection_name = "additionals"
 
@@ -88,11 +93,14 @@ def clean_scene():
     purge_orphans()
 
 
-def configure_scene(geo_center_deg: tuple[float, float], device_type: str):
+def configure_scene(
+    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool
+):
     """
     Configures the Blender scene prior to drawing objects
     :param geo_center_deg: The coordinates of the center of the scene, in CRS 4326, to configure the position of the sun
     :param device_type: The device type for rendering. "CPU" or "GPU"
+    :param is_subdense_run: Whether or not we need to create sub-collections for buildings
     """
 
     # TODO: Generates blender logs that maybe we should wrap ?
@@ -205,8 +213,28 @@ def configure_scene(geo_center_deg: tuple[float, float], device_type: str):
     buildings_collection = D.collections.new(buildings_collection_name)
     D.collections[rendering_collection_name].children.link(buildings_collection)
 
+    if is_subdense_run:
+        stable_collection = D.collections.new(stable_buildings_collection_name)
+        D.collections[buildings_collection_name].children.link(stable_collection)
+
+        old_collection = D.collections.new(old_buildings_collection_name)
+        D.collections[buildings_collection_name].children.link(old_collection)
+
+        new_collection = D.collections.new(new_buildings_collection_name)
+        D.collections[buildings_collection_name].children.link(new_collection)
+
     additional_collection = D.collections.new(additionals_collection_name)
     D.collections[base_collection_name].children.link(additional_collection)
+
+
+def match_collection(buildings_change_status):
+    match buildings_change_status:
+        case IGN.change_type_appeared | IGN.change_type_merged | IGN.change_type_recomposed:
+            return new_buildings_collection_name
+        case IGN.change_type_disappeared:
+            return old_buildings_collection_name
+        case IGN.change_type_stable:
+            return stable_buildings_collection_name
 
 
 def export_rendered_img(base_folder: str, render_folder: str, image_name: str):

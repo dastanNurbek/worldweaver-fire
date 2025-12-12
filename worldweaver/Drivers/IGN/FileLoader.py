@@ -395,6 +395,8 @@ class FileLoader(Loader):
             sport=sport_data,
             landuse=landuse_data,
             plots=plot_data,
+            is_subdense=False,
+            subdense_data=None,
         )
 
         return geo_data

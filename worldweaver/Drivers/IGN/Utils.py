@@ -6,6 +6,13 @@ from worldweaver.Utils.Utils import TerrainDataList
 
 
 @dataclass
+class SubDenseData:
+    old_buildings: g.GeoDataFrame
+    new_buildings: g.GeoDataFrame
+    buildings_changes: g.GeoDataFrame
+
+
+@dataclass
 class GeoData:
     buildings: g.GeoDataFrame
     forests: g.GeoDataFrame
@@ -19,6 +26,8 @@ class GeoData:
     landuse: g.GeoDataFrame
     sport: g.GeoDataFrame
     terrain: TerrainDataList
+    is_subdense: bool
+    subdense_data: SubDenseData
 
 
 class WFS_FR:
@@ -77,6 +86,13 @@ class IGN:
         factory: building_factories_tags,
     }
 
+    # Building changes
+    change_type_appeared = "appeared"
+    change_type_disappeared = "disappeared"
+    change_type_merged = "merged"
+    change_type_recomposed = "recomposed"
+    change_type_stable = "stable"
+
     # Roads
     road_path_natures = ["Chemin", "Escalier", "Sentier"]
     road_with_car_natures = [
@@ -92,7 +108,7 @@ class IGN:
     with_car_tag = "with_car"
     path = "path"
 
-    roads_synonyms = {path: [road_path_natures], with_car_tag: road_with_car_natures}
+    roads_synonyms = {path: road_path_natures, with_car_tag: road_with_car_natures}
 
     # Zones
     industrial_commercial_tags = [

@@ -15,8 +15,9 @@ class BuildingDataFrame:
     usage_1 = "Usage_1"
     usage_2 = "Usage_2"
     number_housings = "Nb_Housing"
-    geometry = "geometry"
     type = "type"
+    change_type = "change_type"
+    geometry = "geometry"
 
     class File:
         ID = "ID"
@@ -51,6 +52,20 @@ class BuildingDataFrame:
                 BuildingDataFrame.WFS.number_floors,
                 BuildingDataFrame.WFS.geometry,
             ]
+
+
+class BuildingChangeDataFrame:
+
+    ID = "id"
+    fid = "fid"
+    type = "type"
+    # TODO: need to homogenize this if it becomes a product
+    old_id = "ID_Building_2011"
+    new_id = "ID_Building_2021"
+    evolution_product = "evolutionProduct"
+    quality_control = "qualityControl"
+    evolution_entities = "evolutionEntities"
+    geometry = "geometry"
 
 
 class RoadDataFrame:

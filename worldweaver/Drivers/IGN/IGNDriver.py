@@ -7,6 +7,7 @@ from worldweaver.Drivers.BaseDriver import BaseDriver
 from worldweaver.Drivers.IGN.StreamLoader import StreamLoader
 from worldweaver.Drivers.IGN.FileLoader import FileLoader
 from worldweaver.Drivers.IGN.IGNPreprocessor import IGNPreprocessor
+from worldweaver.Drivers.IGN.SubdenseLoader import SubdenseLoader
 
 from worldweaver.Utils.Config import Config
 from worldweaver.Utils.Logging import logger
@@ -16,6 +17,7 @@ from worldweaver.Utils.Utils import CRS_fr
 class IGNDataSources(StrEnum):
     STREAM = "STREAM"
     FILE = "FILE"
+    SUBDENSE = "SUBDENSE"
 
 
 class IGNDriver(BaseDriver):
@@ -27,6 +29,10 @@ class IGNDriver(BaseDriver):
         match config.data_source:
             case IGNDataSources.STREAM:
                 self.loader = StreamLoader(
+                    config.base_folder, project_path, self.config.terrain.use_sat_img
+                )
+            case IGNDataSources.SUBDENSE:
+                self.loader = SubdenseLoader(
                     config.base_folder, project_path, self.config.terrain.use_sat_img
                 )
             case IGNDataSources.FILE:

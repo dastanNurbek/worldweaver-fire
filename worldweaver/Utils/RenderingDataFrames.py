@@ -45,7 +45,9 @@ class RenderingDataFrame:
         logs = []
         if not RenderingDataFrame.is_valid(dataframe, logs):
             is_valid = False
-            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            logger.error(
+                f"Invalid {dataframe_name}. Columns: {dataframe.columns}. Dataframe: {dataframe}"
+            )
             for log in logs:
                 logger.error(log)
 
@@ -57,6 +59,7 @@ class RenderingBuildingDataFrame:
     geometry = "geometry"  # shapely Polygon or MultiPolygon
     height = "height"  # p.Float64Dtype
     number_floors = "Nb_floors"  # p.Int8Dtype
+    change_status = "Change_Status"  # p.Int8Dtype
 
     @staticmethod
     def is_valid(gdf: g.GeoDataFrame, log_messages: list[str]) -> bool:
@@ -107,6 +110,23 @@ class RenderingBuildingDataFrame:
                     )
                     is_valid = False
 
+        if RenderingBuildingDataFrame.change_status not in gdf.columns:
+            log_messages.append(
+                f"Missing column: {RenderingBuildingDataFrame.change_status}"
+            )
+            is_valid = False
+        # TODO: find validation schema
+        # else:
+        #     if not gdf.empty:
+        #         if (
+        #             not gdf[RenderingBuildingDataFrame.change_status].dtype
+        #             == p.Int8Dtype()
+        #         ):
+        #             log_messages.append(
+        #                 f"Invalid change_status type (should be pandas Int8Dtype): {gdf[RenderingBuildingDataFrame.change_status].dtype}"
+        #             )
+        #             is_valid = False
+
         return is_valid
 
     @staticmethod
@@ -117,7 +137,9 @@ class RenderingBuildingDataFrame:
         logs = []
         if not RenderingBuildingDataFrame.is_valid(dataframe, logs):
             is_valid = False
-            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            logger.error(
+                f"Invalid {dataframe_name}. Columns: {dataframe.columns}. Dataframe: {dataframe}"
+            )
             for log in logs:
                 logger.error(log)
 
@@ -224,7 +246,9 @@ class RenderingRoadDataFrame:
         logs = []
         if not RenderingRoadDataFrame.is_valid(dataframe, logs):
             is_valid = False
-            logger.error(f"Invalid {dataframe_name} Dataframe: {dataframe}")
+            logger.error(
+                f"Invalid {dataframe_name}. Columns: {dataframe.columns}. Dataframe: {dataframe}"
+            )
             for log in logs:
                 logger.error(log)
 

@@ -8,6 +8,7 @@ from shapely.geometry import mapping
 from worldweaver.Drivers.IGN.Utils import GeoData, IGN
 from worldweaver.Drivers.IGN.DataFrames import (
     BuildingDataFrame,
+    BuildingChangeDataFrame,
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
@@ -30,6 +31,7 @@ from worldweaver.Utils.Utils import (
     tag_water,
     get_class,
     safe_get_group,
+    ensure_columns_existence,
     OverlayType,
 )
 
@@ -112,6 +114,21 @@ class IGNPreprocessor:
         roads_full = g.GeoDataFrame(
             roads_tagged, geometry=roads_with_cars.geometry, crs=geowindow.crs
         )
+
+        # If there are no roads, we still need the columns to exist
+        if roads_full.empty:
+            ensure_columns_existence(
+                roads_full,
+                [
+                    RenderingRoadDataFrame.has_sidewalks,
+                    RenderingRoadDataFrame.has_guardrails,
+                    RenderingRoadDataFrame.is_bridge,
+                    RenderingRoadDataFrame.is_tunnel,
+                    RenderingRoadDataFrame.number_lanes,
+                    RenderingRoadDataFrame.geometry,
+                ],
+            )
+
         roads_full[RenderingRoadDataFrame.has_sidewalks] = roads_full[
             RenderingRoadDataFrame.has_sidewalks
         ].astype(bool)
@@ -131,7 +148,123 @@ class IGNPreprocessor:
         # Removing forests from water
         cleaned_forests = safe_overlay(new_forests, new_water, OverlayType.DIFFERENCE)
 
-        # Casting building columns into appropriate types
+        if geo_data.is_subdense:
+            logger.info(f"Processing subdense data.")
+            # TODO: keep this, but justify it (and restore the warning after ?)
+            # Avoids the "SettingWithCopyWarning: A value is trying to be set on a copy of a slice from a DataFrame"warning,
+            # which would be triggered a lot here.
+            # https://stackoverflow.com/a/20627316
+            p.options.mode.chained_assignment = None
+
+            # Using the two versions of BDTopo buildings to get the geometries and infos
+            buildings_new = safe_overlay(
+                geo_data.subdense_data.new_buildings,
+                geowindow.dataframe,
+                OverlayType.INTERSECTION,
+            )
+            buildings_old = safe_overlay(
+                geo_data.subdense_data.old_buildings,
+                geowindow.dataframe,
+                OverlayType.INTERSECTION,
+            )
+            buildings_new = ensure_columns_existence(
+                buildings_new, [BuildingDataFrame.change_type]
+            )
+            buildings_old = ensure_columns_existence(
+                buildings_old, [BuildingDataFrame.change_type]
+            )
+
+            building_changes_groups = geo_data.subdense_data.buildings_changes.groupby(
+                BuildingChangeDataFrame.type
+            )
+
+            buildings_appeared_info = safe_get_group(
+                building_changes_groups,
+                geo_data.subdense_data.buildings_changes,
+                IGN.change_type_appeared,
+            )
+            buildings_disappeared_info = safe_get_group(
+                building_changes_groups,
+                geo_data.subdense_data.buildings_changes,
+                IGN.change_type_disappeared,
+            )
+            buildings_merged_info = safe_get_group(
+                building_changes_groups,
+                geo_data.subdense_data.buildings_changes,
+                IGN.change_type_merged,
+            )
+            buildings_stable_info = safe_get_group(
+                building_changes_groups,
+                geo_data.subdense_data.buildings_changes,
+                IGN.change_type_stable,
+            )
+            buildings_recomposed_info = safe_get_group(
+                building_changes_groups,
+                geo_data.subdense_data.buildings_changes,
+                IGN.change_type_recomposed,
+            )
+
+            stable_buildings_ids = buildings_stable_info[BuildingChangeDataFrame.new_id]
+            buildings_stable = buildings_new.query(
+                f"{BuildingDataFrame.ID} in @stable_buildings_ids"
+            )
+            buildings_stable[
+                RenderingBuildingDataFrame.change_status
+            ] = IGN.change_type_stable
+
+            appeared_buildings_ids = buildings_appeared_info[
+                BuildingChangeDataFrame.new_id
+            ]
+            buildings_appeared = buildings_new.query(
+                f"{BuildingDataFrame.ID} in @appeared_buildings_ids"
+            )
+            buildings_appeared[
+                RenderingBuildingDataFrame.change_status
+            ] = IGN.change_type_appeared
+
+            merged_buildings_ids = buildings_merged_info[BuildingChangeDataFrame.new_id]
+            buildings_merged = buildings_new.query(
+                f"{BuildingDataFrame.ID} in @merged_buildings_ids"
+            )
+            buildings_merged[
+                RenderingBuildingDataFrame.change_status
+            ] = IGN.change_type_merged
+
+            recomposed_buildings_ids = buildings_recomposed_info[
+                BuildingChangeDataFrame.new_id
+            ]
+            buildings_recomposed = buildings_new.query(
+                f"{BuildingDataFrame.ID} in @recomposed_buildings_ids"
+            )
+            buildings_recomposed[
+                RenderingBuildingDataFrame.change_status
+            ] = IGN.change_type_recomposed
+
+            disappeared_buildings_ids = buildings_disappeared_info[
+                BuildingChangeDataFrame.old_id
+            ]
+            buildings_disappeared = buildings_old.query(
+                f"{BuildingDataFrame.ID} in @disappeared_buildings_ids"
+            )
+            buildings_disappeared[
+                RenderingBuildingDataFrame.change_status
+            ] = IGN.change_type_disappeared
+
+            new_buildings = p.concat(
+                [
+                    buildings_stable,
+                    buildings_appeared,
+                    buildings_merged,
+                    buildings_recomposed,
+                    buildings_disappeared,
+                ]
+            )
+        else:
+            new_buildings = ensure_columns_existence(
+                new_buildings, [RenderingBuildingDataFrame.change_status]
+            )
+
+        # Casting building columns into appropriate
         new_buildings[RenderingBuildingDataFrame.height] = new_buildings[
             RenderingBuildingDataFrame.height
         ].astype(p.Float64Dtype())

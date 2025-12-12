@@ -6,10 +6,11 @@ from bpy import data as D
 
 import geopandas as g
 
-from shapely.geometry import mapping, MultiPolygon
+from shapely.geometry import mapping, MultiPolygon, GeometryCollection, Polygon
 
 from tqdm import tqdm
 
+from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Config import BaseRenderConfig
 from worldweaver.Utils.Geometry import interpolate_z
 from worldweaver.Utils.Utils import Point, TerrainData
@@ -78,11 +79,7 @@ class BaseRenderer:
             if object_geom.is_empty:
                 continue
 
-            if type(object_geom) == MultiPolygon:
-                for polygon in object_geom.geoms:
-                    self.__draw_face(mesh, polygon, geo_center)
-            else:
-                self.__draw_face(mesh, object_geom, geo_center)
+            self.__draw_geometry(mesh, object_geom, geo_center)
 
         mesh_data = D.meshes.new(self._mesh_name)
         self._mesh_name = mesh_data.name
@@ -92,6 +89,24 @@ class BaseRenderer:
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
         return mesh_obj
+
+    def __draw_geometry(self, mesh, geometry, geo_center):
+        if type(geometry) == GeometryCollection:
+            for geometry_part in geometry.geoms:
+                if (
+                    type(geometry_part) == MultiPolygon
+                    or type(geometry_part) == Polygon
+                ):
+                    self.__draw_polygon(mesh, geometry_part, geo_center)
+        else:
+            self.__draw_polygon(mesh, geometry, geo_center)
+
+    def __draw_polygon(self, mesh, polygon, geo_center):
+        if type(polygon) == MultiPolygon:
+            for polygon in polygon.geoms:
+                self.__draw_face(mesh, polygon, geo_center)
+        else:
+            self.__draw_face(mesh, polygon, geo_center)
 
     def __draw_face(self, mesh, polygon, geo_center):
         # Kind of hack because Polygon.coords is not implemented

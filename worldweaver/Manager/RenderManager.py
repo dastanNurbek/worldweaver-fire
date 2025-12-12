@@ -4,6 +4,7 @@ from bpy import data as D
 
 import pandas as p
 
+from worldweaver.Drivers.IGN.IGNDriver import IGNDriver, IGNDataSources
 from worldweaver.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
@@ -47,8 +48,11 @@ class RenderManager:
         self.crs = crs
         self.config = config
         self.current_zone = None
+        self.is_subdense_run = self.config.data_source == IGNDataSources.SUBDENSE
         configure_scene(
-            self.window.center_deg, self.config.rendering.output.device_type
+            self.window.center_deg,
+            self.config.rendering.output.device_type,
+            self.is_subdense_run,
         )
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
             terrain_data,
@@ -136,6 +140,7 @@ class RenderManager:
             rendering_collection_name,
         )
 
+        logger.info("Rendering roads")
         # Drawing roads and buildind footprints to modify terrain
         self.road_renderer.render(
             self.rendering_data.roads,
@@ -143,6 +148,7 @@ class RenderManager:
             rendering_collection_name,
         )
 
+        logger.info("Rendering zones")
         buildings_zone = safe_overlay(
             self.rendering_data.buildings.default_buildings,
             self.window.dataframe,
@@ -181,10 +187,20 @@ class RenderManager:
             factories_zone,
             malls_zone,
         ]
-        buildings = p.concat(
-            [building_df for building_df in buildings_df_list if not building_df.empty],
-            ignore_index=True,
-        )
+
+        # Concatenating empty dataframes results in an error
+        all_dfs_empty = all([building_df.empty for building_df in buildings_df_list])
+        if not all_dfs_empty:
+            buildings = p.concat(
+                [
+                    building_df
+                    for building_df in buildings_df_list
+                    if not building_df.empty
+                ],
+                ignore_index=True,
+            )
+        else:
+            buildings = buildings_df_list[0]
 
         self.building_footprint_renderer.render(
             buildings, self.window.center, additionals_collection_name
@@ -383,6 +399,8 @@ class RenderManager:
                     to_crs=self.crs,
                 )
 
+        if not restrict_to_camera:
+            logger.info("Rendering buildings")
         buildings_zone = safe_overlay(
             self.rendering_data.buildings.default_buildings,
             zone_window.dataframe,
@@ -428,6 +446,8 @@ class RenderManager:
             malls_zone, self.window.center, buildings_collection_name
         )
 
+        if not restrict_to_camera:
+            logger.info("Rendering forests")
         forests_zone = safe_overlay(
             self.rendering_data.forests, zone_window.dataframe, OverlayType.INTERSECTION
         )

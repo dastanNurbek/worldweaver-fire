@@ -15,6 +15,7 @@ from tqdm import tqdm
 
 from worldweaver.Utils.Config import RoadRendererConfig, BridgeRendererConfig
 from worldweaver.Utils.Geometry import interpolate_z
+from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Utils import (
     Point,
     TerrainData,
@@ -132,7 +133,6 @@ class PrettyRoadRenderer:
 
             # Windowing is done here since lines and polygons cannot be mixed for dataframe overlay operations
             windowed_line = []
-
             if type(road_geom) == MultiLineString:
                 for geom in road_geom.geoms:
                     for point in geom.coords:
