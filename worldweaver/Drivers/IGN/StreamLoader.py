@@ -20,6 +20,7 @@ from worldweaver.Drivers.IGN.DataFrames import (
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
+    WaterLineDataFrame,
     DefaultDataFrame,
     SportDataFrame,
     LandUseDataFrame,
@@ -201,6 +202,14 @@ class StreamLoader(Loader):
             required_columns=WaterDataFrame.WFS.get_columns(),
         )
 
+        water_line_data = WFSParser.load(
+            wfs=wfs,
+            key=WFS_FR.water_line_key_name,
+            bbox=bbox_wgs84,
+            to_crs=geo_window.crs,
+            required_columns=WaterDataFrame.WFS.get_columns(),
+        )
+
         residential_data = WFSParser.load(
             wfs=wfs,
             key=WFS_FR.residential_zone_key_name,
@@ -328,6 +337,18 @@ class StreamLoader(Loader):
         }
         water_data = g.GeoDataFrame(water_data_dict)
 
+        water_line_data_dict = {
+            WaterLineDataFrame.ID: water_line_data[WaterLineDataFrame.WFS.ID],
+            WaterLineDataFrame.nature: water_line_data[WaterLineDataFrame.WFS.nature],
+            WaterLineDataFrame.link_to_surface: water_line_data[
+                WaterLineDataFrame.WFS.link_to_surface
+            ],
+            WaterLineDataFrame.geometry: water_line_data[
+                WaterLineDataFrame.WFS.geometry
+            ],
+        }
+        water_line_data = g.GeoDataFrame(water_line_data_dict)
+
         sport_data_dict = {
             SportDataFrame.ID: sport_data[SportDataFrame.WFS.ID],
             SportDataFrame.nature: sport_data[SportDataFrame.WFS.nature],
@@ -356,6 +377,7 @@ class StreamLoader(Loader):
             forests=forest_data,
             roads=road_data,
             water=water_data,
+            water_line=water_line_data,
             ocean=oceans_data,
             residentials=residential_data,
             interest_zones=interest_zone_data,

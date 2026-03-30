@@ -22,13 +22,13 @@ This file should not be edited except for the `base_folder`.
   * `type` describes where the input data will come from. Can currently take 4 values:
     * "FILE" (France only): data is taken from IGN's open data files that you have to download and extract (see [Datafiles](datafiles.md) and [File Workflow](file_workflow.md)).
     * "STREAM" (France only): data is taken from IGN's geo servers .
-    
-    !!! note "Issue with STREAM"
-    
-        There is currently an issue preventing the parsing of data if using STREAM. Please rely on other input data for now.
-
+    * "SUBDENSE" (France only): data is taken from IGN's geo servers and building change data from the [SUBDENSE project](https://hal.science/hal-04196186). Experimental feature. See [Dev doc](dev.md#subdense-data) for more info. 
     * "OSM-SRTM": data is taken from [OpenStreetMap](https://www.openstreetmap.org) using [Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API).
     * "OSM-CH" (Switzerland only): data is taken from openstreetmap as well but the terrain is from [swissALTI3D](https://www.swisstopo.admin.ch/fr/modele-altimetrique-swissalti3d).
+
+    !!! note "Issue with OSM"
+    
+        There is currently an issue preventing the fecthing of data from overpass. Please use a different data provider until a fix is found.
 
 ### Simulation Area:
 

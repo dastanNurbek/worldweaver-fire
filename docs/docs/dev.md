@@ -129,6 +129,72 @@ See [configuration documentation](conf.md#objects) for detailed definitions.
 
 This configuration is parsed by the `ConfigLoader`, and used to create a `BuildingRendererConfig` that will be passed to the `FactoryRenderer`. 
 
+## Subdense data
+
+In the current version, worldweaver is able to process samples of subdense data, 
+but this part is still in a work in progress and still has a few things it needs to be industrialised.
+
+This section will provide a list to achieve this goal.
+
+### Selecting appropriate colors
+
+Currently, the buildings are rendered with different wall colors depending on their change status.
+
+Those colors are in the BuildingRenderer.wall_colors dictionary. You can try different ones by changing them there.
+
+Alternatively, once you generate a subdense scene, you can edit the colors using the Utils.Rendering.change_color method.
+
+For example, in Blender's python interpreter, to change the color of stable buildings to black :
+
+> from worldweaver.Utils.Rendering import change_color
+> 
+> change_color("Stable", (0,0,0,1))
+
+
+
+### Harmonise attribute names
+
+Currently, the only subdense database we have uses names like "ID_Building_2011" or "ID_Building_2021", 
+which is very specific for this case and needs to be harmonized.
+
+The precise fix for this will depend on the use cases:
+
+* Will we want to use more than two timestamps for visualisations ?
+* Will databases include more than two timestamps ?
+* Will there be differences between data providers for subdense ? 
+
+In any case, changes need to be done inside worldweaver.Drivers.IGN.Dataframes.BuildingChangeDataFrame
+
+### Index file
+
+Currently, we only have one database, covering the surroundings of Strasbourg.
+
+If we want to do the same thing anywhere in france, we will need to know which database covers our desired window.
+
+For this, an index file will probably be the best solution. 
+
+Just like we do for the French departements using the ARRONDISSEMENT/ARRONDISSEMENT.shp file, 
+we could create a file inside the subdense_data folder that maps geographical regions and databases.
+
+Then, in the SubdenseLoader, we do just like in the FileLoader and load all parts of the database that interest us 
+(in case our zone is covering more than one database)
+
+### Using subdense data outside of France
+
+Currently, we only planned for using subdense data inside of France.
+
+But, if you have data for another region/country, you could modifiy worldweaver to use it.
+
+Depending on how similar it is to what is already present, the amount of work might vary.
+
+For example, if you are able to derive subdense data from OSM history, adding this data to the OSM workflow might be pretty easy.
+
+On the other hand, if you want data from another country that is very different from IGN or OSM, you might want to use a completly new driver.
+
+/!\ TODO check link
+
+For guidance on this, please look at [Adding a new data source](dev.md#adding-a-new-data-source) .
+
 
 
 

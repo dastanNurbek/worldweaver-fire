@@ -10,6 +10,7 @@ from worldweaver.Drivers.IGN.DataFrames import (
     RoadDataFrame,
     ZoneInterestDataFrame,
     WaterDataFrame,
+    WaterLineDataFrame,
     SportDataFrame,
     LandUseDataFrame,
     PlotDataFrame,
@@ -54,6 +55,7 @@ class FileLoader(Loader):
         forest_data = None
         road_data = None
         water_data = None
+        water_line_data = None
         residential_data = None
         interest_zone_data = None
         oceans_data = None
@@ -160,6 +162,25 @@ class FileLoader(Loader):
                 water_data = p.concat([water_data, current_water_data])
             else:
                 water_data = current_water_data
+
+            current_water_line_data = ShapeFileParser.load(
+                os.path.join(
+                    self.base_folder,
+                    df.departements,
+                    current_departement,
+                    df.bdtopo_folder,
+                    df.delivery,
+                    df.water_folder,
+                    df.water_line_file,
+                ),
+                bbox,
+                CRS_fr,
+                force_2d=True,
+            )
+            if water_line_data is not None:
+                water_line_data = p.concat([water_line_data, current_water_line_data])
+            else:
+                water_line_data = current_water_line_data
 
             current_residential_data = ShapeFileParser.load(
                 os.path.join(
@@ -359,6 +380,18 @@ class FileLoader(Loader):
         }
         water_data = g.GeoDataFrame(water_data_dict)
 
+        water_line_data_dict = {
+            WaterLineDataFrame.ID: water_line_data[WaterLineDataFrame.File.ID],
+            WaterLineDataFrame.nature: water_line_data[WaterLineDataFrame.File.nature],
+            WaterLineDataFrame.link_to_surface: water_line_data[
+                WaterLineDataFrame.File.link_to_surface
+            ],
+            WaterLineDataFrame.geometry: water_line_data[
+                WaterLineDataFrame.File.geometry
+            ],
+        }
+        water_line_data = g.GeoDataFrame(water_line_data_dict)
+
         sport_data_dict = {
             SportDataFrame.ID: sport_data[SportDataFrame.File.ID],
             SportDataFrame.nature: sport_data[SportDataFrame.File.nature],
@@ -387,6 +420,7 @@ class FileLoader(Loader):
             forests=forest_data,
             roads=road_data,
             water=water_data,
+            water_line=water_line_data,
             ocean=oceans_data,
             residentials=residential_data,
             interest_zones=interest_zone_data,

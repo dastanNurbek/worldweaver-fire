@@ -74,6 +74,11 @@ class ObjectWorldWeaver(bpy.types.Operator):
 
     def execute(self, context):
 
+        # HACK: remove for release
+        import sys
+
+        sys.path.append("/home/AVerstraete/Work/worldweaver")
+
         from worldweaver import main as mpm
 
         preferences = context.preferences

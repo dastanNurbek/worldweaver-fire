@@ -32,18 +32,8 @@ def setup_logger(folder: str, file_name: str, add_debug: bool):
     console_handler.setFormatter(log_formatter_console)
     root_logger.addHandler(console_handler)
 
-    # TODO: doesn't seem to work, delete it
-    # For redirection purposes
-    # root_logger.write = lambda msg: root_logger.info(msg) if msg != "\n" else None
-
 
 logger = logging.getLogger("worldweaver")
-
-
-# Copied from https://blender.stackexchange.com/a/270198
-# Je pense une façon de l'intégrer serait de définir un redirect genre
-# stdout_redirection = stdout_redirect(path_to_other_log_file)
-# et comme ça les éventuels autre modules qui en ont besoin peuvent juste import stdout_redirection
 
 
 @contextmanager

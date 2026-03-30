@@ -1,9 +1,7 @@
 geopandas==1.0.1
 rasterio>=1.3.7
 pyogrio>=0.5.1
-scipy==1.10.0 #1.14.0 (and maybe previous versions) contain a bug https://github.com/scipy/scipy/issues/20904. Should be fixed in 1.15.0
-scikit-image>=0.21.0
-scikit-learn==1.6.1
+scipy>=1.15.0 #1.14.0 (and maybe previous versions) contain a bug https://github.com/scipy/scipy/issues/20904. Should be fixed in 1.15.0
 numpy>=1.24.2
 tqdm>=4.65.0
 OpenEXR>=1.3.9
@@ -15,3 +13,10 @@ overpass==0.7.2
 timezonefinder==6.5.3
 ladybug-geometry==1.32.6
 ladybug-geometry-polyskel==1.6.4
+shapely>=2.1.0
+cvxpy>=1.8.1
+geojson>=3.2.0
+networkx>=3.2.1
+pyinterpolate>=1.2.1
+pytz
+py3dtiles

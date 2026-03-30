@@ -253,6 +253,61 @@ class WaterDataFrame:
             ]
 
 
+class WaterDataFrame:
+
+    ID = "ID"
+    nature = "Nature"
+    geometry = "geometry"
+    type = "type"
+
+    class File:
+        ID = "ID"
+        nature = "NATURE"
+        geometry = "geometry"
+
+    class WFS:
+        ID = "cleabs"
+        nature = "nature"
+        geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                WaterDataFrame.WFS.ID,
+                WaterDataFrame.WFS.nature,
+                WaterDataFrame.WFS.geometry,
+            ]
+
+
+class WaterLineDataFrame:
+
+    ID = "cleabs"
+    nature = "Nature"
+    link_to_surface = "liens_vers_surface_hydrographique"
+    geometry = "geometry"
+
+    class File:
+        ID = "ID"
+        nature = "NATURE"
+        link_to_surface = "ID_S_HYDRO"
+        geometry = "geometry"
+
+    class WFS:
+        ID = "cleabs"
+        nature = "nature"
+        link_to_surface = "liens_vers_surface_hydrographique"
+        geometry = "geometry"
+
+        @staticmethod
+        def get_columns():
+            return [
+                WaterLineDataFrame.WFS.ID,
+                WaterLineDataFrame.WFS.nature,
+                WaterLineDataFrame.WFS.link_to_surface,
+                WaterLineDataFrame.WFS.geometry,
+            ]
+
+
 class DefaultDataFrame:
     ID = "ID"
     geometry = "geometry"

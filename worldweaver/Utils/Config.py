@@ -94,6 +94,7 @@ class GeoWindowConfig:
 @dataclass
 class OutputConfig:
     export_img: bool
+    export_scene: bool
     device_type: str
     camera_type: str
     tile_size: int

@@ -38,6 +38,7 @@ road_folder = "TRANSPORT"
 road_file = "TRONCON_DE_ROUTE.shp"
 water_folder = "HYDROGRAPHIE"
 water_file = "SURFACE_HYDROGRAPHIQUE.shp"
+water_line_file = "TRONCON_HYDROGRAPHIQUE.shp"
 dpt_folder = "ADMINISTRATIF"
 dpt_file = "ARRONDISSEMENT.shp"
 town_file = "COMMUNE.shp"
@@ -77,10 +78,15 @@ assets_folder = "Assets"
 
 projects_folder = "Projects"
 input_data_folder = "Inputs"
+export_project_folder = "Export"
 
 log_folder = "Logs"
 log_file_name = "worldweaver.log"
 render_log_file = "render.log"
+
+export_glb_file = "scene.glb"
+
+subdense_folder = "subdense_data"
 
 
 file_coords_regex = re.compile("_[0-9]{4}_[0-9]{4}_")
@@ -559,9 +565,19 @@ def setup_project_folder(base_folder: str):
     return base_path
 
 
+def setup_rendering_folder(project_folder: str):
+
+    rendering_folder = os.path.join(project_folder, rendering)
+
+    if not os.path.isdir(rendering_folder):
+        os.makedirs(rendering_folder, exist_ok=True)
+
+    return rendering_folder
+
+
 def setup_export_folder(project_folder: str):
 
-    export_folder = os.path.join(project_folder, rendering)
+    export_folder = os.path.join(project_folder, export_project_folder)
 
     if not os.path.isdir(export_folder):
         os.makedirs(export_folder, exist_ok=True)

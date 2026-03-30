@@ -10,7 +10,6 @@ from shapely.geometry import mapping, MultiPolygon, GeometryCollection, Polygon
 
 from tqdm import tqdm
 
-from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Config import BaseRenderConfig
 from worldweaver.Utils.Geometry import interpolate_z
 from worldweaver.Utils.Utils import Point, TerrainData

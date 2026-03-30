@@ -286,7 +286,7 @@ class IGNPreprocessor:
         )
 
         # House filtering is done differently (it depends on the number of housings in the building)
-        houses = buildings.query(f"{BuildingDataFrame.number_housings} < 4")
+        houses = buildings.query(f"1 <= {BuildingDataFrame.number_housings} < 4")
         # Default buildings are those whose index are not in the houses dataframe
         default_buildings = buildings.loc[buildings.index.difference(houses.index)]
 
@@ -403,6 +403,7 @@ class IGNPreprocessor:
             roads=roads_full,
             still_water=still_water,
             flowing_water=flowing_water,
+            flowing_water_line=geo_data.water_line,
             ocean=ocean_water,
             zones=zones_data,
         )

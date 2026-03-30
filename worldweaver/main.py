@@ -30,10 +30,11 @@ from worldweaver.Utils.Rendering import (
 from worldweaver.Utils.DataFiles import (
     check_shapefiles_presence,
     setup_project_folder,
-    setup_export_folder,
+    setup_rendering_folder,
     log_folder,
     log_file_name,
 )
+from worldweaver.Utils.Export import export_scene_to_tileset
 
 
 def main(filepath):
@@ -117,7 +118,7 @@ def main(filepath):
 
         render_manager.change_non_sources_visibility(True)
 
-    export_folder = setup_export_folder(project_path)
+    export_folder = setup_rendering_folder(project_path)
 
     config_filename = os.path.basename(config_status.config_file_path)
     shutil.copyfile(
@@ -137,18 +138,25 @@ def main(filepath):
             setup_img_persp(
                 config.rendering.output.tile_size,
                 config.rendering.output.ground_sampling_distance,
-                (0, 0, 0),
+                (0, 0),
             )
 
         else:
             setup_img_ortho_res(
                 config.rendering.output.tile_size,
                 config.rendering.output.ground_sampling_distance,
-                (0, 0, 0),
+                (0, 0),
             )
 
         render_manager.draw_decor(False)
+
+        logger.info("Drawing scene done")
+
+        logger.info("Rendering sample image")
         export_rendered_img(config.base_folder, export_folder, now_str)
+
+        if config.rendering.output.export_scene:
+            export_scene_to_tileset(project_path)
     else:
         render_times = []
 
@@ -175,7 +183,7 @@ def main(filepath):
                         setup_img_persp(
                             config.rendering.output.tile_size,
                             config.rendering.output.ground_sampling_distance,
-                            (camera_x, camera_y, 0),
+                            (camera_x, camera_y),
                         )
                         # Beautify
                         zone_window = render_manager.draw_decor(True, True)
@@ -183,7 +191,7 @@ def main(filepath):
                         setup_img_ortho_res(
                             config.rendering.output.tile_size,
                             config.rendering.output.ground_sampling_distance,
-                            (camera_x, camera_y, 0),
+                            (camera_x, camera_y),
                         )
                         zone_window = render_manager.draw_decor(True)
 

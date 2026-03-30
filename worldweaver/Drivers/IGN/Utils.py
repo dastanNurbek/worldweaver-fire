@@ -18,6 +18,7 @@ class GeoData:
     forests: g.GeoDataFrame
     roads: g.GeoDataFrame
     water: g.GeoDataFrame
+    water_line: g.GeoDataFrame
     ocean: g.GeoDataFrame
     residentials: g.GeoDataFrame
     interest_zones: g.GeoDataFrame
@@ -27,7 +28,7 @@ class GeoData:
     sport: g.GeoDataFrame
     terrain: TerrainDataList
     is_subdense: bool
-    subdense_data: SubDenseData
+    subdense_data: SubDenseData | None
 
 
 class WFS_FR:
@@ -37,6 +38,7 @@ class WFS_FR:
     forests_key_name = "BDTOPO_V3:zone_de_vegetation"
     buildings_key_name = "BDTOPO_V3:batiment"
     water_key_name = "BDTOPO_V3:surface_hydrographique"
+    water_line_key_name = "BDTOPO_V3:troncon_hydrographique"
     activity_zone_key_name = "BDTOPO_V3:zone_d_activite_ou_d_interet"
     town_key_name = "BDTOPO_V3:commune"
     shore_key_name = "BDTOPO_V3:limite_terre_mer"

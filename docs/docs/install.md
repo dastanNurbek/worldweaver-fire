@@ -93,9 +93,10 @@ Cloning the repository from GitHub or extract the tarball:
 git clone https://github.com/geo-mage/worldweaver
 ```
 
-Installing the python dependencies:
+Installing the python dependencies (adding the "extra-index-url" because bpy 4.1 is not on the default pypi repos anymore):
 ```bash
-python -m pip install -r requirements_headless.txt
+python -m pip install -r requirements_headless.txt --extra-index-url https://download.blender.org/pypi/
+
 ```
 
 You can then install the WorldWeaver Python module into your Python environment using:

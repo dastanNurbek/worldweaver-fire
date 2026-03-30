@@ -23,6 +23,9 @@ cars_collection_name = "Cars"
 buildings_collection_name = "Buildings"
 stable_buildings_collection_name = "Stable"
 new_buildings_collection_name = "New"
+appeared_buildings_collection_name = "Appeared"
+recomposed_buildings_collection_name = "Recomposed"
+merged_buildings_collection_name = "Merged"
 old_buildings_collection_name = "Old"
 base_collection_name = "Collection"
 additionals_collection_name = "additionals"
@@ -141,8 +144,11 @@ def configure_scene(
         sc.sun_pos_properties.sun_object = sun_object
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
-        sc.sun_pos_properties.day = date.day
-        sc.sun_pos_properties.month = date.month
+        # sc.sun_pos_properties.day = date.day
+        # sc.sun_pos_properties.month = date.month
+        # TODO: switch back to current day, or put date in cfg. we use mid june to get good lighting in northern hemisphere
+        sc.sun_pos_properties.day = 15
+        sc.sun_pos_properties.month = 6
         sc.sun_pos_properties.year = date.year
         sc.sun_pos_properties.UTC_zone = utc_offset
         sc.sun_pos_properties.time = 12
@@ -223,14 +229,39 @@ def configure_scene(
         new_collection = D.collections.new(new_buildings_collection_name)
         D.collections[buildings_collection_name].children.link(new_collection)
 
+        appeared_buildings_collection = D.collections.new(
+            appeared_buildings_collection_name
+        )
+        D.collections[new_buildings_collection_name].children.link(
+            appeared_buildings_collection
+        )
+
+        recomposed_buildings_collection = D.collections.new(
+            recomposed_buildings_collection_name
+        )
+        D.collections[new_buildings_collection_name].children.link(
+            recomposed_buildings_collection
+        )
+
+        merged_buildings_collection = D.collections.new(
+            merged_buildings_collection_name
+        )
+        D.collections[new_buildings_collection_name].children.link(
+            merged_buildings_collection
+        )
+
     additional_collection = D.collections.new(additionals_collection_name)
     D.collections[base_collection_name].children.link(additional_collection)
 
 
 def match_collection(buildings_change_status):
     match buildings_change_status:
-        case IGN.change_type_appeared | IGN.change_type_merged | IGN.change_type_recomposed:
-            return new_buildings_collection_name
+        case IGN.change_type_appeared:
+            return appeared_buildings_collection_name
+        case IGN.change_type_merged:
+            return merged_buildings_collection_name
+        case IGN.change_type_recomposed:
+            return recomposed_buildings_collection_name
         case IGN.change_type_disappeared:
             return old_buildings_collection_name
         case IGN.change_type_stable:
@@ -498,3 +529,23 @@ def set_compositing_render_image_name(image_name):
     math_node = D.scenes["Scene"].node_tree.nodes["Math"]
     links = D.scenes["Scene"].node_tree.links
     link2 = links.new(math_node.outputs[0], output_file.inputs[0])
+
+
+def change_color(collection: str, color: tuple[float, float, float, float]):
+    """
+    Helper method to change the color of procedural buildings inside a collection.
+    :param collection: The name of the collection you want to affect.
+    :param color: The color of the buildings, as a tuple of 4 floats between 0 and 1 for R, G, B and A channels.
+    """
+    for obj in D.collections[collection].objects:
+        if obj.name.startswith("House"):
+            obj.modifiers[0]["Input_11"] = color
+            obj.modifiers[0]["Input_13"] = color
+        else:
+            obj.modifiers[0]["Socket_0"] = color
+        # Toggling visiblity of object for the changes to be applied in viewport
+        obj.modifiers[0].show_viewport = False
+        obj.modifiers[0].show_viewport = True
+    # Toggling visiblity of collection for the changes to be applied in viewport
+    D.collections[collection].hide_viewport = True
+    D.collections[collection].hide_viewport = False

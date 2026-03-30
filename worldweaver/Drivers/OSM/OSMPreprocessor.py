@@ -37,7 +37,6 @@ class OSMPreprocessor:
         geowindow: GeoWindow,
     ) -> RenderingData:
         logger.info("Processing OSM data")
-        # TODO: keep this, but justify it (and restore the warning after ?)
         # Avoids the "SettingWithCopyWarning: A value is trying to be set on a copy of a slice from a DataFrame"warning,
         # which would be triggered a lot here.
         # https://stackoverflow.com/a/20627316
@@ -349,12 +348,18 @@ class OSMPreprocessor:
             paths=reduce_columns(paths, [OSM.geometry]),
         )
 
+        # TODO: water lines are currently empty due to the fact that we cannot use OSM queries.
+        # If a fix is found on overpass systematically returning a 403,
+        # water lines should be correctly extracted from data and passed there.
         rendering_data = RenderingData(
             forests=reduce_columns(forests, [OSM.geometry]),
             buildings=buildings_data,
             roads=highways,
             still_water=still_water,
             flowing_water=flowing_water,
+            flowing_water_line=g.GeoDataFrame(
+                columns=["cleabs", "geometry"], geometry="geometry", crs=geowindow.crs
+            ),
             ocean=ocean_water,
             zones=zones_data,
         )

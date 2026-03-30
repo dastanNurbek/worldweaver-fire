@@ -10,6 +10,7 @@ from worldweaver.Drivers.IGN.DataFrames import (
 
 from worldweaver.Parser.ShapeFileParser import ShapeFileParser
 
+import worldweaver.Utils.DataFiles as df
 from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Utils import (
     GeoWindow,
@@ -27,8 +28,8 @@ class SubdenseLoader(StreamLoader):
 
         bbox = geo_window.bounds
         logger.info("Loading subdense data")
-        folder = "/home/AVerstraete/Work/maps/subdense_data"
-        # TODO: change paths
+        folder = os.path.join(self.base_folder, df.subdense_folder)
+        # TODO: derive file names from indexing file once it's created
         old_building_data = ShapeFileParser.load(
             os.path.join(folder, "FR-STR-FUA-Building-2011.gpkg"),
             bbox,
@@ -115,6 +116,7 @@ class SubdenseLoader(StreamLoader):
             forests=geodata.forests,
             roads=geodata.roads,
             water=geodata.water,
+            water_line=geodata.water_line,
             ocean=geodata.ocean,
             residentials=geodata.residentials,
             interest_zones=geodata.interest_zones,

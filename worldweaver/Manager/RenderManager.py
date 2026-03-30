@@ -4,7 +4,7 @@ from bpy import data as D
 
 import pandas as p
 
-from worldweaver.Drivers.IGN.IGNDriver import IGNDriver, IGNDataSources
+from worldweaver.Drivers.IGN.IGNDriver import IGNDataSources
 from worldweaver.Renderer import (
     BuildingRenderer,
     BoxBuildingRenderer,
@@ -125,6 +125,7 @@ class RenderManager:
         logger.info("Rendering flowing water")
         self.flowing_water_renderer.render(
             self.rendering_data.flowing_water,
+            self.rendering_data.flowing_water_line,
             self.rendering_data.ocean,
             self.window.center,
             rendering_collection_name,

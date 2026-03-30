@@ -115,7 +115,7 @@ class RenderingBuildingDataFrame:
                 f"Missing column: {RenderingBuildingDataFrame.change_status}"
             )
             is_valid = False
-        # TODO: find validation schema
+        # TODO: find validation schema once subdense data is harmonized
         # else:
         #     if not gdf.empty:
         #         if (
@@ -337,6 +337,7 @@ class RenderingData:
         roads: g.GeoDataFrame,
         still_water: g.GeoDataFrame,
         flowing_water: g.GeoDataFrame,
+        flowing_water_line: g.GeoDataFrame,
         ocean: g.GeoDataFrame,
         zones: ZonesRenderingData,
     ):
@@ -346,6 +347,7 @@ class RenderingData:
         self.roads = roads
         self.still_water = still_water
         self.flowing_water = flowing_water
+        self.flowing_water_line = flowing_water_line
         self.ocean = ocean
         self.zones = zones
 
@@ -371,6 +373,9 @@ class RenderingData:
         is_valid &= RenderingRoadDataFrame.validate(self.roads, "Road")
         is_valid &= RenderingDataFrame.validate(self.still_water, "Still Water")
         is_valid &= RenderingDataFrame.validate(self.flowing_water, "Flowing Water")
+        is_valid &= RenderingDataFrame.validate(
+            self.flowing_water_line, "Flowing Water Line"
+        )
         is_valid &= RenderingDataFrame.validate(self.ocean, "Ocean")
         is_valid &= RenderingDataFrame.validate(self.zones.wheatfields, "Wheat Field")
         is_valid &= RenderingDataFrame.validate(self.zones.cornfields, "Corn Field")

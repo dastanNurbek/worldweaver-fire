@@ -41,6 +41,7 @@ class ConfigTag:
     flood_cell_size = "flood_cell_size"
     rendering = "rendering"
     export_images = "export_images"
+    export_scene = "export_scene"
     device_type = "device_type"
     camera_type = "camera_type"
     ground_sampling_distance = "ground_sampling_distance"
@@ -378,6 +379,14 @@ class ConfigLoader:
             filepath=filepath,
         )
 
+        export_scene = ConfigLoader.get_field(
+            parent_dict=rendering,
+            tag=ConfigTag.export_scene,
+            parent_tag=ConfigTag.rendering,
+            filepath=filepath,
+            is_optional=use_defaults,
+        )
+
         device_type = ConfigLoader.get_mandatory_field(
             parent_dict=rendering,
             tag=ConfigTag.device_type,
@@ -408,6 +417,7 @@ class ConfigLoader:
 
         output_config = Config.OutputConfig(
             export_img=export_images,
+            export_scene=export_scene,
             device_type=device_type,
             camera_type=camera_type,
             tile_size=tile_size,
