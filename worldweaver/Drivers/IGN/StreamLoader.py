@@ -207,7 +207,7 @@ class StreamLoader(Loader):
             key=WFS_FR.water_line_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
-            required_columns=WaterDataFrame.WFS.get_columns(),
+            required_columns=WaterLineDataFrame.WFS.get_columns(),
         )
 
         residential_data = WFSParser.load(

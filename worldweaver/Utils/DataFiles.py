@@ -86,7 +86,7 @@ render_log_file = "render.log"
 
 export_glb_file = "scene.glb"
 
-subdense_folder = "subdense_data"
+subdense_folder = "Subdense_Data"
 
 
 file_coords_regex = re.compile("_[0-9]{4}_[0-9]{4}_")

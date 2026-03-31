@@ -10,16 +10,16 @@ For example if you want the software to use the "/home/MyUser/data/worldweaver/m
 {
   "base_folder": "../../maps",
   "input_data": {
-    "type": "OSM-SRTM"
+    "type": "STREAM"
   },
   "simulation_area": {
     "window_type": "COORDS",
     "geo_window": {
-    "x_min": -8232499.0,
-    "y_min": 4982071.8,
-    "x_max": -8231604.3,
-    "y_max": 4982668.9,
-    "crs_from": 3857
+      "x_min": 1028510,
+      "y_min": 6340100,
+      "x_max": 1028780,
+      "y_max": 6340400,
+      "crs_from": 2154
     },
     ...
 ```
@@ -28,16 +28,16 @@ to this:
 {
   "base_folder": "/home/MyUser/data/worldweaver/maps",
   "input_data": {
-    "type": "OSM-SRTM"
+    "type": "STREAM"
   },
   "simulation_area": {
     "window_type": "COORDS",
     "geo_window": {
-    "x_min": -8232499.0,
-    "y_min": 4982071.8,
-    "x_max": -8231604.3,
-    "y_max": 4982668.9,
-    "crs_from": 3857
+      "x_min": 1028510,
+      "y_min": 6340100,
+      "x_max": 1028780,
+      "y_max": 6340400,
+      "crs_from": 2154
     },
     ...
 ```

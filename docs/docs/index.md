@@ -24,5 +24,6 @@ Advanced documentation:
 
 * [Working offline](file_workflow.md)
 * [Advanced features](advanced_workflow.md)
+* [Experimental features](experimental_workflow.md)
 * [Assets use](assets.md)
 * [Dev documentation](dev.md)

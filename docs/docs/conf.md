@@ -71,6 +71,7 @@ This file should not be edited except for the `base_folder`.
 ### Rendering:
 
   * `export_images`: if True, will tell the software to generate png files from aerial views the scene. If False, will only render one sample image at the center of the scene.
+  * `export_scene`: if True, will tell the software to export the scene in the [3D Tiles](https://www.ogc.org/fr/standards/3dtiles/) format. Be careful to use very low-poly assets if you want to use this feature (Buildify or PBG buildings have about 100k vertices per building, resulting in enormous scenes).
   * `device_type`: Indicates on which hardware to render the scene. Can be "CPU" or "GPU" (preferred).
   * `camera_type`: Indicates which camera to use. Can be "PERSPECTIVE" or "ORTHOGRAPHIC" (preferred).
   * `ground_sampling_distance`: The size of a pixel, in m.

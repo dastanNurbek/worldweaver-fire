@@ -144,12 +144,10 @@ def configure_scene(
         sc.sun_pos_properties.sun_object = sun_object
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
-        # sc.sun_pos_properties.day = date.day
-        # sc.sun_pos_properties.month = date.month
-        # TODO: switch back to current day, or put date in cfg. we use mid june to get good lighting in northern hemisphere
+        # TODO: put date in cfg. we use mid june to get good lighting in northern hemisphere
         sc.sun_pos_properties.day = 15
         sc.sun_pos_properties.month = 6
-        sc.sun_pos_properties.year = date.year
+        sc.sun_pos_properties.year = 2025
         sc.sun_pos_properties.UTC_zone = utc_offset
         sc.sun_pos_properties.time = 12
     except Exception as _:

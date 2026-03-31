@@ -1,0 +1,71 @@
+{
+  "base_folder": "../../maps",
+  "input_data": {
+    "type": "FILE"
+  },
+  "simulation_area": {
+    "window_type": "COORDS",
+    "geo_window": {
+      "x_min": 1028510,
+      "y_min": 6340100,
+      "x_max": 1028780,
+      "y_max": 6340400,
+      "crs_from": 2154
+    }
+  },
+  "terrain": {
+    "terrain_resolution": 1,
+    "use_orthoimage_as_basemap": false
+  },
+  "rendering": {
+    "export_images": false,
+    "export_scene": true,
+    "device_type": "GPU",
+    "camera_type": "ORTHOGRAPHIC",
+    "ground_sampling_distance": 0.2,
+    "tile_size": 512,
+    "objects": {
+      "building_render": {
+        "geometry_node_file": "Buildings_box.blend",
+        "geometry_node_name": "Buildings",
+        "tagging_index": 6,
+        "default_levels_min": 2,
+        "default_levels_max": 3
+      },
+      "church_render": {
+        "geometry_node_file": "Churches_box.blend",
+        "geometry_node_name": "Churches",
+        "tagging_index": 6,
+        "default_levels_min": 4,
+        "default_levels_max": 4
+      },
+      "factory_render": {
+        "geometry_node_file": "Factories_box.blend",
+        "geometry_node_name": "Factories",
+        "tagging_index": 6,
+        "default_levels_min": 2,
+        "default_levels_max": 5
+      },
+      "mall_render": {
+        "geometry_node_file": "Malls_box.blend",
+        "geometry_node_name": "Malls",
+        "tagging_index": 6,
+        "default_levels_min": 3,
+        "default_levels_max": 4
+      },
+      "house_render": {
+        "geometry_node_file": "Houses_box.blend",
+        "geometry_node_name": "(PBG) Swedish cottage Preset",
+        "tagging_index": 6,
+        "default_height_min": 2.5,
+        "default_height_max": 6,
+        "roof_slope_degrees": 25
+      },
+      "placeholder_forest_render": {
+        "geometry_node_file": "Forests_export.blend",
+        "geometry_node_name": "Forest_pine",
+        "tagging_index": 3
+      }
+    }
+  }
+}

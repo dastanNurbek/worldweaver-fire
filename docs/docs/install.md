@@ -12,9 +12,7 @@ Current dependencies are as follows:
 * [geopandas](https://geopandas.org/en/stable/index.html) 1.0.1
 * [rasterio](https://rasterio.readthedocs.io/en/stable/) 1.3.7
 * [pyogrio](https://pyogrio.readthedocs.io/en/latest/) 0.5.1
-* [scipy](https://scipy.org/) 1.10.0
-* [scikit-image](https://scikit-image.org/) 0.21.0
-* [scikit-learn](https://scikit-learn.org/stable/) 1.6.1
+* [scipy](https://scipy.org/) 1.15.0
 * [numpy](https://numpy.org/) 1.24.2
 * [tqdm](https://github.com/tqdm/tqdm)
 * [OPENEXR](https://openexr.com/en/latest/)
@@ -25,6 +23,14 @@ Current dependencies are as follows:
 * [timezonefinder](https://timezonefinder.readthedocs.io/en/latest/)
 * [ladybug-geometry](https://www.ladybug.tools/ladybug-geometry/docs/)
 * [IMath](https://github.com/AcademySoftwareFoundation/Imath)
+* [pytz](https://pypi.org/project/pytz/)
+* [py3dtiles](https://pypi.org/project/py3dtiles/)
+* From embarking [https://github.com/umrlastig/flatten](https://github.com/umrlastig/flatten) :
+    * [shapely](https://shapely.readthedocs.io/en/2.1.0/) 2.1.0
+    * [cvxpy](https://www.cvxpy.org/) 1.8.1
+    * [geojson](https://pypi.org/project/geojson/) 3.2.0
+    * [networkx](https://pypi.org/project/networkx/) 3.2.1
+    * [pyinterpolate](https://pypi.org/project/pyinterpolate/) 1.2.1
 * [Sun Position](https://docs.blender.org/manual/en/3.5/addons/lighting/sun_position.html) (native Blender add-on)
 
 ## Setup instructions

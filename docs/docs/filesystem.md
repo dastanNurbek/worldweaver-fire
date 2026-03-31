@@ -23,4 +23,5 @@ The software uses a few folders, all of which are contained in the `base_folder`
     * The configuration file used to generate the run
     * Rendering: folder containing all the renders and semantic maps of the run
   * Rendering: Working folder. Mainly stores files used for flood calculation.
+  * Subdense_Data: Stores all data related to SUBDENSE runs.
 

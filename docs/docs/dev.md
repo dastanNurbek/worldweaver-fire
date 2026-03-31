@@ -23,7 +23,7 @@ The project is divided into a few folders:
 
 The scene is lit using a [native Blender Add-on](https://docs.blender.org/manual/en/3.5/addons/lighting/sun_position.html).
 
-Currently, the sun position is set to the current date, at 12PM, located at the center of the scene, but it could be customized.
+Currently, the sun position is set to the 12/06/2025 at 12PM, located at the center of the scene, but it could be customized.
 
 Likewise, the intensity of the light is fixed for now, but could be adjusted.
 
@@ -146,10 +146,10 @@ Alternatively, once you generate a subdense scene, you can edit the colors using
 
 For example, in Blender's python interpreter, to change the color of stable buildings to black :
 
-> from worldweaver.Utils.Rendering import change_color
-> 
-> change_color("Stable", (0,0,0,1))
-
+```python
+from worldweaver.Utils.Rendering import change_color
+change_color("Stable", (0,0,0,1))
+```
 
 
 ### Harmonise attribute names
@@ -190,8 +190,6 @@ Depending on how similar it is to what is already present, the amount of work mi
 For example, if you are able to derive subdense data from OSM history, adding this data to the OSM workflow might be pretty easy.
 
 On the other hand, if you want data from another country that is very different from IGN or OSM, you might want to use a completly new driver.
-
-/!\ TODO check link
 
 For guidance on this, please look at [Adding a new data source](dev.md#adding-a-new-data-source) .
 

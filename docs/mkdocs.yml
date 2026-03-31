@@ -6,6 +6,7 @@ nav:
   - Working offline: file_workflow.md
   - Managing IGN open data: datafiles.md
   - Advanced features: advanced_workflow.md
+  - Experimental features: experimental_workflow.md
   - File usage: filesystem.md
   - Assets use: assets.md
   - Configuration files: conf.md

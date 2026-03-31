@@ -17,6 +17,11 @@ Inside, you will see a few differences with the `example_offline.json`:
 * There is a `flood` section, whose `activate` is set to True. This means the software will generate a flood in this scene (see [Flood](flood.md))
 * There is a `placeholder_forest_render` section inside `rendering/objects`. This means that for scene, the default asset for placeholder trees (described in `base_config.json`) will be overriden by whatever is described in this `placeholder_forest_render` section.
 
+!!! note "Issue with OSM"
+
+There is currently an issue preventing the fecthing of data from OSM using overpass. This tutorial is written to provide an example of how to use a different data provider but might not work for you depending on overpass servers loads and policy enforcement.
+
+
 You can use such modifications to tweak the configuration however you like (you still need to change the `base_folder` like other files).  
 
 ```json
