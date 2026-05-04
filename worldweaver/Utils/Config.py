@@ -109,6 +109,15 @@ class FloodConfig:
 
 
 @dataclass
+class FireConfig:
+    activate: bool
+    ignition_points: list[list[float]]  # [[lon, lat], ...] in WGS84 degrees; empty = random
+    fire_cell_size: float
+    fire_threshold: float
+    tagging_index: int
+
+
+@dataclass
 class TerrainConfig:
     terrain_resolution: float
     use_sat_img: bool
@@ -139,6 +148,7 @@ class Config:
     geo_window: GeoWindowConfig
     terrain: TerrainConfig
     flood: FloodConfig
+    fire: FireConfig
     rendering: RenderingConfig
 
 

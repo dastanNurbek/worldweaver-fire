@@ -39,6 +39,10 @@ class ConfigTag:
     activate = "activate"
     flood_height = "flood_height"
     flood_cell_size = "flood_cell_size"
+    fire = "fire"
+    ignition_points = "ignition_points"
+    fire_cell_size = "fire_cell_size"
+    fire_threshold = "fire_threshold"
     rendering = "rendering"
     export_images = "export_images"
     export_scene = "export_scene"
@@ -363,6 +367,55 @@ class ConfigLoader:
             )
         else:
             flood_config = default_config.flood
+
+        # Fire
+        fire = ConfigLoader.get_field(
+            parent_dict=json_dict,
+            tag=ConfigTag.fire,
+            parent_tag=ConfigTag.root,
+            filepath=filepath,
+            is_optional=use_defaults,
+        )
+        if fire is not None:
+            fire_activate = ConfigLoader.get_mandatory_field(
+                parent_dict=fire,
+                tag=ConfigTag.activate,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+            )
+            fire_ignition_points = ConfigLoader.get_mandatory_field(
+                parent_dict=fire,
+                tag=ConfigTag.ignition_points,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+            )
+            fire_cell_size = ConfigLoader.get_mandatory_field(
+                parent_dict=fire,
+                tag=ConfigTag.fire_cell_size,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+            )
+            fire_threshold = ConfigLoader.get_mandatory_field(
+                parent_dict=fire,
+                tag=ConfigTag.fire_threshold,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+            )
+            fire_tagging_index = ConfigLoader.get_mandatory_field(
+                parent_dict=fire,
+                tag=ConfigTag.tagging_index,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+            )
+            fire_config = Config.FireConfig(
+                activate=fire_activate,
+                ignition_points=fire_ignition_points,
+                fire_cell_size=fire_cell_size,
+                fire_threshold=fire_threshold,
+                tagging_index=fire_tagging_index,
+            )
+        else:
+            fire_config = default_config.fire
 
         # Rendering
         rendering = ConfigLoader.get_mandatory_field(
@@ -1021,6 +1074,7 @@ class ConfigLoader:
             geo_window=window_config,
             terrain=terrain_config,
             flood=flood_config,
+            fire=fire_config,
             rendering=render_config,
         )
 

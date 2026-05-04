@@ -5,12 +5,15 @@ from datetime import datetime
 from time import time
 
 import numpy as np
+from PIL import Image
+from scipy.ndimage import zoom
 
 from worldweaver.Drivers.BaseDriver import BaseDriver
 from worldweaver.Drivers.IGN.IGNDriver import IGNDriver
 from worldweaver.Drivers.OSM.OSMDriver import OSMDriver
 from worldweaver.Loader.ConfigLoader import ConfigLoader
 from worldweaver.Processor.FloodProcessor import FloodProcessor
+from worldweaver.Processor.FireProcessor import FireProcessor
 from worldweaver.Manager.RenderManager import RenderManager
 
 from worldweaver.Utils.Config import Config
@@ -118,6 +121,33 @@ def main(filepath):
 
         render_manager.change_non_sources_visibility(True)
 
+    fire_data = None
+
+    if config.fire.activate:
+        if config.fire.ignition_points:
+            import geopandas as g
+            from shapely.geometry import Point
+            ignition_gdf = g.GeoDataFrame(
+                geometry=[Point(lon, lat) for lon, lat in config.fire.ignition_points],
+                crs=4326,
+            ).to_crs(driver.internal_crs)
+            ignition_points_crs = [(geom.x, geom.y) for geom in ignition_gdf.geometry]
+        else:
+            ignition_points_crs = []
+
+        fire_data = FireProcessor.burn(
+            driver.geo_window,
+            rendering_data.forests,
+            rendering_data.zones.wheatfields,
+            rendering_data.zones.cornfields,
+            rendering_data.zones.grass,
+            ignition_points_crs,
+            config.fire.fire_cell_size,
+            config.fire.fire_threshold,
+        )
+
+        render_manager.draw_fire(fire_data)
+
     export_folder = setup_rendering_folder(project_path)
 
     config_filename = os.path.basename(config_status.config_file_path)
@@ -197,6 +227,23 @@ def main(filepath):
 
                     set_compositing_render_image_name(now_str + "_tagging")
                     export_rendered_img(config.base_folder, export_folder, now_str)
+
+                    if fire_data is not None:
+                        is_burnt, lower_left, upper_right, fire_cell_size = fire_data
+                        gsd = config.rendering.output.ground_sampling_distance
+                        tile_x_min = driver.geo_window.center[0] + camera_x - img_size / 2
+                        tile_x_max = driver.geo_window.center[0] + camera_x + img_size / 2
+                        tile_y_min = driver.geo_window.center[1] + camera_y - img_size / 2
+                        tile_y_max = driver.geo_window.center[1] + camera_y + img_size / 2
+                        col_min = max(0, int((tile_x_min - lower_left[0]) / fire_cell_size))
+                        col_max = min(is_burnt.shape[1], int((tile_x_max - lower_left[0]) / fire_cell_size))
+                        row_min = max(0, int((upper_right[1] - tile_y_max) / fire_cell_size))
+                        row_max = min(is_burnt.shape[0], int((upper_right[1] - tile_y_min) / fire_cell_size))
+                        tile_burnt = is_burnt[row_min:row_max, col_min:col_max]
+                        tile_burnt_hires = zoom(tile_burnt.astype(float), fire_cell_size / gsd, order=0) > 0.5
+                        Image.fromarray((tile_burnt_hires * 255).astype(np.uint8), mode='L').save(
+                            os.path.join(export_folder, now_str + "_burnt.png")
+                        )
 
                     # Clean
                     render_manager.clean_zone()

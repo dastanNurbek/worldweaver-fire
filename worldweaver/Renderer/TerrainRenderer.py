@@ -61,6 +61,10 @@ class TerrainRenderer:
             self.geometry_node_name = data_to.node_groups[0].name
             self.tagging_geometry_node_name = data_to.node_groups[1].name
             self.decorating_geometry_node_name = data_to.node_groups[2].name
+
+            D.node_groups[self.tagging_geometry_node_name].nodes[
+                "Compute Proximity Burnt"
+            ].inputs[2].default_value = None
         except Exception as _:
             raise Exception(
                 f"Unable to load the terrain material from the file {filepath}"
@@ -460,6 +464,19 @@ class TerrainRenderer:
             node_tree.nodes["Compute Edge Proximity Field"].inputs[
                 4
             ].default_value = wheatfields_object
+            node_tree.nodes["Compute Field ID Wheat"].inputs[
+                2
+            ].default_value = wheatfields_object
+            node_tree.nodes["Compute Field ID Corn"].inputs[
+                2
+            ].default_value = cornields_object
+
+    def set_burnt_zone(self, burnt_object):
+        if not self.use_sat_img:
+            node_tree = D.node_groups[self.config.tagging_node_name]
+            node_tree.nodes["Compute Proximity Burnt"].inputs[
+                2
+            ].default_value = burnt_object
 
     def change_decor_visibility(self, is_visible: bool):
         if not self.use_sat_img:

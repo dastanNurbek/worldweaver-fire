@@ -10,6 +10,7 @@ from worldweaver.Renderer import (
     BoxBuildingRenderer,
     BuildingFootprintRenderer,
     ForestRenderer,
+    FireRenderer,
     PrettyRoadRenderer,
     WaterRenderer,
     TerrainRenderer,
@@ -111,6 +112,7 @@ class RenderManager:
         self.asphalt_renderer = ZoneRenderer.AsphaltRenderer(self.terrain_data)
         self.sand_renderer = ZoneRenderer.SandRenderer(self.terrain_data)
         self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
+        self.fire_renderer = None
 
     def draw_terrain(self):
         # Rendering objects that are ground level or interact with terrain
@@ -290,6 +292,13 @@ class RenderManager:
     def draw_flood(self, flood_data):
         self.flood_renderer.render(flood_data, rendering_collection_name)
 
+    def draw_fire(self, fire_data):
+        self.fire_renderer = FireRenderer.FireRenderer(
+            self.terrain_data, self.config.fire.tagging_index
+        )
+        self.fire_renderer.render(fire_data, self.window.center, rendering_collection_name)
+        self.terrain_renderer.set_burnt_zone(self.fire_renderer.get_mesh_obj())
+
     def draw_decor(self, restrict_to_camera, use_camera_presp=False):
 
         zone_window = self.window
@@ -460,6 +469,9 @@ class RenderManager:
             self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
             get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
+            self.fire_renderer.get_mesh_obj() if self.fire_renderer else None,
+            self.wheatfields_renderer.get_mesh_obj(),
+            self.cornfields_renderer.get_mesh_obj(),
         )
 
         return zone_window
