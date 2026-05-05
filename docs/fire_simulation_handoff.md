@@ -24,6 +24,7 @@ def burn(
 - Rasterizes forests + wheatfields + cornfields + grass into a boolean `flammable_map` using `shapely.within` vectorized over a meshgrid
 - If `ignition_points` is empty, picks a random flammable cell via `np.argwhere(flammable_map)`
 - Graph edge cost: `1.0` (cardinal) or `√2` (diagonal) for flammable→flammable; `1e9` to non-flammable (effectively blocked)
+- Per-cell noise map (±20%) applied to spread costs for organic fire boundary
 - Runs `scipy dijkstra` from all ignition points simultaneously (`min_only=True`)
 - Cells with distance ≤ `fire_threshold` AND inside `flammable_map` are marked burnt
 - **Works in original CRS** (not pre-centered like FloodProcessor — centering happens in FireRenderer)
@@ -43,75 +44,44 @@ Builds the `BurntArea` mesh from FireProcessor output.
 
 **The BurntArea mesh serves three consumers:**
 1. `ForestRenderer.__config_geometry_node` → culls/replaces trees
-2. `TerrainRenderer.__config_tagging_node` → applies burnt ground texture
+2. `TerrainRenderer.set_burnt_zone()` → applies burnt ground texture
 3. Object Index render pass → semantic tag value `8`
 
 ---
 
-## Remaining Todo List
-
-### 1. `worldweaver/Assets/Forests.blend` + `Forests_pretty.blend` — Blender edit
-Add burnt area socket to **both** GN setups (`Forest_pine` in `Forests.blend`, `Forest` in `Forests_pretty.blend`):
-- New Object input socket (e.g. `Socket_10`) for the BurntArea mesh
-- Wire: `Geometry Proximity` → blend with `Noise Texture` (world Position) → threshold → `Separate Geometry`
-- Burnt branch: `Instance on Points` with **burnt bark tree collection** (leafless, charred material)
-- Unburnt branch: `Instance on Points` with normal tree collection
-- `Join Geometry` both branches → output
-
-### 2. `worldweaver/Assets/Terrain.blend` — Blender edit
-In the `TerrainTagging` geometry node group:
-- Add node named **`"Compute Proximity Burnt"`** (same pattern as existing `"Compute Proximity Grass"` etc.)
-- Input socket index `2` receives the BurntArea object reference
-- Apply scorched/charred ground material where proximity distance < threshold
-
-### 3. `worldweaver/Renderer/ForestRenderer.py`
-Update `__config_geometry_node` to accept and pass the BurntArea object:
+### `worldweaver/Renderer/ForestRenderer.py` ✅
+`__config_geometry_node` updated to accept and pass BurntArea (Socket_9), WheatFieldsZone (Socket_11), and CornFieldsZone (Socket_12):
 ```python
-def __config_geometry_node(self, road_object, building_object, terrain_object, ray_length, burnt_area_object):
-    node = D.objects[self._mesh_name].modifiers[self.geometry_node_name]
+def __config_geometry_node(self, road_object, building_object, terrain_object, ray_length,
+                            burnt_area_object, wheatfields_object, cornfields_object):
     node["Socket_4"] = road_object
     node["Socket_6"] = building_object
     node["Socket_8"] = terrain_object
     node["Socket_3"] = ray_length
-    node["Socket_10"] = burnt_area_object   # new — socket name TBD after Blender edit
+    if burnt_area_object is not None:
+        node["Socket_9"] = burnt_area_object
+    node["Socket_11"] = wheatfields_object
+    node["Socket_12"] = cornfields_object
 ```
 
-### 4. `worldweaver/Renderer/TerrainRenderer.py`
-Update `__config_tagging_node` to accept and pass the BurntArea object:
-```python
-def __config_tagging_node(self, ..., burnt_object):
-    ...
-    node_tree.nodes["Compute Proximity Burnt"].inputs[2].default_value = burnt_object
-```
+---
 
-### 5. `worldweaver/Manager/RenderManager.py`
-- Import `FireRenderer`
-- Instantiate in `__init__`: `self.fire_renderer = FireRenderer.FireRenderer(terrain_data, tagging_index=8)`
-- Add `draw_fire()` method:
-```python
-def draw_fire(self, fire_data):
-    self.fire_renderer.render(fire_data, self.window.center, rendering_collection_name)
-```
-- In `draw_decor()`, pass BurntArea to both:
-```python
-self.forests_renderer._ForestRenderer__config_geometry_node(
-    self.road_renderer.get_mesh_obj(),
-    self.building_footprint_renderer.get_mesh_obj(),
-    self.terrain_renderer.get_mesh_obj(),
-    get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
-    self.fire_renderer.get_mesh_obj(),   # new
-)
-```
-- In `draw_terrain()`, pass BurntArea to terrain tagging:
-```python
-self.terrain_renderer._TerrainRenderer__config_tagging_node(
-    ...,
-    burnt_object=self.fire_renderer.get_mesh_obj(),   # new
-)
-```
+### `worldweaver/Renderer/TerrainRenderer.py` ✅
+- `set_burnt_zone(burnt_object)` method added — called only from `draw_fire()`, avoiding the phantom square when fire is off
+- `Compute Proximity Burnt` input cleared to `None` on `__init__` to neutralise any placeholder in `Terrain.blend`
+- `Compute Field ID Wheat` and `Compute Field ID Corn` nodes wired in `__config_tagging_node`
 
-### 6. `worldweaver/Utils/Config.py`
-Add `FireConfig` dataclass and update `Config`:
+---
+
+### `worldweaver/Manager/RenderManager.py` ✅
+- `FireRenderer` imported, `self.fire_renderer = None` in `__init__`
+- `draw_fire()` instantiates `FireRenderer`, renders BurntArea, calls `set_burnt_zone()`
+- `draw_decor()` passes BurntArea, WheatFieldsZone, and CornFieldsZone to forests GN
+
+---
+
+### `worldweaver/Utils/Config.py` ✅
+`FireConfig` dataclass added:
 ```python
 @dataclass
 class FireConfig:
@@ -120,15 +90,11 @@ class FireConfig:
     fire_cell_size: float
     fire_threshold: float
     tagging_index: int
-
-@dataclass
-class Config:
-    ...
-    fire: FireConfig   # add this field
 ```
 
-### 7. `worldweaver/Config/config.json`
-Add fire block:
+---
+
+### `worldweaver/Config/config.json` ✅
 ```json
 "fire": {
     "activate": false,
@@ -139,11 +105,41 @@ Add fire block:
 }
 ```
 
-### 8. `worldweaver/main.py`
-- Load `fire` config into `FireConfig`
-- Reproject `ignition_points` from WGS84 degrees to scene CRS (use geopandas, same pattern as GeoWindow CRS conversion)
-- Call `FireProcessor.burn(...)` if `fire.activate`
-- Call `render_manager.draw_fire(fire_data)` after `draw_terrain()`, before `draw_decor()`
+---
+
+### `worldweaver/Loader/ConfigLoader.py` ✅
+Full fire config loading block added, mirroring the flood pattern.
+
+---
+
+### `worldweaver/main.py` ✅
+- `ignition_points` reprojected from WGS84 to scene CRS via geopandas
+- `FireProcessor.burn()` called if `fire.activate`
+- `render_manager.draw_fire(fire_data)` called after `draw_terrain()`
+- Per-tile burnt area PNG export: crops `is_burnt` to camera tile bounds, resamples to output GSD using `scipy.ndimage.zoom`, saves as `<timestamp>_burnt.png`
+
+---
+
+### `worldweaver/Assets/Forests.blend` + `Forests_pretty.blend` ✅
+- Socket_9 (`BurntArea_Obj`): Geometry Proximity → Noise Texture blend → threshold → Separate Geometry → burnt/normal Instance on Points branches → Join Geometry
+- Socket_11 (`WheatFields_Obj`): excludes tree spawning inside wheat field polygons
+- Socket_12 (`CornFields_Obj`): excludes tree spawning inside corn field polygons
+
+---
+
+### `worldweaver/Assets/Terrain.blend` ✅
+In the `TerrainTagging` geometry node group:
+- `"Compute Proximity Burnt"`: input socket index `2` receives BurntArea; applies scorched material where proximity < threshold
+- `"Compute Field ID Wheat"`: input socket index `2` receives WheatFieldsZone; samples `field_id` attribute and stores on terrain
+- `"Compute Field ID Corn"`: same for CornFieldsZone
+
+---
+
+### `worldweaver/Renderer/ZoneRenderer.py` ✅
+`FieldZoneRenderer` added — stores a `field_id` integer face attribute per polygon so each field can be identified in the shader editor via an Attribute node:
+- `WheatFieldRenderer` and `CornFieldRenderer` subclass it
+
+---
 
 ---
 
@@ -159,6 +155,9 @@ Add fire block:
 | Both `Forests.blend` and `Forests_pretty.blend` need edits | Pretty version used for image export, placeholder for 3D/viewport export |
 | `ignition_points` empty list = random ignition | Random cell sampled from `np.argwhere(flammable_map)` — always lands on valid flammable cell |
 | `ignition_points` in config as `[lon, lat]` degrees | More human-readable than projected CRS coords; reprojection done in `main.py` |
+| `set_burnt_zone()` separate from `__config_tagging_node` | Tagging node runs at draw_terrain() time before BurntArea exists; burnt zone set later from draw_fire() |
+| Cost noise ±20% on fire spread graph | Avoids geometric wavefront edge at threshold cutoff — produces organic boundary |
+| Burnt map exported as PNG per tile | Cropped to camera tile bounds + resampled to GSD; aligned with RGB/semantic images without Blender |
 
 ---
 
@@ -169,8 +168,8 @@ Add fire block:
 | `worldweaver/Processor/FloodProcessor.py` | Template for FireProcessor — same Dijkstra structure |
 | `worldweaver/Renderer/FloodRenderer.py` | Shows GN-loading pattern (FireRenderer does NOT follow this) |
 | `worldweaver/Renderer/HiddenPolygonRenderer.py` | Actual pattern FireRenderer follows |
-| `worldweaver/Renderer/ForestRenderer.py` | Needs `burnt_area_object` added to `__config_geometry_node` |
-| `worldweaver/Renderer/TerrainRenderer.py` | Needs `burnt_object` added to `__config_tagging_node` (line 413) |
-| `worldweaver/Manager/RenderManager.py` | Central wiring — `draw_flood()` at line 290 is the template for `draw_fire()` |
-| `worldweaver/Utils/Config.py` | Add `FireConfig` dataclass here |
-| `worldweaver/Config/config.json` | Add `"fire"` block here |
+| `worldweaver/Renderer/ForestRenderer.py` | BurntArea on Socket_9, WheatFields on Socket_11, CornFields on Socket_12 |
+| `worldweaver/Renderer/TerrainRenderer.py` | set_burnt_zone() at line ~464; Compute Field ID nodes in __config_tagging_node |
+| `worldweaver/Manager/RenderManager.py` | draw_fire() and draw_decor() wiring |
+| `worldweaver/Utils/Config.py` | FireConfig dataclass |
+| `worldweaver/Config/config.json` | fire block |
