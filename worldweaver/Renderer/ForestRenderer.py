@@ -1,3 +1,4 @@
+import bpy
 from bpy import data as D
 
 from worldweaver.Renderer.BaseRenderer import BaseRenderer
@@ -25,6 +26,16 @@ class ForestRenderer(BaseRenderer):
             node["Socket_9"] = burnt_area_object
         node["Socket_11"] = wheatfields_object
         node["Socket_12"] = cornfields_object
+
+        ng = bpy.data.node_groups.get(self.geometry_node_name)
+        if ng:
+            for gn_node in ng.nodes:
+                if gn_node.bl_idname == 'GeometryNodeGroup':
+                    for socket in gn_node.inputs:
+                        val = getattr(socket, 'default_value', None)
+                        if isinstance(val, bpy.types.Collection):
+                            for obj in val.all_objects:
+                                obj.pass_index = self.config.tagging_index
 
     def _to_scene_coords(
         self, points_coords: list[Point], geo_center: Point
