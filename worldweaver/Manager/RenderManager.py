@@ -112,7 +112,9 @@ class RenderManager:
         self.asphalt_renderer = ZoneRenderer.AsphaltRenderer(self.terrain_data)
         self.sand_renderer = ZoneRenderer.SandRenderer(self.terrain_data)
         self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
-        self.fire_renderer = None
+        self.fire_renderer = FireRenderer.FireRenderer(
+            self.terrain_data, self.config.fire.tagging_index
+        )
 
     def draw_terrain(self):
         # Rendering objects that are ground level or interact with terrain
@@ -293,9 +295,6 @@ class RenderManager:
         self.flood_renderer.render(flood_data, rendering_collection_name)
 
     def draw_fire(self, fire_data):
-        self.fire_renderer = FireRenderer.FireRenderer(
-            self.terrain_data, self.config.fire.tagging_index
-        )
         self.fire_renderer.render(fire_data, self.window.center, rendering_collection_name)
         self.terrain_renderer.set_burnt_zone(self.fire_renderer.get_mesh_obj())
 

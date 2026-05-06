@@ -43,6 +43,7 @@ class ConfigTag:
     ignition_points = "ignition_points"
     fire_cell_size = "fire_cell_size"
     fire_threshold = "fire_threshold"
+    fire_seed = "seed"
     rendering = "rendering"
     export_images = "export_images"
     export_scene = "export_scene"
@@ -407,12 +408,20 @@ class ConfigLoader:
                 parent_tag=ConfigTag.fire,
                 filepath=filepath,
             )
+            fire_seed = ConfigLoader.get_field(
+                parent_dict=fire,
+                tag=ConfigTag.fire_seed,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+                is_optional=True,
+            )
             fire_config = Config.FireConfig(
                 activate=fire_activate,
                 ignition_points=fire_ignition_points,
                 fire_cell_size=fire_cell_size,
                 fire_threshold=fire_threshold,
                 tagging_index=fire_tagging_index,
+                seed=fire_seed,
             )
         else:
             fire_config = default_config.fire

@@ -115,6 +115,7 @@ class FireConfig:
     fire_cell_size: float
     fire_threshold: float
     tagging_index: int
+    seed: int | None = None  # None = random each run
 
 
 @dataclass

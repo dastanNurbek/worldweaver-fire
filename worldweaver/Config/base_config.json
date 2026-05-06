@@ -28,6 +28,14 @@
     "flood_height": 10,
     "flood_cell_size": 1
   },
+  "fire": {
+    "activate": false,
+    "ignition_points": [],
+    "fire_cell_size": 5,
+    "fire_threshold": 100,
+    "tagging_index": 8,
+    "seed": 0
+  },
   "rendering": {
     "export_images": false,
     "export_scene": false,

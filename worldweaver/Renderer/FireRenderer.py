@@ -58,4 +58,4 @@ class FireRenderer:
         D.collections[parent_collection_name].objects.link(mesh_obj)
 
     def get_mesh_obj(self):
-        return D.objects[self._mesh_name]
+        return D.objects.get(self._mesh_name)

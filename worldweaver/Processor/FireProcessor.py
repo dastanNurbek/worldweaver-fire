@@ -25,9 +25,11 @@ class FireProcessor:
         ignition_points: list[tuple[float, float]],
         fire_cell_size: float,
         fire_threshold: float,
+        seed: int | None = None,
     ):
         logger.info("Initialising fire spread")
 
+        rng = np.random.default_rng(seed if seed is not None else 0)
         bounds = geo_window.bounds
         lower_left = (ceil(bounds[0]), ceil(bounds[1]))
         upper_right = (floor(bounds[2]), floor(bounds[3]))
@@ -64,7 +66,6 @@ class FireProcessor:
             if len(flammable_cells) == 0:
                 logger.warning("No flammable cells in scene — cannot start fire")
                 return (np.zeros((n_rows, n_cols), dtype=bool), lower_left, upper_right, fire_cell_size)
-            rng = np.random.default_rng()
             row, col = flammable_cells[rng.integers(len(flammable_cells))]
             ignition_indices = [int(row * n_cols + col)]
             logger.info(f"Random ignition at grid cell ({row}, {col})")
@@ -88,7 +89,6 @@ class FireProcessor:
             (1,  -1, True),  (1,  0, False),  (1,  1, True),
         ]
 
-        rng = np.random.default_rng()
         noise_map = rng.uniform(0.8, 1.2, size=(n_rows, n_cols))
 
         rows_list, cols_list, data_list = [], [], []

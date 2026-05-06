@@ -144,6 +144,7 @@ def main(filepath):
             ignition_points_crs,
             config.fire.fire_cell_size,
             config.fire.fire_threshold,
+            config.fire.seed,
         )
 
         render_manager.draw_fire(fire_data)
