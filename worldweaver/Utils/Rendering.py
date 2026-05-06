@@ -123,11 +123,31 @@ def configure_scene(
                     # Setting the shading type
                     s.shading.type = "RENDERED"
 
+    # Nishita sky texture on the World
+    world = D.worlds["World"]
+    world.use_nodes = True
+    nodes = world.node_tree.nodes
+    links = world.node_tree.links
+    nodes.clear()
+    sky_node = nodes.new(type="ShaderNodeTexSky")
+    sky_node.name = "Sky Texture"
+    sky_node.sky_type = "NISHITA"
+    sky_node.sun_disc = False
+    sky_node.altitude = 5000
+    sky_node.air_density = 0.3
+    sky_node.location = (-300, 300)
+    bg_node = nodes.new(type="ShaderNodeBackground")
+    bg_node.location = (0, 300)
+    output_node = nodes.new(type="ShaderNodeOutputWorld")
+    output_node.location = (300, 300)
+    links.new(sky_node.outputs["Color"], bg_node.inputs["Color"])
+    links.new(bg_node.outputs["Background"], output_node.inputs["Surface"])
+
     # Sun and lighting
     sun_data = D.lights.new(name=sun_name, type="SUN")
     sun_object = D.objects.new(sun_name, sun_data)
     D.collections[base_collection_name].objects.link(sun_object)
-    sun_data.energy = 10
+    sun_data.energy = 5
 
     tzf = TimezoneFinder()
     tz = tzf.timezone_at(lng=geo_center_deg[0], lat=geo_center_deg[1])
@@ -145,11 +165,14 @@ def configure_scene(
         sc.sun_pos_properties.latitude = geo_center_deg[1]
         sc.sun_pos_properties.longitude = geo_center_deg[0]
         # TODO: put date in cfg. we use mid june to get good lighting in northern hemisphere
-        sc.sun_pos_properties.day = 15
-        sc.sun_pos_properties.month = 6
+        # EDIT: Trying a time most similar to SENTINEL 2
+        sc.sun_pos_properties.day = 5
+        sc.sun_pos_properties.month = 8
         sc.sun_pos_properties.year = 2025
         sc.sun_pos_properties.UTC_zone = utc_offset
-        sc.sun_pos_properties.time = 12
+        sc.sun_pos_properties.time = 10.5
+        sc.sun_pos_properties.sky_texture = "Sky Texture"
+        sc.sun_pos_properties.use_sky_texture = True
     except Exception as _:
         raise Exception(
             "Sun position addon is not enabled. Go to Blender's Preference -> Add-ons, and enable 'Lighting: Sun Position'."
@@ -183,6 +206,7 @@ def configure_scene(
     sc.render.engine = "CYCLES"
     sc.cycles.device = device_type
     sc.cycles.samples = 50
+    sc.view_settings.view_transform = "Standard"
 
     if device_type == RenderDeviceType.GPU:
         # Set the device_type
