@@ -147,7 +147,7 @@ def configure_scene(
     sun_data = D.lights.new(name=sun_name, type="SUN")
     sun_object = D.objects.new(sun_name, sun_data)
     D.collections[base_collection_name].objects.link(sun_object)
-    sun_data.energy = 5
+    sun_data.energy = 10
 
     tzf = TimezoneFinder()
     tz = tzf.timezone_at(lng=geo_center_deg[0], lat=geo_center_deg[1])
