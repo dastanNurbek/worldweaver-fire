@@ -62,7 +62,10 @@ def get_oriented_graph(
     """
     # triangle_graph_gdf = get_triangle_graph_as_gdf(gdf_triangle)
     triangle_graph = get_triangle_graph_as_nx(gdf_triangle)
-    gdf_segment["_edge_idx"] = gdf_segment.index  # just in case the index isn’t numeric
+    # Reset to a guaranteed-unique RangeIndex so _edge_idx values are always unique
+    gdf_segment = gdf_segment.reset_index(drop=True)
+    gdf_segment["_edge_idx"] = gdf_segment.index
+    edge_geom_lookup: dict = dict(zip(gdf_segment["_edge_idx"], gdf_segment["geometry"]))
     # Perform a spatial intersection.  The result will have one row per
     # (edge, triangle) pair where they overlap, and the geometry will be the
     # *segment of the edge that lies inside the triangle*.
@@ -73,18 +76,13 @@ def get_oriented_graph(
         keep_geom_type=True,
     )
 
-    def fragment_position(row):
-        # Retrieve the original full edge geometry (we stored it in the overlay)
-        edge_geom: LineString = gdf_segment.loc[row["_edge_idx"], "geometry"]  # type: ignore
-        # Use the centroid of the fragment as a stable representative point
+    pos_along_values = []
+    for _, row in intersections.iterrows():
+        edge_geom: LineString = edge_geom_lookup[row["_edge_idx"]]
         pt = row["geometry"].centroid
-        # Distance from the start of the edge to the point
         dist_along = edge_geom.project(pt)
-        # Normalise by total length (avoid division by zero)
-        return dist_along / edge_geom.length if edge_geom.length != 0 else 0.0
-
-    # Apply the function row‑wise
-    intersections["pos_along"] = intersections.apply(fragment_position, axis=1)
+        pos_along_values.append(dist_along / edge_geom.length if edge_geom.length != 0 else 0.0)
+    intersections["pos_along"] = pos_along_values
     # Sort by edge, then by the relative position along that edge
     intersections_sorted = intersections.sort_values(
         ["cleabs", "pos_along"]

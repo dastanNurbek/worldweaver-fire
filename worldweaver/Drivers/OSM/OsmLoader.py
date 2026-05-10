@@ -2,6 +2,7 @@ import os
 import io
 import json
 import math
+import time
 from io import StringIO
 from contextlib import redirect_stderr
 
@@ -56,7 +57,7 @@ class OsmLoader:
     def load_town_shape(self, town_name: str):
 
         # TODO: Replace overpass query with Nominatim query
-        api = overpass.API()
+        api = overpass.API(timeout=120, headers={"Accept-Charset": "utf-8;q=0.7,*;q=0.7", "User-Agent": "worldweaver/1.0"})
 
         query = OSM.get_town_request(town_name)
 
@@ -86,7 +87,7 @@ class OsmLoader:
         geo_window_wgs84 = geo_window.to_crs(CRS_degrees)
         bbox_wgs84 = geo_window_wgs84.bounds
 
-        api = overpass.API()
+        api = overpass.API(timeout=120, headers={"Accept-Charset": "utf-8;q=0.7,*;q=0.7", "User-Agent": "worldweaver/1.0"})
         # Order for MapQuery is south, west, north, east
         map_query = overpass.MapQuery(
             bbox_wgs84[1],
@@ -107,9 +108,11 @@ class OsmLoader:
             )
             logger.debug(redirected_stderr.getvalue())
 
-        geo_df = g.GeoDataFrame.from_features(
-            response["features"], crs=CRS_degrees
-        ).to_crs(self.internal_crs)
+        valid_features = [f for f in response["features"] if f.get("geometry") is not None]
+        if valid_features:
+            geo_df = g.GeoDataFrame.from_features(valid_features, crs=CRS_degrees).to_crs(self.internal_crs)
+        else:
+            geo_df = g.GeoDataFrame(geometry=g.GeoSeries(dtype="geometry", crs=self.internal_crs))
 
         # Due to defaults in osm2geojson, some polygons, which are inners of multipolygons but still objects of their own,
         # are not returned by a simple mapquery. To get around this, we query them separately
@@ -117,6 +120,7 @@ class OsmLoader:
         # https://github.com/aspectumapp/osm2geojson/issues/46
         additional_request = OSM.get_additional_request_inners(bbox_wgs84)
 
+        time.sleep(2)
         additional_response = api.get(additional_request)
 
         # For some reason there seem to be duplicated features in the response
@@ -127,10 +131,9 @@ class OsmLoader:
         additional_response["features"] = filtered_features
 
         # Have to check for feature count because setting crs on a geodataframe without geometry raises an error
-        if len(additional_response["features"]) > 0:
-            additional_geo_df = g.GeoDataFrame.from_features(
-                additional_response["features"], crs=CRS_degrees
-            ).to_crs(self.internal_crs)
+        valid_additional = [f for f in additional_response["features"] if f.get("geometry") is not None]
+        if valid_additional:
+            additional_geo_df = g.GeoDataFrame.from_features(valid_additional, crs=CRS_degrees).to_crs(self.internal_crs)
         else:
             additional_geo_df = g.GeoDataFrame(
                 columns=geo_df.columns, geometry=OSM.geometry, crs=geo_df.crs
@@ -139,6 +142,7 @@ class OsmLoader:
         # We are still missing some pieces, namely objects that include the window and contain landuse information
         additional_request2 = OSM.get_additional_request_landuses(bbox_wgs84)
 
+        time.sleep(2)
         additional_response2 = api.get(additional_request2)
 
         # For some reason there seem to be duplicated features in the response
@@ -148,10 +152,9 @@ class OsmLoader:
                 filtered_features_query.append(feature)
         additional_response2["features"] = filtered_features_query
 
-        if len(additional_response2["features"]) > 0:
-            additional_geo_df2 = g.GeoDataFrame.from_features(
-                additional_response2["features"], crs=CRS_degrees
-            ).to_crs(self.internal_crs)
+        valid_additional2 = [f for f in additional_response2["features"] if f.get("geometry") is not None]
+        if valid_additional2:
+            additional_geo_df2 = g.GeoDataFrame.from_features(valid_additional2, crs=CRS_degrees).to_crs(self.internal_crs)
         else:
             additional_geo_df2 = g.GeoDataFrame(
                 columns=geo_df.columns, geometry=OSM.geometry, crs=geo_df.crs

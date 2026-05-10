@@ -42,8 +42,15 @@ class OSMPreprocessor:
         # https://stackoverflow.com/a/20627316
         p.options.mode.chained_assignment = None
 
+        # Ensure columns always exist even when the dataframe was built from empty fallbacks
+        if OSM.tags not in geo_dataframe.columns:
+            geo_dataframe[OSM.tags] = [{}] * len(geo_dataframe)
+        if OSM.id not in geo_dataframe.columns:
+            geo_dataframe[OSM.id] = range(len(geo_dataframe))
         # Fill no values with empty JSON dicts to avoid errors when parsing
-        geo_dataframe[OSM.tags] = geo_dataframe[OSM.tags].fillna({})
+        geo_dataframe[OSM.tags] = geo_dataframe[OSM.tags].apply(
+            lambda x: {} if p.isnull(x) else x
+        )
         # Flatten the nested JSON dicts into a proper DataFrame
         normalized_tags = p.json_normalize(geo_dataframe[OSM.tags])
         # Join the DataFrames to keep the geometry
@@ -224,21 +231,22 @@ class OSMPreprocessor:
         highways = g.GeoDataFrame(
             highways_tagged, geometry=highways_data.geometry, crs=geowindow.crs
         )
-        highways[RenderingRoadDataFrame.has_sidewalks] = highways[
-            RenderingRoadDataFrame.has_sidewalks
-        ].astype(bool)
-        highways[RenderingRoadDataFrame.has_guardrails] = highways[
-            RenderingRoadDataFrame.has_guardrails
-        ].astype(bool)
-        highways[RenderingRoadDataFrame.is_bridge] = highways[
-            RenderingRoadDataFrame.is_bridge
-        ].astype(bool)
-        highways[RenderingRoadDataFrame.is_tunnel] = highways[
-            RenderingRoadDataFrame.is_tunnel
-        ].astype(bool)
-        highways[RenderingRoadDataFrame.number_lanes] = highways[
-            RenderingRoadDataFrame.number_lanes
-        ].astype(np.uint8)
+        # When highways_data is empty, apply produces no columns — ensure they exist with correct types
+        for col, dtype, default in [
+            (RenderingRoadDataFrame.has_sidewalks, bool, False),
+            (RenderingRoadDataFrame.has_guardrails, bool, False),
+            (RenderingRoadDataFrame.is_bridge, bool, False),
+            (RenderingRoadDataFrame.is_tunnel, bool, False),
+        ]:
+            if col in highways.columns:
+                highways[col] = highways[col].astype(bool)
+            else:
+                highways[col] = p.Series(default, index=highways.index, dtype=bool)
+        col = RenderingRoadDataFrame.number_lanes
+        if col in highways.columns:
+            highways[col] = highways[col].astype(np.uint8)
+        else:
+            highways[col] = p.Series(1, index=highways.index, dtype=np.uint8)
 
         # Water.
         # Algorithm is the same as in IGNPreprocessor.
