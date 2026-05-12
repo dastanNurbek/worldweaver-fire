@@ -34,7 +34,8 @@
     "fire_cell_size": 5,
     "fire_threshold": 100,
     "tagging_index": 8,
-    "seed": 0
+    "seed": 0,
+    "save_pre_fire_render": false
   },
   "rendering": {
     "export_images": false,

@@ -298,6 +298,17 @@ class RenderManager:
         self.fire_renderer.render(fire_data, self.window.center, rendering_collection_name)
         self.terrain_renderer.set_burnt_zone(self.fire_renderer.get_mesh_obj())
 
+    def update_forests_for_fire(self):
+        self.forests_renderer._ForestRenderer__config_geometry_node(
+            self.road_renderer.get_mesh_obj(),
+            self.building_footprint_renderer.get_mesh_obj(),
+            self.terrain_renderer.get_mesh_obj(),
+            get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
+            self.fire_renderer.get_mesh_obj(),
+            self.wheatfields_renderer.get_mesh_obj(),
+            self.cornfields_renderer.get_mesh_obj(),
+        )
+
     def draw_decor(self, restrict_to_camera, use_camera_presp=False):
 
         zone_window = self.window

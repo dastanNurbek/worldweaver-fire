@@ -116,6 +116,7 @@ class FireConfig:
     fire_threshold: float
     tagging_index: int
     seed: int | None = None  # None = random each run
+    save_pre_fire_render: bool = False
 
 
 @dataclass
