@@ -22,8 +22,10 @@ import csv
 import json
 import logging
 import os
+import random
 import sys
 import tempfile
+import time
 import traceback
 
 import bpy  # noqa: F401 — must be imported first to enable mathutils etc.
@@ -37,6 +39,13 @@ from worldweaver import main as mpm
 
 MIN_AREA_KM2 = 6.55
 MAX_AREA_KM2 = 7.00
+
+FIRE_THRESHOLD_MIN = 100
+FIRE_THRESHOLD_MAX = 1000
+BATCH_SEED = 42
+
+MAX_RETRIES = 2
+RETRY_BACKOFF_BASE = 10  # seconds; wait = RETRY_BACKOFF_BASE * 2^attempt
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -143,6 +152,7 @@ def main():
     log(logger, "info", "Loaded %d valid locations, %d skipped", len(locations), len(load_errors))
 
     tmp_dir = tempfile.mkdtemp(prefix="worldweaver_batch_")
+    rng = random.Random(BATCH_SEED)
     ok = skipped = failed = 0
 
     for name, x_min, y_min, x_max, y_max in locations:
@@ -151,29 +161,43 @@ def main():
             skipped += 1
             continue
 
+        fire_threshold = rng.randint(FIRE_THRESHOLD_MIN, FIRE_THRESHOLD_MAX)
+        fire_seed = rng.randint(0, 2**31 - 1)
+
         cfg = json.loads(json.dumps(base_cfg))
         cfg["simulation_area"]["geo_window"] = {
             "x_min": x_min, "y_min": y_min,
             "x_max": x_max, "y_max": y_max,
             "crs_from": 4326,
         }
+        cfg["fire"]["fire_threshold"] = fire_threshold
+        cfg["fire"]["seed"] = fire_seed
 
         tmp_cfg_path = os.path.join(tmp_dir, f"config_{name}.json")
         with open(tmp_cfg_path, "w") as f:
             json.dump(cfg, f, indent=2)
 
         area = projected_area_km2(x_min, y_min, x_max, y_max)
-        log(logger, "info", "START %s  area=%.2f km2  window=[%.4f,%.4f,%.4f,%.4f]",
-            name, area, x_min, y_min, x_max, y_max)
+        log(logger, "info", "START %s  area=%.2f km2  threshold=%d  fire_seed=%d  window=[%.4f,%.4f,%.4f,%.4f]",
+            name, area, fire_threshold, fire_seed, x_min, y_min, x_max, y_max)
 
-        try:
-            mpm.main(tmp_cfg_path)
-            mark_completed(base_folder, name)
-            log(logger, "info", "DONE  %s", name)
-            ok += 1
-        except Exception:
-            log(logger, "error", "FAIL  %s\n%s", name, traceback.format_exc())
-            failed += 1
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                mpm.main(tmp_cfg_path)
+                mark_completed(base_folder, name)
+                log(logger, "info", "DONE  %s", name)
+                ok += 1
+                break
+            except Exception:
+                if attempt < MAX_RETRIES:
+                    wait = RETRY_BACKOFF_BASE * (2 ** attempt)
+                    log(logger, "warning", "RETRY %s  attempt %d/%d  (waiting %ds)\n%s",
+                        name, attempt + 1, MAX_RETRIES, wait, traceback.format_exc())
+                    time.sleep(wait)
+                else:
+                    log(logger, "error", "FAIL  %s  (all %d attempts exhausted)\n%s",
+                        name, MAX_RETRIES + 1, traceback.format_exc())
+                    failed += 1
 
     log(logger, "info", "Batch complete - ok=%d  skipped=%d  failed=%d", ok, skipped, failed)
 
