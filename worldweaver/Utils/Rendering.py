@@ -12,7 +12,7 @@ import pytz
 
 from worldweaver.Drivers.IGN.Utils import IGN
 
-from worldweaver.Utils.Config import Config, CameraType, RenderDeviceType, DenoiserType
+from worldweaver.Utils.Config import Config, CameraType, RenderDeviceType
 
 from worldweaver.Utils.Logging import logger, stdout_redirected
 import worldweaver.Utils.DataFiles as df
@@ -97,7 +97,7 @@ def clean_scene():
 
 
 def configure_scene(
-    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool, denoiser: str = DenoiserType.NONE
+    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool
 ):
     """
     Configures the Blender scene prior to drawing objects
@@ -227,19 +227,6 @@ def configure_scene(
         logger.info(
             f"Device name: {d['name']}, type: {d['type']}, use status: {d['use']}"
         )
-
-    # Denoiser — set after CUDA is initialized so OPTIX is in the available enum
-    if denoiser == DenoiserType.NONE:
-        sc.cycles.use_denoising = False
-    else:
-        sc.cycles.use_denoising = True
-        try:
-            sc.cycles.denoiser = denoiser
-        except TypeError:
-            logger.warning(
-                f"Denoiser '{denoiser}' is not available in this Blender build, falling back to OPENIMAGEDENOISE"
-            )
-            sc.cycles.denoiser = DenoiserType.OPENIMAGEDENOISE
 
     # Preparing collections
     rendering_collection = D.collections.new(rendering_collection_name)

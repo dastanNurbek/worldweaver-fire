@@ -54,7 +54,6 @@ class RenderManager:
             self.window.center_deg,
             self.config.rendering.output.device_type,
             self.is_subdense_run,
-            self.config.rendering.output.denoiser,
         )
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
             terrain_data,

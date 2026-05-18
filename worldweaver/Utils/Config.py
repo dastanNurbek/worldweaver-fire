@@ -19,12 +19,6 @@ class RenderDeviceType(StrEnum):
     GPU = "GPU"
 
 
-class DenoiserType(StrEnum):
-    NONE = "NONE"
-    OPTIX = "OPTIX"
-    OPENIMAGEDENOISE = "OPENIMAGEDENOISE"
-
-
 @dataclass
 class RenderObjectConfig:
     geometry_node_file: str
@@ -105,7 +99,6 @@ class OutputConfig:
     camera_type: str
     tile_size: int
     ground_sampling_distance: float
-    denoiser: str = DenoiserType.NONE
 
 
 @dataclass

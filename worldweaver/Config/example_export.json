@@ -21,7 +21,6 @@
     "export_images": false,
     "export_scene": true,
     "device_type": "GPU",
-    "denoiser": "NONE",
     "camera_type": "ORTHOGRAPHIC",
     "ground_sampling_distance": 0.2,
     "tile_size": 512,
