@@ -12,7 +12,7 @@ import pytz
 
 from worldweaver.Drivers.IGN.Utils import IGN
 
-from worldweaver.Utils.Config import Config, CameraType, RenderDeviceType
+from worldweaver.Utils.Config import Config, CameraType, RenderDeviceType, DenoiserType
 
 from worldweaver.Utils.Logging import logger, stdout_redirected
 import worldweaver.Utils.DataFiles as df
@@ -97,7 +97,7 @@ def clean_scene():
 
 
 def configure_scene(
-    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool
+    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool, denoiser: str = DenoiserType.NONE
 ):
     """
     Configures the Blender scene prior to drawing objects
@@ -207,6 +207,12 @@ def configure_scene(
     sc.cycles.device = device_type
     sc.cycles.samples = 50
     sc.view_settings.view_transform = "Standard"
+
+    if denoiser == DenoiserType.NONE:
+        sc.cycles.use_denoising = False
+    else:
+        sc.cycles.use_denoising = True
+        sc.cycles.denoiser = denoiser
 
     if device_type == RenderDeviceType.GPU:
         # Set the device_type

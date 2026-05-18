@@ -52,6 +52,7 @@ class ConfigTag:
     camera_type = "camera_type"
     ground_sampling_distance = "ground_sampling_distance"
     tile_size = "tile_size"
+    denoiser = "denoiser"
     objects = "objects"
     building_render = "building_render"
     geometry_node_file = "geometry_node_file"
@@ -486,6 +487,14 @@ class ConfigLoader:
             filepath=filepath,
         )
 
+        denoiser = ConfigLoader.get_field(
+            parent_dict=rendering,
+            tag=ConfigTag.denoiser,
+            parent_tag=ConfigTag.rendering,
+            filepath=filepath,
+            is_optional=True,
+        ) or Config.DenoiserType.NONE
+
         output_config = Config.OutputConfig(
             export_img=export_images,
             export_scene=export_scene,
@@ -493,6 +502,7 @@ class ConfigLoader:
             camera_type=camera_type,
             tile_size=tile_size,
             ground_sampling_distance=ground_sampling_distance,
+            denoiser=denoiser,
         )
 
         objects = ConfigLoader.get_mandatory_field(
