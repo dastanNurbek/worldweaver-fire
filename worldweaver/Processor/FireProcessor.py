@@ -22,6 +22,7 @@ class FireProcessor:
         wheatfields: g.GeoDataFrame,
         cornfields: g.GeoDataFrame,
         grass: g.GeoDataFrame,
+        paths: g.GeoDataFrame,
         ignition_points: list[tuple[float, float]],
         fire_cell_size: float,
         fire_threshold: float,
@@ -47,16 +48,19 @@ class FireProcessor:
 
         flammable_map = np.zeros((n_rows, n_cols), dtype=bool)
 
+        col_centers = lower_left[0] + (np.arange(n_cols) + 0.5) * fire_cell_size
+        row_centers = upper_right[1] - (np.arange(n_rows) + 0.5) * fire_cell_size
+        xx, yy = np.meshgrid(col_centers, row_centers)
+        points_array = shapely.points(xx.ravel(), yy.ravel())
+
         if flammable_geoms:
             flammable_union = unary_union(flammable_geoms)
-
-            # Cell centers: rows go top-to-bottom (y decreasing), cols left-to-right (x increasing)
-            col_centers = lower_left[0] + (np.arange(n_cols) + 0.5) * fire_cell_size
-            row_centers = upper_right[1] - (np.arange(n_rows) + 0.5) * fire_cell_size
-            xx, yy = np.meshgrid(col_centers, row_centers)
-
-            points_array = shapely.points(xx.ravel(), yy.ravel())
             flammable_map = shapely.within(points_array, flammable_union).reshape(n_rows, n_cols)
+
+        if not paths.empty:
+            path_union = unary_union(paths.geometry.buffer(fire_cell_size).tolist())
+            path_mask = shapely.within(points_array, path_union).reshape(n_rows, n_cols)
+            flammable_map &= ~path_mask
 
         # --- Map ignition points to grid indices ---
         ignition_indices = []

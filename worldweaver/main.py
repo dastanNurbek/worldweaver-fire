@@ -237,6 +237,7 @@ def main(filepath):
             rendering_data.zones.wheatfields,
             rendering_data.zones.cornfields,
             rendering_data.zones.grass,
+            rendering_data.zones.paths,
             ignition_points_crs,
             config.fire.fire_cell_size,
             config.fire.fire_threshold,
