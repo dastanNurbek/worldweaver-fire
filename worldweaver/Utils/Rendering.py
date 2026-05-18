@@ -208,12 +208,6 @@ def configure_scene(
     sc.cycles.samples = 50
     sc.view_settings.view_transform = "Standard"
 
-    if denoiser == DenoiserType.NONE:
-        sc.cycles.use_denoising = False
-    else:
-        sc.cycles.use_denoising = True
-        sc.cycles.denoiser = denoiser
-
     if device_type == RenderDeviceType.GPU:
         # Set the device_type
         C.preferences.addons["cycles"].preferences.compute_device_type = "CUDA"
@@ -233,6 +227,19 @@ def configure_scene(
         logger.info(
             f"Device name: {d['name']}, type: {d['type']}, use status: {d['use']}"
         )
+
+    # Denoiser — set after CUDA is initialized so OPTIX is in the available enum
+    if denoiser == DenoiserType.NONE:
+        sc.cycles.use_denoising = False
+    else:
+        sc.cycles.use_denoising = True
+        try:
+            sc.cycles.denoiser = denoiser
+        except TypeError:
+            logger.warning(
+                f"Denoiser '{denoiser}' is not available in this Blender build, falling back to OPENIMAGEDENOISE"
+            )
+            sc.cycles.denoiser = DenoiserType.OPENIMAGEDENOISE
 
     # Preparing collections
     rendering_collection = D.collections.new(rendering_collection_name)
