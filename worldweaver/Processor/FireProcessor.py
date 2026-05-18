@@ -60,7 +60,8 @@ class FireProcessor:
         if not paths.empty:
             path_union = unary_union(paths.geometry.buffer(fire_cell_size).tolist())
             path_mask = shapely.within(points_array, path_union).reshape(n_rows, n_cols)
-            flammable_map &= ~path_mask
+            blocked_path = path_mask & (rng.random(size=(n_rows, n_cols)) >= 0.5)
+            flammable_map &= ~blocked_path
 
         # --- Map ignition points to grid indices ---
         ignition_indices = []
@@ -70,7 +71,17 @@ class FireProcessor:
             if len(flammable_cells) == 0:
                 logger.warning("No flammable cells in scene — cannot start fire")
                 return (np.zeros((n_rows, n_cols), dtype=bool), lower_left, upper_right, fire_cell_size)
-            row, col = flammable_cells[rng.integers(len(flammable_cells))]
+            
+            candidate_cells = flammable_cells
+            if not forests.empty:
+                forest_union = unary_union(forests.geometry.tolist())
+                fc_x = lower_left[0] + (flammable_cells[:, 1] + 0.5) * fire_cell_size
+                fc_y = upper_right[1] - (flammable_cells[:, 0] + 0.5) * fire_cell_size
+                in_forest = shapely.within(shapely.points(fc_x, fc_y), forest_union)
+                if in_forest.any():
+                    candidate_cells = flammable_cells[in_forest]
+
+            row, col = candidate_cells[rng.integers(len(candidate_cells))]
             ignition_indices = [int(row * n_cols + col)]
             logger.info(f"Random ignition at grid cell ({row}, {col})")
         else:
