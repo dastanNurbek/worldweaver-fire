@@ -4,6 +4,7 @@ import bpy
 import bmesh
 from bpy import data as D, context as C, ops as O
 
+import numpy as np
 from numpy import arange
 
 from tqdm import tqdm
@@ -341,36 +342,27 @@ class TerrainRenderer:
             base_map_size_y = mesh_info.base_map_y_max - mesh_info.base_map_y_min
             uvlayer = mesh_obj.data.uv_layers.new(name="UVMap_Terrain")
 
-            for face in mesh_obj.data.polygons:
-                for v_ind in range(len(face.vertices)):
-                    vertex_ind = face.vertices[v_ind]
-                    vertex_real_coords = meshes_points_real_coords[index][vertex_ind]
+            n_loops = len(mesh_obj.data.loops)
+            loop_vert_indices = np.empty(n_loops, dtype=np.int32)
+            mesh_obj.data.loops.foreach_get("vertex_index", loop_vert_indices)
 
-                    vertex_coords_in_basemap = (
-                        vertex_real_coords[0] - mesh_info.base_map_x_min,
-                        vertex_real_coords[1] - mesh_info.base_map_y_min,
-                    )
+            real_coords = np.array(meshes_points_real_coords[index])
+            u = (real_coords[loop_vert_indices, 0] - mesh_info.base_map_x_min) / base_map_size_x
+            v = (real_coords[loop_vert_indices, 1] - mesh_info.base_map_y_min) / base_map_size_y
 
-                    vertex_uv = (
-                        vertex_coords_in_basemap[0] / base_map_size_x,
-                        vertex_coords_in_basemap[1] / base_map_size_y,
-                    )
+            if np.any((u > 1) | (u < 0) | (v > 1) | (v < 0)):
+                bad = int(np.argmax((u > 1) | (u < 0) | (v > 1) | (v < 0)))
+                raise ValueError(
+                    f"Invalid uv coords. Vertex coords: "
+                    f"{meshes_points_real_coords[index][loop_vert_indices[bad]]}"
+                    f". Vertex UV: "
+                    f"({u[bad]}, {v[bad]})"
+                )
 
-                    if (
-                        vertex_uv[0] > 1
-                        or vertex_uv[0] < 0
-                        or vertex_uv[1] > 1
-                        or vertex_uv[1] < 0
-                    ):
-                        raise ValueError(
-                            f"Invalid uv coords. Vertex coords: "
-                            f"{vertex_real_coords}"
-                            f". Vertex UV: "
-                            f"{vertex_uv}"
-                        )
-
-                    vertex_loop_ind = face.loop_indices[v_ind]
-                    uvlayer.data[vertex_loop_ind].uv = vertex_uv
+            uv_flat = np.empty(n_loops * 2, dtype=np.float32)
+            uv_flat[0::2] = u
+            uv_flat[1::2] = v
+            uvlayer.data.foreach_set("uv", uv_flat)
 
         if len(D.collections[parent_collection_name].objects) > 1:
             # Merging all slabs of terrain into one object to enable shrinkwrap of road later

@@ -1,3 +1,4 @@
+import heapq
 import math
 from dataclasses import dataclass
 
@@ -545,37 +546,28 @@ class BoxBuildingRenderer(BaseRenderer):
         :param tolerance: Geometric tolerance for point equality
         :return: The length of the path to the destination, and a list of the points visited.
         """
-        trace_msg = []
-        trace_msg.append(
-            f"Trying to find path between "
-            f"{origin}"
-            f" and "
-            f"{destinations}"
-            f" inside "
-            f"{graph}"
-        )
-        exploration_queue = []
-        nodes_status = {}
-        exploration_queue.append(origin)
-        nodes_status[origin] = (True, 0, None)
-        while len(exploration_queue) > 0:
-            v = exploration_queue[0]
-            # Find the node to explore with the lowest cost
-            for pt in exploration_queue:
-                if nodes_status[pt][1] < nodes_status[v][1]:
-                    v = pt
+        trace_msg = [
+            f"Trying to find path between {origin} and {destinations} inside {graph}"
+        ]
+        # nodes_status maps node → (cost, parent); heap entries are (cost, counter, node)
+        # counter breaks ties without comparing Point2D objects; stale entries are skipped lazily
+        nodes_status = {origin: (0, None)}
+        counter = 0
+        heap = [(0, counter, origin)]
+        while heap:
+            cost, _, v = heapq.heappop(heap)
+            if cost > nodes_status[v][0]:
+                continue
             trace_msg.append(f"Exploring node {v}")
-            exploration_queue.remove(v)
             if BoxBuildingRenderer.__point_2d_in_collection(v, destinations, tolerance):
                 trace_msg.append(f"Found point in destination: {v}")
                 path = []
                 current_point = v
                 while current_point != origin:
                     path.append(current_point)
-                    current_point = nodes_status[current_point][2]
+                    current_point = nodes_status[current_point][1]
                 path.append(current_point)
-                # Return the length of the total path to destination, and the path
-                return nodes_status[v][1], path
+                return cost, path
             possibles_edges = []
             for line in graph:
                 if BoxBuildingRenderer.__point_2d_almost_equal(
@@ -586,30 +578,19 @@ class BoxBuildingRenderer(BaseRenderer):
             for line in possibles_edges:
                 new_point = (
                     line.p2
-                    if BoxBuildingRenderer.__point_2d_almost_equal(
-                        line.p1, v, tolerance
-                    )
+                    if BoxBuildingRenderer.__point_2d_almost_equal(line.p1, v, tolerance)
                     else line.p1
                 )
                 trace_msg.append(f"Evaluating new point {new_point}")
-                if new_point in nodes_status:
-                    # If new_point already has been seen
-                    if nodes_status[v][1] + line.length < nodes_status[new_point][1]:
-                        # If we found a shorter path
+                new_cost = cost + line.length
+                if new_point not in nodes_status or new_cost < nodes_status[new_point][0]:
+                    if new_point not in nodes_status:
+                        trace_msg.append("Adding new point to queue")
+                    else:
                         trace_msg.append("Shortening new point path")
-                        nodes_status[new_point] = (
-                            True,
-                            nodes_status[v][1] + line.length,
-                            v,
-                        )
-                else:
-                    trace_msg.append("Adding new point to queue")
-                    nodes_status[new_point] = (
-                        True,
-                        nodes_status[v][1] + line.length,
-                        v,
-                    )
-                    exploration_queue.append(new_point)
+                    nodes_status[new_point] = (new_cost, v)
+                    counter += 1
+                    heapq.heappush(heap, (new_cost, counter, new_point))
         logger.error(
             "BoxBuildingGenerator.__compute_shortest_path_tree: Couldn't find a path. Execution details:"
         )

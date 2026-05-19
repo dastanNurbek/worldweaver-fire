@@ -13,12 +13,9 @@ class ZoneRenderer(HiddenPolygonRenderer):
     ) -> list[Point]:
 
         # Centering the coordinates so that Blender's internal precision is less impactful,
+        camera_z = get_camera(CameraType.ORTHOGRAPHIC).location[2]
         centered_points_coords = [
-            (
-                x[0] - geo_center[0],
-                x[1] - geo_center[1],
-                get_camera(CameraType.ORTHOGRAPHIC).location[2],
-            )
+            (x[0] - geo_center[0], x[1] - geo_center[1], camera_z)
             for x in points_coords
         ]
 

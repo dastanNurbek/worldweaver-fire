@@ -441,6 +441,8 @@ def optimize_triangles(
     """
     Apply the optimized points to the triangles.
     """
+    coord_to_idx = {(pt.x, pt.y): label for label, pt in points.geometry.items()}
+
     final_triangles = []
     for _, triangle in triangles.iterrows():
         new_triangle = triangle.copy()
@@ -448,13 +450,9 @@ def optimize_triangles(
         triangle_indices = []
         missing_indices = []
         for coord_index, coord in enumerate(coords):
-            tol = 1e-9
-            mask = (np.abs(points.geometry.x - coord[0]) < tol) & (
-                np.abs(points.geometry.y - coord[1]) < tol
-            )
-            matches = points.geometry[mask]
-            if any(matches):
-                triangle_indices.append(matches.index[0])
+            label = coord_to_idx.get((coord[0], coord[1]))
+            if label is not None:
+                triangle_indices.append(label)
             else:
                 missing_indices.append(coord_index)
                 triangle_indices.append(-1)

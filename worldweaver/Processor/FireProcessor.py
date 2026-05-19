@@ -4,6 +4,9 @@ import numpy as np
 import shapely
 from shapely.ops import unary_union
 
+from rasterio.features import rasterize as rio_rasterize
+from rasterio.transform import from_bounds
+
 from scipy.sparse.csgraph import dijkstra
 from scipy.sparse import bsr_array
 
@@ -46,20 +49,33 @@ class FireProcessor:
             if not gdf.empty:
                 flammable_geoms.extend(gdf.geometry.tolist())
 
+        # Transform mapping grid pixels to geographic coordinates:
+        # row 0 is the northernmost strip, column 0 is the westernmost strip.
+        transform = from_bounds(
+            west=lower_left[0], south=lower_left[1],
+            east=upper_right[0], north=upper_right[1],
+            width=n_cols, height=n_rows,
+        )
+
         flammable_map = np.zeros((n_rows, n_cols), dtype=bool)
-
-        col_centers = lower_left[0] + (np.arange(n_cols) + 0.5) * fire_cell_size
-        row_centers = upper_right[1] - (np.arange(n_rows) + 0.5) * fire_cell_size
-        xx, yy = np.meshgrid(col_centers, row_centers)
-        points_array = shapely.points(xx.ravel(), yy.ravel())
-
         if flammable_geoms:
-            flammable_union = unary_union(flammable_geoms)
-            flammable_map = shapely.within(points_array, flammable_union).reshape(n_rows, n_cols)
+            flammable_map = rio_rasterize(
+                [(geom, 1) for geom in flammable_geoms],
+                out_shape=(n_rows, n_cols),
+                transform=transform,
+                fill=0,
+                dtype=np.uint8,
+            ).astype(bool)
 
         if not paths.empty:
-            path_union = unary_union(paths.geometry.buffer(fire_cell_size).tolist())
-            path_mask = shapely.within(points_array, path_union).reshape(n_rows, n_cols)
+            path_polys = paths.geometry.buffer(fire_cell_size).tolist()
+            path_mask = rio_rasterize(
+                [(geom, 1) for geom in path_polys],
+                out_shape=(n_rows, n_cols),
+                transform=transform,
+                fill=0,
+                dtype=np.uint8,
+            ).astype(bool)
             blocked_path = path_mask & (rng.random(size=(n_rows, n_cols)) >= 0.5)
             flammable_map &= ~blocked_path
 
@@ -106,26 +122,21 @@ class FireProcessor:
 
         noise_map = rng.uniform(0.8, 1.2, size=(n_rows, n_cols))
 
-        rows_list, cols_list, data_list = [], [], []
+        all_rows, all_cols, all_data = [], [], []
 
-        for row in range(n_rows):
-            for col in range(n_cols):
-                src_idx = row * n_cols + col
-                for dr, dc, is_diagonal in coord_modifiers:
-                    nr, nc = row + dr, col + dc
-                    if 0 <= nr < n_rows and 0 <= nc < n_cols:
-                        dst_idx = nr * n_cols + nc
-                        cost = FireProcessor._spread_cost(
-                            flammable_map[row][col],
-                            flammable_map[nr][nc],
-                            is_diagonal,
-                        ) * noise_map[nr][nc]
-                        rows_list.append(src_idx)
-                        cols_list.append(dst_idx)
-                        data_list.append(cost)
+        for dr, dc, is_diagonal in coord_modifiers:
+            r0, r1 = max(0, -dr), n_rows - max(0, dr)
+            c0, c1 = max(0, -dc), n_cols - max(0, dc)
+            src_r, src_c = np.mgrid[r0:r1, c0:c1]
+            dst_flam = flammable_map[r0 + dr : r1 + dr, c0 + dc : c1 + dc]
+            noise_slice = noise_map[r0 + dr : r1 + dr, c0 + dc : c1 + dc]
+            base_cost = np.where(dst_flam, sqrt(2) if is_diagonal else 1.0, 1e9)
+            all_rows.append((src_r * n_cols + src_c).ravel())
+            all_cols.append(((src_r + dr) * n_cols + (src_c + dc)).ravel())
+            all_data.append((base_cost * noise_slice).ravel())
 
         fire_graph = bsr_array(
-            (np.array(data_list), (np.array(rows_list), np.array(cols_list))),
+            (np.concatenate(all_data), (np.concatenate(all_rows), np.concatenate(all_cols))),
             shape=(n_rows * n_cols, n_rows * n_cols),
         )
 

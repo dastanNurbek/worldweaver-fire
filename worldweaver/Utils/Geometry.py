@@ -24,13 +24,7 @@ def interpolate_z(terrain_data, x, y):
     current_terrain = None
 
     for terrain in terrain_data:
-        is_point_in_terrain = True
-        is_point_in_terrain &= x >= terrain.x_min
-        is_point_in_terrain &= x < terrain.x_max
-        is_point_in_terrain &= y >= terrain.y_min
-        is_point_in_terrain &= y < terrain.y_max
-
-        if is_point_in_terrain:
+        if x >= terrain.x_min and x < terrain.x_max and y >= terrain.y_min and y < terrain.y_max:
             current_terrain = terrain
             break
 
@@ -49,52 +43,33 @@ def interpolate_z(terrain_data, x, y):
     in_cell_offset_x = point_offset_x % current_terrain.resolution
     in_cell_offset_y = point_offset_y % current_terrain.resolution
 
+    arr = current_terrain.data.values
+
     if ll_index_x == (current_terrain.nbcol - 1):
         # If x index is at max, we cannt use the point to its right for interpolation
         if ll_index_y == (current_terrain.nbrow - 1):
             # If y index is at max, we cannt use the point above for interpolation
-            z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-
-            to_return = z_ll
-
-            if to_return <= current_terrain.no_data:
-                return 0
-            else:
-                return to_return
+            to_return = arr[ll_index_y, ll_index_x]
         else:
-            z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-            z_ul = current_terrain.data.values[ll_index_y + 1][ll_index_x]
-
-            to_return = in_cell_offset_y * z_ul + (1 - in_cell_offset_y) * z_ll
-
-            if to_return <= current_terrain.no_data:
-                return 0
-            else:
-                return to_return
-
+            to_return = (
+                in_cell_offset_y * arr[ll_index_y + 1, ll_index_x]
+                + (1 - in_cell_offset_y) * arr[ll_index_y, ll_index_x]
+            )
     elif ll_index_y == (current_terrain.nbrow - 1):
         # If y index is at max, we cannt use the point above for interpolation
-        z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-        z_lr = current_terrain.data.values[ll_index_y][ll_index_x + 1]
-
-        to_return = in_cell_offset_x * z_lr + (1 - in_cell_offset_x) * z_ll
-
-        if to_return <= current_terrain.no_data:
-            return 0
-        else:
-            return to_return
+        to_return = (
+            in_cell_offset_x * arr[ll_index_y, ll_index_x + 1]
+            + (1 - in_cell_offset_x) * arr[ll_index_y, ll_index_x]
+        )
     else:
-        z_ll = current_terrain.data.values[ll_index_y][ll_index_x]
-        z_ul = current_terrain.data.values[ll_index_y + 1][ll_index_x]
-        z_ur = current_terrain.data.values[ll_index_y + 1][ll_index_x + 1]
-        z_lr = current_terrain.data.values[ll_index_y][ll_index_x + 1]
+        z_ll = arr[ll_index_y, ll_index_x]
+        z_ul = arr[ll_index_y + 1, ll_index_x]
+        z_ur = arr[ll_index_y + 1, ll_index_x + 1]
+        z_lr = arr[ll_index_y, ll_index_x + 1]
 
         z_l = in_cell_offset_x * z_lr + (1 - in_cell_offset_x) * z_ll
         z_u = in_cell_offset_x * z_ur + (1 - in_cell_offset_x) * z_ul
 
         to_return = in_cell_offset_y * z_u + (1 - in_cell_offset_y) * z_l
 
-        if to_return <= current_terrain.no_data:
-            return 0
-        else:
-            return to_return
+    return 0 if to_return <= current_terrain.no_data else to_return

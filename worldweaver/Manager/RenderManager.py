@@ -309,6 +309,12 @@ class RenderManager:
             self.cornfields_renderer.get_mesh_obj(),
         )
 
+    @staticmethod
+    def _clip_gdf(gdf, bounds):
+        if gdf is None or gdf.empty:
+            return gdf
+        return gdf.clip(bounds)
+
     def draw_decor(self, restrict_to_camera, use_camera_presp=False):
 
         zone_window = self.window
@@ -421,46 +427,37 @@ class RenderManager:
 
         if not restrict_to_camera:
             logger.info("Rendering buildings")
-        buildings_zone = safe_overlay(
-            self.rendering_data.buildings.default_buildings,
-            zone_window.dataframe,
-            OverlayType.INTERSECTION,
+        tile_bounds = zone_window.bounds
+        buildings_zone = self._clip_gdf(
+            self.rendering_data.buildings.default_buildings, tile_bounds
         )
         self.building_renderer.render(
             buildings_zone, self.window.center, buildings_collection_name
         )
 
-        houses_zone = safe_overlay(
-            self.rendering_data.buildings.houses,
-            zone_window.dataframe,
-            OverlayType.INTERSECTION,
+        houses_zone = self._clip_gdf(
+            self.rendering_data.buildings.houses, tile_bounds
         )
         self.houses_renderer.render(
             houses_zone, self.window.center, buildings_collection_name
         )
 
-        churches_zone = safe_overlay(
-            self.rendering_data.buildings.churches,
-            zone_window.dataframe,
-            OverlayType.INTERSECTION,
+        churches_zone = self._clip_gdf(
+            self.rendering_data.buildings.churches, tile_bounds
         )
         self.churches_renderer.render(
             churches_zone, self.window.center, buildings_collection_name
         )
 
-        factories_zone = safe_overlay(
-            self.rendering_data.buildings.factories,
-            zone_window.dataframe,
-            OverlayType.INTERSECTION,
+        factories_zone = self._clip_gdf(
+            self.rendering_data.buildings.factories, tile_bounds
         )
         self.factories_renderer.render(
             factories_zone, self.window.center, buildings_collection_name
         )
 
-        malls_zone = safe_overlay(
-            self.rendering_data.buildings.malls,
-            zone_window.dataframe,
-            OverlayType.INTERSECTION,
+        malls_zone = self._clip_gdf(
+            self.rendering_data.buildings.malls, tile_bounds
         )
         self.malls_renderer.render(
             malls_zone, self.window.center, buildings_collection_name
@@ -468,8 +465,8 @@ class RenderManager:
 
         if not restrict_to_camera:
             logger.info("Rendering forests")
-        forests_zone = safe_overlay(
-            self.rendering_data.forests, zone_window.dataframe, OverlayType.INTERSECTION
+        forests_zone = self._clip_gdf(
+            self.rendering_data.forests, tile_bounds
         )
         self.forests_renderer.render(
             forests_zone, self.window.center, rendering_collection_name

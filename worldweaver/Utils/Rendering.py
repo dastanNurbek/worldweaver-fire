@@ -32,6 +32,21 @@ additionals_collection_name = "additionals"
 
 sun_name = "Sun"
 
+_terrain_max_z = None
+
+
+def _get_terrain_max_z():
+    global _terrain_max_z
+    if _terrain_max_z is None:
+        terrain_collection = D.collections["Terrain"].objects
+        max_z = -math.inf
+        for terrain in terrain_collection:
+            cur_z_max = max(v[2] for v in terrain.bound_box)
+            if cur_z_max > max_z:
+                max_z = cur_z_max
+        _terrain_max_z = max_z
+    return _terrain_max_z
+
 cameras = {
     CameraType.ORTHOGRAPHIC: "Camera_Ortho",
     CameraType.PERSPECTIVE: "Camera_Persp",
@@ -70,6 +85,8 @@ def clean_scene():
     Removing all of the objects, collection, materials, particles,
     textures, images, curves, meshes, actions, nodes, and worlds from the scene
     """
+    global _terrain_max_z
+    _terrain_max_z = None
     if bpy.context.active_object and bpy.context.active_object.mode == "EDIT":
         bpy.ops.object.editmode_toggle()
 
@@ -339,18 +356,7 @@ def setup_img_persp(resolution: float, pixel_size: float, center: tuple[float, f
     img_size = resolution * pixel_size
     camera_elevation = img_size / (2 * math.tan(camera.data.angle / 2))
 
-    max_z = -math.inf
-
-    # Calculating the maximum height of the scene, using terrain and buildings
-    # TODO: Instead of this, should use a constant height flight path and REAL camera parameters
-    terrain_collection = D.collections["Terrain"].objects
-    for terrain in terrain_collection:
-        terrain_box = terrain.bound_box
-        z_coords = [v[2] for v in terrain_box]
-        cur_z_max = max(z_coords)
-        if cur_z_max > max_z:
-            max_z = cur_z_max
-
+    max_z = _get_terrain_max_z()
     camera.location = (center[0], center[1], max_z + camera_elevation)
 
 
@@ -375,20 +381,8 @@ def setup_img_ortho(
     sc.camera = camera
     camera.data.ortho_scale = size
 
-    max_z = -math.inf
-
-    # Calculating the maximum height of the scene, using terrain and buildings
-    # TODO: check if there are edge cases where this does not hold
-    terrain_collection = D.collections["Terrain"].objects
-    for terrain in terrain_collection:
-        terrain_box = terrain.bound_box
-        z_coords = [v[2] for v in terrain_box]
-        cur_z_max = max(z_coords)
-        if cur_z_max > max_z:
-            max_z = cur_z_max
-
     # Highest building in the world is ~800m and camera has to be above that
-    camera_z = max_z + 1000
+    camera_z = _get_terrain_max_z() + 1000
 
     camera.location = (center[0], center[1], camera_z)
 
