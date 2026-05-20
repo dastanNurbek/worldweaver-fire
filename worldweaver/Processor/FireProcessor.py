@@ -8,6 +8,7 @@ from rasterio.features import rasterize as rio_rasterize
 from rasterio.transform import from_bounds
 
 from scipy.sparse.csgraph import dijkstra
+from scipy.ndimage import gaussian_filter
 from scipy.sparse import bsr_array
 
 import geopandas as g
@@ -120,7 +121,10 @@ class FireProcessor:
             (1,  -1, True),  (1,  0, False),  (1,  1, True),
         ]
 
-        noise_map = rng.uniform(0.8, 1.2, size=(n_rows, n_cols))
+        raw_noise = rng.uniform(0.0, 1.0, size=(n_rows, n_cols))
+        smooth_noise = gaussian_filter(raw_noise, sigma=10.0)
+        smooth_noise = (smooth_noise - smooth_noise.min()) / (smooth_noise.max() - smooth_noise.min())
+        noise_map = 0.15 + smooth_noise * 2.85
 
         all_rows, all_cols, all_data = [], [], []
 
