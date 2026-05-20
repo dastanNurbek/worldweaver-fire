@@ -112,6 +112,7 @@ class RenderManager:
         self.asphalt_renderer = ZoneRenderer.AsphaltRenderer(self.terrain_data)
         self.sand_renderer = ZoneRenderer.SandRenderer(self.terrain_data)
         self.path_renderer = LineZoneRenderer.PathRenderer(self.terrain_data)
+        self.forest_zone_renderer = ZoneRenderer.ForestZoneRenderer(self.terrain_data)
         self.fire_renderer = FireRenderer.FireRenderer(
             self.terrain_data, self.config.fire.tagging_index
         )
@@ -305,8 +306,6 @@ class RenderManager:
             self.terrain_renderer.get_mesh_obj(),
             get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
             self.fire_renderer.get_mesh_obj(),
-            self.wheatfields_renderer.get_mesh_obj(),
-            self.cornfields_renderer.get_mesh_obj(),
         )
 
     @staticmethod
@@ -471,15 +470,18 @@ class RenderManager:
         self.forests_renderer.render(
             forests_zone, self.window.center, rendering_collection_name
         )
+        self.forest_zone_renderer.render(
+            forests_zone, self.window.center, additionals_collection_name
+        )
         self.forests_renderer._ForestRenderer__config_geometry_node(
             self.road_renderer.get_mesh_obj(),
             self.building_footprint_renderer.get_mesh_obj(),
             self.terrain_renderer.get_mesh_obj(),
             get_camera(CameraType.ORTHOGRAPHIC).location[2] * 2,
             self.fire_renderer.get_mesh_obj() if self.fire_renderer else None,
-            self.wheatfields_renderer.get_mesh_obj(),
-            self.cornfields_renderer.get_mesh_obj(),
         )
+
+        self.terrain_renderer.set_forest_zone(self.forest_zone_renderer.get_mesh_obj())
 
         return zone_window
 

@@ -52,3 +52,7 @@ class AsphaltRenderer(ZoneRenderer):
 
 class SandRenderer(ZoneRenderer):
     _mesh_name = "SandZone"
+
+
+class ForestZoneRenderer(ZoneRenderer):
+    _mesh_name = "ForestZone"

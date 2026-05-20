@@ -463,6 +463,13 @@ class TerrainRenderer:
                 2
             ].default_value = cornields_object
 
+    def set_forest_zone(self, forest_object):
+        if not self.use_sat_img:
+            node_tree = D.node_groups[self.config.tagging_node_name]
+            node_tree.nodes["Compute Proximity Forest"].inputs[
+                2
+            ].default_value = forest_object
+
     def set_burnt_zone(self, burnt_object):
         if not self.use_sat_img:
             node_tree = D.node_groups[self.config.tagging_node_name]

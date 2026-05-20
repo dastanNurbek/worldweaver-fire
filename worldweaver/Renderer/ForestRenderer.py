@@ -12,8 +12,7 @@ class ForestRenderer(BaseRenderer):
     _mesh_name = "Forest"
 
     def __config_geometry_node(
-        self, road_object, building_object, terrain_object, ray_length, burnt_area_object,
-        wheatfields_object, cornfields_object
+        self, road_object, building_object, terrain_object, ray_length, burnt_area_object
     ):
         # Forests' geometry node requires references to other Blender objects present in the scene,
         # so this method needs to be called by the RenderManager whose responsibility is to be aware of the context of the whole scene
@@ -24,8 +23,6 @@ class ForestRenderer(BaseRenderer):
         node["Socket_3"] = ray_length
         if burnt_area_object is not None:
             node["Socket_9"] = burnt_area_object
-        node["Socket_11"] = wheatfields_object
-        node["Socket_12"] = cornfields_object
 
         ng = bpy.data.node_groups.get(self.geometry_node_name)
         if ng:
