@@ -1,6 +1,7 @@
 import os
 import io
 import math
+import time
 import requests
 
 import geopandas as g
@@ -9,6 +10,7 @@ import numpy as np
 
 from owslib.wms import WebMapService
 from owslib.wfs import WebFeatureService
+from owslib.util import ServiceException
 
 from PIL import Image
 
@@ -37,6 +39,40 @@ from worldweaver.Utils.RenderingDataFrames import (
     RenderingBuildingDataFrame,
 )
 import worldweaver.Utils.DataFiles as df
+
+
+def _with_retry(fn, max_attempts=4, base_delay=5):
+    """Retry fn on transient network errors with exponential backoff.
+
+    ServiceException is re-raised immediately — it indicates a configuration
+    error (e.g. unknown layer name) that retrying will not fix.
+    """
+    for attempt in range(max_attempts):
+        try:
+            return fn()
+        except ServiceException:
+            raise
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else None
+            if status is not None and status < 500:
+                raise
+            if attempt == max_attempts - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                f"HTTP {status} from server, retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_attempts})"
+            )
+            time.sleep(delay)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt == max_attempts - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                f"Network error ({type(e).__name__}), retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_attempts})"
+            )
+            time.sleep(delay)
 
 
 class StreamLoader(Loader):
@@ -123,13 +159,15 @@ class StreamLoader(Loader):
                     int((current_box_ur[1] - current_box_ll[1]) / terrain_resolution),
                 )
 
-                terrain_img = wms.getmap(
-                    layers=[WFS_FR.rge_key_name],
-                    styles=["normal"],
-                    srs="EPSG:" + str(CRS_fr),
-                    bbox=current_box,
-                    size=img_size,
-                    format="image/geotiff",
+                terrain_img = _with_retry(
+                    lambda: wms.getmap(
+                        layers=[WFS_FR.rge_key_name],
+                        styles=["normal"],
+                        srs="EPSG:" + str(CRS_fr),
+                        bbox=current_box,
+                        size=img_size,
+                        format="image/geotiff",
+                    )
                 )
 
                 terrain_image = Image.open(io.BytesIO(terrain_img.read()))
@@ -170,101 +208,101 @@ class StreamLoader(Loader):
 
         wfs = WebFeatureService(url=WFS_FR.wfs_url, version=WFS_FR.wfs_version)
 
-        building_data = WFSParser.load(
+        building_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.buildings_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=BuildingDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        forest_data = WFSParser.load(
+        forest_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.forests_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=DefaultDataFrame.get_columns(),
-        )
+        ))
 
-        road_data = WFSParser.load(
+        road_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.road_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=RoadDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        water_data = WFSParser.load(
+        water_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.water_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=WaterDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        water_line_data = WFSParser.load(
+        water_line_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.water_line_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=WaterLineDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        residential_data = WFSParser.load(
+        residential_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.residential_zone_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=DefaultDataFrame.get_columns(),
-        )
+        ))
 
-        interest_zone_data = WFSParser.load(
+        interest_zone_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.activity_zone_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=ZoneInterestDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        departements_data = WFSParser.load(
+        departements_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.departement_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=DefaultDataFrame.get_columns(),
-        )
+        ))
 
-        shore_data = WFSParser.load(
+        shore_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.shore_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=DefaultDataFrame.get_columns(),
-        )
+        ))
 
-        sport_data = WFSParser.load(
+        sport_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.sport_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=SportDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        landuse_data = WFSParser.load(
+        landuse_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.landuse_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=LandUseDataFrame.WFS.get_columns(),
-        )
+        ))
 
-        plot_data = WFSParser.load(
+        plot_data = _with_retry(lambda: WFSParser.load(
             wfs=wfs,
             key=WFS_FR.plot_key_name,
             bbox=bbox_wgs84,
             to_crs=geo_window.crs,
             required_columns=PlotDataFrame.WFS.get_columns(),
-        )
+        ))
 
         logger.info("Features done")
 
@@ -430,13 +468,15 @@ class StreamLoader(Loader):
             int((mesh_box[3] - mesh_box[1]) / bdortho_resolution),
         )
 
-        img = bdortho_wms.getmap(
-            layers=[WFS_FR.bdortho_key_name],
-            styles=["normal"],
-            srs="EPSG:" + str(CRS_fr),
-            bbox=mesh_box,
-            size=img_size,
-            format="image/geotiff",
+        img = _with_retry(
+            lambda: bdortho_wms.getmap(
+                layers=[WFS_FR.bdortho_key_name],
+                styles=["normal"],
+                srs="EPSG:" + str(CRS_fr),
+                bbox=mesh_box,
+                size=img_size,
+                format="image/geotiff",
+            )
         )
 
         texture_file_name = (
