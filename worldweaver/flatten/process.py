@@ -441,7 +441,8 @@ def optimize_triangles(
     """
     Apply the optimized points to the triangles.
     """
-    coord_to_idx = {(pt.x, pt.y): label for label, pt in points.geometry.items()}
+    _r = 6  # round to 6 decimal places (~1µm) to absorb float rounding across code paths
+    coord_to_idx = {(round(pt.x, _r), round(pt.y, _r)): label for label, pt in points.geometry.items()}
 
     final_triangles = []
     for _, triangle in triangles.iterrows():
@@ -450,7 +451,7 @@ def optimize_triangles(
         triangle_indices = []
         missing_indices = []
         for coord_index, coord in enumerate(coords):
-            label = coord_to_idx.get((coord[0], coord[1]))
+            label = coord_to_idx.get((round(coord[0], _r), round(coord[1], _r)))
             if label is not None:
                 triangle_indices.append(label)
             else:
