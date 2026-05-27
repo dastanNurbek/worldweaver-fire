@@ -114,13 +114,19 @@ def clean_scene():
 
 
 def configure_scene(
-    geo_center_deg: tuple[float, float], device_type: str, is_subdense_run: bool
+    geo_center_deg: tuple[float, float],
+    device_type: str,
+    is_subdense_run: bool,
+    time_of_day: float = 10.5,
+    sky_strength: float = 1.0,
 ):
     """
     Configures the Blender scene prior to drawing objects
     :param geo_center_deg: The coordinates of the center of the scene, in CRS 4326, to configure the position of the sun
     :param device_type: The device type for rendering. "CPU" or "GPU"
     :param is_subdense_run: Whether or not we need to create sub-collections for buildings
+    :param time_of_day: Hour of day for sun position (e.g. 10.5 = 10:30 AM)
+    :param sky_strength: Strength multiplier for the sky background node
     """
 
     # TODO: Generates blender logs that maybe we should wrap ?
@@ -157,6 +163,7 @@ def configure_scene(
     bg_node.location = (0, 300)
     output_node = nodes.new(type="ShaderNodeOutputWorld")
     output_node.location = (300, 300)
+    bg_node.inputs["Strength"].default_value = sky_strength
     links.new(sky_node.outputs["Color"], bg_node.inputs["Color"])
     links.new(bg_node.outputs["Background"], output_node.inputs["Surface"])
 
@@ -187,7 +194,7 @@ def configure_scene(
         sc.sun_pos_properties.month = 8
         sc.sun_pos_properties.year = 2025
         sc.sun_pos_properties.UTC_zone = utc_offset
-        sc.sun_pos_properties.time = 10.5
+        sc.sun_pos_properties.time = time_of_day
         sc.sun_pos_properties.sky_texture = "Sky Texture"
         sc.sun_pos_properties.use_sky_texture = True
     except Exception as _:
@@ -291,6 +298,14 @@ def configure_scene(
 
     additional_collection = D.collections.new(additionals_collection_name)
     D.collections[base_collection_name].children.link(additional_collection)
+
+
+def update_sun_lighting(time_of_day: float, sky_strength: float):
+    """
+    Updates sun time and sky background strength on an already-configured scene.
+    """
+    C.scene.sun_pos_properties.time = time_of_day
+    D.worlds["World"].node_tree.nodes["Background"].inputs["Strength"].default_value = sky_strength
 
 
 def match_collection(buildings_change_status):

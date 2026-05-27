@@ -45,6 +45,8 @@ class ConfigTag:
     fire_threshold = "fire_threshold"
     fire_seed = "seed"
     fire_save_pre_fire_render = "save_pre_fire_render"
+    fire_pre_fire_time_of_day = "pre_fire_time_of_day"
+    fire_pre_fire_sky_strength = "pre_fire_sky_strength"
     rendering = "rendering"
     export_images = "export_images"
     export_scene = "export_scene"
@@ -52,6 +54,8 @@ class ConfigTag:
     camera_type = "camera_type"
     ground_sampling_distance = "ground_sampling_distance"
     tile_size = "tile_size"
+    time_of_day = "time_of_day"
+    sky_strength = "sky_strength"
     objects = "objects"
     building_render = "building_render"
     geometry_node_file = "geometry_node_file"
@@ -423,6 +427,20 @@ class ConfigLoader:
                 filepath=filepath,
                 is_optional=True,
             ) or False
+            fire_pre_fire_time_of_day = ConfigLoader.get_field(
+                parent_dict=fire,
+                tag=ConfigTag.fire_pre_fire_time_of_day,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+                is_optional=True,
+            )
+            fire_pre_fire_sky_strength = ConfigLoader.get_field(
+                parent_dict=fire,
+                tag=ConfigTag.fire_pre_fire_sky_strength,
+                parent_tag=ConfigTag.fire,
+                filepath=filepath,
+                is_optional=True,
+            )
             fire_config = Config.FireConfig(
                 activate=fire_activate,
                 ignition_points=fire_ignition_points,
@@ -431,6 +449,8 @@ class ConfigLoader:
                 tagging_index=fire_tagging_index,
                 seed=fire_seed,
                 save_pre_fire_render=fire_save_pre_fire_render,
+                pre_fire_time_of_day=fire_pre_fire_time_of_day,
+                pre_fire_sky_strength=fire_pre_fire_sky_strength,
             )
         else:
             fire_config = default_config.fire
@@ -486,6 +506,26 @@ class ConfigLoader:
             filepath=filepath,
         )
 
+        time_of_day = ConfigLoader.get_field(
+            parent_dict=rendering,
+            tag=ConfigTag.time_of_day,
+            parent_tag=ConfigTag.rendering,
+            filepath=filepath,
+            is_optional=True,
+        )
+        if time_of_day is None:
+            time_of_day = 10.5
+
+        sky_strength = ConfigLoader.get_field(
+            parent_dict=rendering,
+            tag=ConfigTag.sky_strength,
+            parent_tag=ConfigTag.rendering,
+            filepath=filepath,
+            is_optional=True,
+        )
+        if sky_strength is None:
+            sky_strength = 1.0
+
         output_config = Config.OutputConfig(
             export_img=export_images,
             export_scene=export_scene,
@@ -493,6 +533,8 @@ class ConfigLoader:
             camera_type=camera_type,
             tile_size=tile_size,
             ground_sampling_distance=ground_sampling_distance,
+            time_of_day=time_of_day,
+            sky_strength=sky_strength,
         )
 
         objects = ConfigLoader.get_mandatory_field(

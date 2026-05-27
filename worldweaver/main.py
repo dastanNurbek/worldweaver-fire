@@ -27,6 +27,7 @@ from worldweaver.Utils.Rendering import (
     setup_img_ortho_res,
     setup_compositing_render,
     set_compositing_render_image_name,
+    update_sun_lighting,
     check_is_sun_activated,
     CameraType,
 )
@@ -277,9 +278,23 @@ def main(filepath):
         render_manager.draw_decor(False)
         logger.info("Drawing scene done")
 
+        pre_fire_time = config.fire.pre_fire_time_of_day
+        pre_fire_strength = config.fire.pre_fire_sky_strength
+        main_time = config.rendering.output.time_of_day
+        main_strength = config.rendering.output.sky_strength
+        has_pre_fire_lighting = pre_fire_time is not None or pre_fire_strength is not None
+        if has_pre_fire_lighting:
+            update_sun_lighting(
+                pre_fire_time if pre_fire_time is not None else main_time,
+                pre_fire_strength if pre_fire_strength is not None else main_strength,
+            )
+
         set_compositing_render_image_name(now_str + "_pre_fire_tagging")
         logger.info("Rendering pre-fire sample image")
         export_rendered_img(config.base_folder, export_folder, now_str + "_pre_fire")
+
+        if has_pre_fire_lighting:
+            update_sun_lighting(main_time, main_strength)
 
         render_manager.draw_fire(fire_data)
         render_manager.update_forests_for_fire()
@@ -294,7 +309,19 @@ def main(filepath):
     else:
         if do_pre_fire_render:
             logger.info("Rendering pre-fire scene")
+            pre_fire_time = config.fire.pre_fire_time_of_day
+            pre_fire_strength = config.fire.pre_fire_sky_strength
+            main_time = config.rendering.output.time_of_day
+            main_strength = config.rendering.output.sky_strength
+            has_pre_fire_lighting = pre_fire_time is not None or pre_fire_strength is not None
+            if has_pre_fire_lighting:
+                update_sun_lighting(
+                    pre_fire_time if pre_fire_time is not None else main_time,
+                    pre_fire_strength if pre_fire_strength is not None else main_strength,
+                )
             _render_pass(config, render_manager, export_folder, project_path, driver, fire_data=None, suffix="_pre_fire")
+            if has_pre_fire_lighting:
+                update_sun_lighting(main_time, main_strength)
 
         if fire_data is not None:
             render_manager.draw_fire(fire_data)

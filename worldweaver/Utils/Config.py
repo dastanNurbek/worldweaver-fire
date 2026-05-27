@@ -99,6 +99,8 @@ class OutputConfig:
     camera_type: str
     tile_size: int
     ground_sampling_distance: float
+    time_of_day: float = 10.5
+    sky_strength: float = 1.0
 
 
 @dataclass
@@ -117,6 +119,8 @@ class FireConfig:
     tagging_index: int
     seed: int | None = None  # None = random each run
     save_pre_fire_render: bool = False
+    pre_fire_time_of_day: float | None = None  # None = use rendering.output.time_of_day
+    pre_fire_sky_strength: float | None = None  # None = use rendering.output.sky_strength
 
 
 @dataclass
