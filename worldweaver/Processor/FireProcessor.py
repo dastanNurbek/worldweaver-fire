@@ -27,6 +27,7 @@ class FireProcessor:
         cornfields: g.GeoDataFrame,
         grass: g.GeoDataFrame,
         paths: g.GeoDataFrame,
+        roads: g.GeoDataFrame,
         ignition_points: list[tuple[float, float]],
         fire_cell_size: float,
         fire_threshold: float,
@@ -79,6 +80,18 @@ class FireProcessor:
             ).astype(bool)
             blocked_path = path_mask & (rng.random(size=(n_rows, n_cols)) >= 0.5)
             flammable_map &= ~blocked_path
+
+        if not roads.empty:
+            road_polys = roads.geometry.buffer(fire_cell_size).tolist()
+            road_mask = rio_rasterize(
+                [(geom, 1) for geom in road_polys],
+                out_shape=(n_rows, n_cols),
+                transform=transform,
+                fill=0,
+                dtype=np.uint8,
+            ).astype(bool)
+            blocked_road = road_mask & (rng.random(size=(n_rows, n_cols)) >= 0.5)
+            flammable_map &= ~blocked_road
 
         # --- Map ignition points to grid indices ---
         ignition_indices = []

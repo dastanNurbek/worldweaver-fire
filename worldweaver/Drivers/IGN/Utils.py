@@ -54,7 +54,7 @@ class WFS_FR:
 
     wms_alti_url = "https://data.geopf.fr/annexes/ressources/wms-r/altimetrie.xml"
     wms_alti_version = "1.3.0"
-    rge_key_name = "RGEALTI-MNT_PYR-ZIP_FXX_LAMB93_WMS"
+    rge_key_name = "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES"
 
     town_request_url = "https://geo.api.gouv.fr/communes"
     town_request_name = "nom"
