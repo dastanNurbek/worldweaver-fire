@@ -134,6 +134,19 @@ class OverlayType(Enum):
     INTERSECTION = 3
 
 
+def _overlay(df1: g.GeoDataFrame, df2: g.GeoDataFrame, how: str) -> g.GeoDataFrame:
+    try:
+        return df1.overlay(df2, how=how, keep_geom_type=True)
+    except TypeError:
+        # keep_geom_type=True raises when the result contains GeometryCollections.
+        # Fall back: run without the flag, explode mixed collections, then filter
+        # to geometry types present in df1 to replicate the original intent.
+        target_types = set(df1.geom_type.unique())
+        result = df1.overlay(df2, how=how, keep_geom_type=False)
+        result = result.explode(index_parts=False).reset_index(drop=True)
+        return result[result.geom_type.isin(target_types)]
+
+
 def safe_overlay(
     df1: g.GeoDataFrame, df2: g.GeoDataFrame, how: OverlayType
 ) -> g.GeoDataFrame:
@@ -154,7 +167,7 @@ def safe_overlay(
                 return df1
             if df2.empty:
                 return df1
-            return df1.overlay(df2, how="difference", keep_geom_type=True)
+            return _overlay(df1, df2, "difference")
         case OverlayType.UNION:
             if df1 is None:
                 return df2
@@ -164,7 +177,7 @@ def safe_overlay(
                 return df1
             if df2.empty:
                 return df1
-            return df1.overlay(df2, how="union", keep_geom_type=True)
+            return _overlay(df1, df2, "union")
         case OverlayType.INTERSECTION:
             if df1 is None:
                 return df1
@@ -174,7 +187,7 @@ def safe_overlay(
                 return df2
             if df2.empty:
                 return df2
-            return df1.overlay(df2, how="intersection", keep_geom_type=True)
+            return _overlay(df1, df2, "intersection")
 
 
 def get_class(tag: str, synonym_dict: dict, default_value: str) -> str:

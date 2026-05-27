@@ -8,6 +8,7 @@ from tqdm import tqdm
 from shapely.geometry import mapping, MultiPolygon, GeometryCollection, Polygon
 
 from worldweaver.Utils.Geometry import interpolate_z
+from worldweaver.Utils.Logging import logger
 
 from worldweaver.Renderer.BaseRenderer import BaseRenderer
 from worldweaver.Renderer.FlatPolygonRenderer import FlatPolygonRenderer
@@ -57,46 +58,55 @@ class FlowingWaterRenderer(BaseRenderer):
 
         if not water_data.empty:
 
-            points, final_triangles_gdf = process_all(
-                water_data,
-                water_line_data,
-                max_segment_length,
-                alpha,
-                beta,
-                gamma,
-                delta,
-                epsilon,
-                self.get_elevation,
-                None,
-            )
+            try:
+                result = process_all(
+                    water_data,
+                    water_line_data,
+                    max_segment_length,
+                    alpha,
+                    beta,
+                    gamma,
+                    delta,
+                    epsilon,
+                    self.get_elevation,
+                    None,
+                )
+            except Exception as e:
+                logger.warning(f"process_all raised an error for flowing water — skipping water mesh: {e}")
+                result = None
 
-            # Storing the points inside a dict to avoid point duplication
-            points_dict = {}
+            if result is None:
+                logger.warning("process_all failed for flowing water — skipping water mesh")
+            else:
+                points, final_triangles_gdf = result
 
-            for polygon in tqdm(final_triangles_gdf.geometry.to_list()):
+                # Storing the points inside a dict to avoid point duplication
+                points_dict = {}
 
-                if polygon.is_empty:
-                    continue
+                for polygon in tqdm(final_triangles_gdf.geometry.to_list()):
 
-                polygon_geometry = mapping(polygon)["coordinates"]
-                if len(polygon_geometry) > 0:
-                    points_coords = [
-                        (x[0], x[1], x[2]) for x in polygon_geometry[0][:-1]
-                    ]
+                    if polygon.is_empty:
+                        continue
 
-                    centered_points_coords = self._to_scene_coords(
-                        points_coords, geo_center
-                    )
+                    polygon_geometry = mapping(polygon)["coordinates"]
+                    if len(polygon_geometry) > 0:
+                        points_coords = [
+                            (x[0], x[1], x[2]) for x in polygon_geometry[0][:-1]
+                        ]
 
-                    new_face_mesh_verts = []
-                    for pt in centered_points_coords:
+                        centered_points_coords = self._to_scene_coords(
+                            points_coords, geo_center
+                        )
 
-                        if pt not in points_dict.keys():
-                            points_dict[pt] = mesh.verts.new(pt)
+                        new_face_mesh_verts = []
+                        for pt in centered_points_coords:
 
-                        new_face_mesh_verts.append(points_dict[pt])
+                            if pt not in points_dict.keys():
+                                points_dict[pt] = mesh.verts.new(pt)
 
-                    face = mesh.faces.new(new_face_mesh_verts)
+                            new_face_mesh_verts.append(points_dict[pt])
+
+                        face = mesh.faces.new(new_face_mesh_verts)
 
         mesh_data = D.meshes.new(self._mesh_name)
         self._mesh_name = mesh_data.name
