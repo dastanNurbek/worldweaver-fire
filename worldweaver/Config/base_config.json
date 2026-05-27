@@ -45,7 +45,7 @@
     "ground_sampling_distance": 0.2,
     "tile_size": 512,
     "time_of_day": 10.5,
-    "sky_strength": 1.0,
+    "sun_strength": 10.0,
     "objects": {
       "building_render": {
         "geometry_node_file": "Buildings.blend",

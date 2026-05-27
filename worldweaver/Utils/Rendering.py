@@ -118,7 +118,7 @@ def configure_scene(
     device_type: str,
     is_subdense_run: bool,
     time_of_day: float = 10.5,
-    sky_strength: float = 1.0,
+    sun_strength: float = 10.0,
 ):
     """
     Configures the Blender scene prior to drawing objects
@@ -126,7 +126,7 @@ def configure_scene(
     :param device_type: The device type for rendering. "CPU" or "GPU"
     :param is_subdense_run: Whether or not we need to create sub-collections for buildings
     :param time_of_day: Hour of day for sun position (e.g. 10.5 = 10:30 AM)
-    :param sky_strength: Strength multiplier for the sky background node
+    :param sun_strength: Energy (strength) of the Sun lamp
     """
 
     # TODO: Generates blender logs that maybe we should wrap ?
@@ -163,7 +163,6 @@ def configure_scene(
     bg_node.location = (0, 300)
     output_node = nodes.new(type="ShaderNodeOutputWorld")
     output_node.location = (300, 300)
-    bg_node.inputs["Strength"].default_value = sky_strength
     links.new(sky_node.outputs["Color"], bg_node.inputs["Color"])
     links.new(bg_node.outputs["Background"], output_node.inputs["Surface"])
 
@@ -171,7 +170,7 @@ def configure_scene(
     sun_data = D.lights.new(name=sun_name, type="SUN")
     sun_object = D.objects.new(sun_name, sun_data)
     D.collections[base_collection_name].objects.link(sun_object)
-    sun_data.energy = 10
+    sun_data.energy = sun_strength
 
     tzf = TimezoneFinder()
     tz = tzf.timezone_at(lng=geo_center_deg[0], lat=geo_center_deg[1])
@@ -300,12 +299,12 @@ def configure_scene(
     D.collections[base_collection_name].children.link(additional_collection)
 
 
-def update_sun_lighting(time_of_day: float, sky_strength: float):
+def update_sun_lighting(time_of_day: float, sun_strength: float):
     """
-    Updates sun time and sky background strength on an already-configured scene.
+    Updates sun time and Sun lamp energy on an already-configured scene.
     """
     C.scene.sun_pos_properties.time = time_of_day
-    D.worlds["World"].node_tree.nodes["Background"].inputs["Strength"].default_value = sky_strength
+    D.lights[sun_name].energy = sun_strength
 
 
 def match_collection(buildings_change_status):

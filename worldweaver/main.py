@@ -279,9 +279,9 @@ def main(filepath):
         logger.info("Drawing scene done")
 
         pre_fire_time = config.fire.pre_fire_time_of_day
-        pre_fire_strength = config.fire.pre_fire_sky_strength
+        pre_fire_strength = config.fire.pre_fire_sun_strength
         main_time = config.rendering.output.time_of_day
-        main_strength = config.rendering.output.sky_strength
+        main_strength = config.rendering.output.sun_strength
         has_pre_fire_lighting = pre_fire_time is not None or pre_fire_strength is not None
         if has_pre_fire_lighting:
             update_sun_lighting(
@@ -310,9 +310,9 @@ def main(filepath):
         if do_pre_fire_render:
             logger.info("Rendering pre-fire scene")
             pre_fire_time = config.fire.pre_fire_time_of_day
-            pre_fire_strength = config.fire.pre_fire_sky_strength
+            pre_fire_strength = config.fire.pre_fire_sun_strength
             main_time = config.rendering.output.time_of_day
-            main_strength = config.rendering.output.sky_strength
+            main_strength = config.rendering.output.sun_strength
             has_pre_fire_lighting = pre_fire_time is not None or pre_fire_strength is not None
             if has_pre_fire_lighting:
                 update_sun_lighting(

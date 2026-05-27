@@ -55,7 +55,7 @@ class RenderManager:
             self.config.rendering.output.device_type,
             self.is_subdense_run,
             self.config.rendering.output.time_of_day,
-            self.config.rendering.output.sky_strength,
+            self.config.rendering.output.sun_strength,
         )
         self.terrain_renderer = TerrainRenderer.TerrainRenderer(
             terrain_data,
