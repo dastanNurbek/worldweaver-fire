@@ -161,6 +161,13 @@ def get_oriented_graph(
             if (a in connected_nodes) ^ (b in connected_nodes)
             # a or b has to be connected but not both
         ]
+        if not edges:
+            # Remaining nodes form a component with no edge crossing into the
+            # oriented subgraph. Seed one arbitrary node so the XOR condition
+            # can reach its triangle_graph neighbours on the next iteration.
+            node = next(n for n in G.nodes if n not in connected_nodes)
+            connected_nodes.add(node)
+            continue
         for a, b in edges:
             start = a if a in connected_nodes else b
             end = b if a in connected_nodes else a
