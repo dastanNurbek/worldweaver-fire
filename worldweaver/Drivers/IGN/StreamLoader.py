@@ -41,17 +41,32 @@ from worldweaver.Utils.RenderingDataFrames import (
 import worldweaver.Utils.DataFiles as df
 
 
+_TRANSIENT_SERVICE_EXCEPTION_CODES = {"LayerNotDefined"}
+
+
 def _with_retry(fn, max_attempts=4, base_delay=5):
     """Retry fn on transient network errors with exponential backoff.
 
-    ServiceException is re-raised immediately — it indicates a configuration
-    error (e.g. unknown layer name) that retrying will not fix.
+    ServiceException with code LayerNotDefined is treated as transient because
+    IGN's load balancer can route a request to a backend node that has not yet
+    received the layer — retrying usually lands on a healthy node.
+    All other ServiceException codes are permanent config errors and are
+    re-raised immediately.
     """
     for attempt in range(max_attempts):
         try:
             return fn()
-        except ServiceException:
-            raise
+        except ServiceException as e:
+            msg = str(e)
+            is_transient = any(code in msg for code in _TRANSIENT_SERVICE_EXCEPTION_CODES)
+            if not is_transient or attempt == max_attempts - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                f"Transient ServiceException (LayerNotDefined), retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_attempts})"
+            )
+            time.sleep(delay)
         except requests.exceptions.HTTPError as e:
             status = e.response.status_code if e.response is not None else None
             if status is not None and status < 500:
