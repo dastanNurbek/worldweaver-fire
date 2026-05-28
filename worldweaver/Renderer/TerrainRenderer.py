@@ -1,4 +1,6 @@
+import hashlib
 import os
+import struct
 
 import bpy
 import bmesh
@@ -14,6 +16,13 @@ from worldweaver.Utils.Geometry import center_point
 from worldweaver.Utils.Logging import logger
 from worldweaver.Utils.Utils import GeoWindow, TerrainData
 from worldweaver.Utils.DataFiles import assets_folder
+
+
+def _coord_hash(x_min: float, y_min: float, x_max: float, y_max: float) -> float:
+    """Return a deterministic float in [0, 1] derived from the bounding-box coordinates."""
+    key = f"{x_min:.4f}_{y_min:.4f}_{x_max:.4f}_{y_max:.4f}".encode()
+    digest = hashlib.sha256(key).digest()
+    return struct.unpack(">I", digest[:4])[0] / 0xFFFF_FFFF
 
 
 class TerrainRenderer:
@@ -298,6 +307,8 @@ class TerrainRenderer:
 
             ind_y += 1
 
+        coord_random = _coord_hash(*geo_window.bounds)
+
         logger.info("Texturing terrain")
         for index, mesh_info in meshes.items():
 
@@ -306,6 +317,10 @@ class TerrainRenderer:
 
             mesh_info.mesh.to_mesh(mesh_data)
             mesh_info.mesh.free()
+
+            attr = mesh_data.attributes.new(name="coord_random", type="FLOAT", domain="POINT")
+            attr.data.foreach_set("value", np.full(len(mesh_data.vertices), coord_random, dtype=np.float32))
+
             mesh_obj = D.objects.new(mesh_data.name, mesh_data)
             terrain_collection.objects.link(mesh_obj)
 
