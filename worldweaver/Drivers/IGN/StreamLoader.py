@@ -89,8 +89,8 @@ def _with_retry(fn, max_attempts=4, base_delay=5, total_timeout=None):
                 raise
             delay = base_delay * (2 ** attempt)
             logger.warning(
-                f"Transient ServiceException (LayerNotDefined), retrying in {delay}s "
-                f"(attempt {attempt + 1}/{max_attempts})"
+                f"Transient ServiceException, retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_attempts}): {msg[:120]}"
             )
             time.sleep(delay)
         except requests.exceptions.HTTPError as e:
@@ -111,6 +111,18 @@ def _with_retry(fn, max_attempts=4, base_delay=5, total_timeout=None):
             delay = base_delay * (2 ** attempt)
             logger.warning(
                 f"Network error ({type(e).__name__}), retrying in {delay}s "
+                f"(attempt {attempt + 1}/{max_attempts})"
+            )
+            time.sleep(delay)
+        except KeyError as e:
+            key = e.args[0] if e.args else ""
+            if not isinstance(key, str) or ":" not in key:
+                raise
+            if attempt == max_attempts - 1:
+                raise
+            delay = base_delay * (2 ** attempt)
+            logger.warning(
+                f"WFS layer missing from capabilities ({key!r}), retrying in {delay}s "
                 f"(attempt {attempt + 1}/{max_attempts})"
             )
             time.sleep(delay)
