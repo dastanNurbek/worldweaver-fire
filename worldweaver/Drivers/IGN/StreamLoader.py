@@ -2,6 +2,7 @@ import os
 import io
 import math
 import time
+import concurrent.futures
 import requests
 
 import geopandas as g
@@ -41,10 +42,35 @@ from worldweaver.Utils.RenderingDataFrames import (
 import worldweaver.Utils.DataFiles as df
 
 
-_TRANSIENT_SERVICE_EXCEPTION_CODES = {"LayerNotDefined"}
+_TRANSIENT_SERVICE_EXCEPTION_CODES = {"LayerNotDefined", "Unknown namespace"}
 
 
-def _with_retry(fn, max_attempts=4, base_delay=5):
+def _call_with_deadline(fn, total_secs):
+    """Run fn() in a thread; raise Timeout if it hasn't returned within total_secs.
+
+    The per-socket read timeout in owslib only fires when no bytes arrive for
+    that many seconds. A server that trickles data slowly (one packet every
+    19 s) can keep a request alive for 10+ minutes. This wrapper enforces a
+    hard wall-clock limit per attempt regardless of how the bytes arrive.
+
+    shutdown(wait=False) is called before blocking on the result so that the
+    context manager does not block on __exit__ if we raise TimeoutError —
+    ThreadPoolExecutor.__exit__ calls shutdown(wait=True) which would negate
+    the deadline entirely. The abandoned thread runs as a daemon and exits on
+    its own socket timeout.
+    """
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(fn)
+    executor.shutdown(wait=False)
+    try:
+        return future.result(timeout=total_secs)
+    except concurrent.futures.TimeoutError:
+        raise requests.exceptions.Timeout(
+            f"Total request time exceeded {total_secs}s"
+        )
+
+
+def _with_retry(fn, max_attempts=4, base_delay=5, total_timeout=None):
     """Retry fn on transient network errors with exponential backoff.
 
     ServiceException with code LayerNotDefined is treated as transient because
@@ -55,7 +81,7 @@ def _with_retry(fn, max_attempts=4, base_delay=5):
     """
     for attempt in range(max_attempts):
         try:
-            return fn()
+            return _call_with_deadline(fn, total_timeout) if total_timeout else fn()
         except ServiceException as e:
             msg = str(e)
             is_transient = any(code in msg for code in _TRANSIENT_SERVICE_EXCEPTION_CODES)
@@ -79,7 +105,7 @@ def _with_retry(fn, max_attempts=4, base_delay=5):
                 f"(attempt {attempt + 1}/{max_attempts})"
             )
             time.sleep(delay)
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError, requests.exceptions.ContentDecodingError) as e:
             if attempt == max_attempts - 1:
                 raise
             delay = base_delay * (2 ** attempt)
@@ -133,7 +159,7 @@ class StreamLoader(Loader):
 
         load_oceans = False
 
-        wms = WebMapService(WFS_FR.wms_alti_url, version=WFS_FR.wms_alti_version)
+        wms = _with_retry(lambda: WebMapService(WFS_FR.wms_alti_url, version=WFS_FR.wms_alti_version, timeout=20))
 
         terrain_box_ll = (bbox_lamb93_rounded[0], bbox_lamb93_rounded[1])
         terrain_box_ur = (bbox_lamb93_rounded[2], bbox_lamb93_rounded[3])
@@ -182,7 +208,10 @@ class StreamLoader(Loader):
                         bbox=current_box,
                         size=img_size,
                         format="image/geotiff",
-                    )
+                        timeout=20,
+                    ),
+                    base_delay=2,
+                    total_timeout=30,
                 )
 
                 terrain_image = Image.open(io.BytesIO(terrain_img.read()))
@@ -474,7 +503,7 @@ class StreamLoader(Loader):
 
     def load_texture(self, mesh_box: tuple[float, float, float, float]) -> str:
 
-        bdortho_wms = WebMapService(WFS_FR.bdortho_url, version=WFS_FR.bdortho_version)
+        bdortho_wms = _with_retry(lambda: WebMapService(WFS_FR.bdortho_url, version=WFS_FR.bdortho_version))
 
         bdortho_resolution = 0.2
 
@@ -491,7 +520,8 @@ class StreamLoader(Loader):
                 bbox=mesh_box,
                 size=img_size,
                 format="image/geotiff",
-            )
+            ),
+            total_timeout=30,
         )
 
         texture_file_name = (
