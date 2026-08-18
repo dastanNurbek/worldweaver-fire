@@ -66,7 +66,11 @@ The modifications in this fork are distributed under the same CeCILL v2.1 licens
 /!\ TODO
 WorldWeaver has been developed under the [ANR MAGE](https://mage.science) project funded by *Agence Nationale de la Recherche* (ANR-22-CE23-0010).
 
-The fire simulation in this fork was developed by [dastanNurbek](https://github.com/dastanNurbek).
+The fire simulation in this fork was developed by Dastan Nurbekuly as part of the master's thesis
+*Procedural Generation of Synthetic Satellite Images for Wildfire Segmentation*, carried out in the Copernicus
+Master in Digital Earth programme — co-funded by the European Union — jointly delivered by Paris Lodron
+University of Salzburg and Université Bretagne Sud, in collaboration with the
+[French National Geographic Institute (IGN)](https://www.ign.fr/).
 
 WorldWeaver uses a few procedural assets and textures:
 
