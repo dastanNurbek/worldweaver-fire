@@ -10,6 +10,8 @@ It currently works on data from the [French National Geographic Institute](https
 > **This is a modified fork of [WorldWeaver](https://github.com/geo-mage/worldweaver).** It adds a forest fire
 > simulation that renders paired pre-fire / post-fire views of the same scene, with matching semantic
 > segmentation masks, for generating synthetic wildfire datasets. See [Fork modifications](#fork-modifications).
+>
+> The synthetic wildfire dataset generated with this fork is available on [Zenodo](https://zenodo.org/records/23117919).
 
 ## Fork modifications
 
