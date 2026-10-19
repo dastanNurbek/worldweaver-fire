@@ -212,7 +212,7 @@ class PlotDataFrame:
         geometry = "geometry"
 
     class WFS:
-        ID = "id_parcel"
+        ID = "num_parcel"
         culture = "code_cultu"
         group = "code_group"
         geometry = "geometry"
